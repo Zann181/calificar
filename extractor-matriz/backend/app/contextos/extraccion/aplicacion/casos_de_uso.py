@@ -20,11 +20,12 @@ import json
 import logging
 import uuid
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Any
 
-from app.compartido.dominio import ErrorDeDominio
+from app.compartido.dominio import ErrorDeDominio, ahora
 from app.contextos.extraccion.aplicacion import roles
 from app.contextos.extraccion.dominio.anclaje import Anclador, NivelAncla, resumen_de_niveles
 from app.contextos.extraccion.dominio.comparacion import (
@@ -139,11 +140,17 @@ class ExtraerArticulo:
         estudio = opciones.estudio_inicial or self._numeracion.siguiente(proyecto_id)
         ext = Extraccion.iniciar(proyecto_id=proyecto_id, articulo_id=articulo_id, version_libro_id=libro.id,
                                  estudios_reservados=[estudio])
-        self._guardar(ext)
+        self._avance(ext, "preparando")
+        log.info("Extracción %s: «%s» · Documento %s · Estudio inicial %s", str(ext.id)[:8],
+                 articulo.nombre_archivo, opciones.documento, estudio)
         try:
+            self._validador.comprobar()
             datos = DatosDelEquipo(documento=opciones.documento, estudio_inicial=estudio,
                                    covidence=opciones.covidence, via=opciones.via)
             ctx = self._preparar(libro.contenido, articulo.pdf, articulo.documento, datos)
+            log.info("Extracción %s: texto etiquetado listo (%d bloques, %d páginas como imagen)", str(ext.id)[:8],
+                     len(ctx.documento.bloques), len(ctx.imagenes))
+            self._avance(ext, "extrayendo")
             if not self._extraer(ext, ctx):
                 return self._resultado(ext)
             self._anclar(ext, ctx)
@@ -152,6 +159,10 @@ class ExtraerArticulo:
             self._conciliar(ext, ctx, comparacion)
             ext.completar(acuerdo=comparar(ext.salida, ext.codificacion_ciega).acuerdo)
             self._guardar(ext)
+            r = self._resultado(ext)
+            log.info("Extracción %s COMPLETADA: acuerdo con el ciego %s · %d hallazgos pendientes · %s USD "
+                     "equivalentes. Las filas pasan a la matriz como POR_REVISAR", str(ext.id)[:8], r.acuerdo,
+                     r.hallazgos_pendientes, r.costo_usd)
         except Exception as e:
             log.exception("Extracción %s del artículo %s falló en %s", ext.id, articulo_id, ext.estado)
             self._fallar(ext, f"{type(e).__name__}: {e}")
@@ -170,9 +181,11 @@ class ExtraerArticulo:
 
     def _llamar(self, ext: Extraccion, rol: str, sistema: str, mensaje: str, ctx: _Contexto,
                 con_imagenes: bool = True) -> RespuestaModelo:
+        log.info("Extracción %s: llamando al rol %s…", str(ext.id)[:8], rol)
         r = self._modelo.completar(rol=rol, sistema=sistema, mensaje=mensaje,
                                    imagenes=ctx.imagenes if con_imagenes else None)
         ext.registrar_uso(rol, r.uso)
+        _registrar_uso(ext, rol, r.uso)
         return r
 
     def _extraer(self, ext: Extraccion, ctx: _Contexto) -> bool:
@@ -185,11 +198,16 @@ class ExtraerArticulo:
             r = self._validador.validar(salida, ctx.libro, ctx.pdf)
             ext.registrar_validacion(r.errores, r.avisos)
             self._guardar(ext)
+            log.info("Extracción %s: validador, iteración %d: %d errores · %d avisos", str(ext.id)[:8], iteracion,
+                     len(r.errores), len(r.avisos))
+            for e in r.errores[:5]:
+                log.warning("Extracción %s: validador: %s", str(ext.id)[:8], e)
             if not r.errores:
                 return True
             if iteracion == self._p.max_iteraciones_validador:
                 break
             ext.pasar(EstadoExtraccion.EXTRAYENDO)
+            self._avance(ext, "corrigiendo")
             texto = self._llamar(ext, "extractor", sistema, roles.correccion(mensaje, salida, r.errores), ctx).texto
             salida = roles.lista_de(texto)
         self._fallar(ext, f"El validador mantiene {len(ext.errores_validador)} errores tras "
@@ -201,12 +219,15 @@ class ExtraerArticulo:
 
     def _anclar(self, ext: Extraccion, ctx: _Contexto) -> None:
         ext.pasar(EstadoExtraccion.ANCLANDO)
+        self._avance(ext, "anclando")
         ext.registrar_anclas(self._anclador(ctx).anclar_salida(ext.salida))
         self._guardar(ext)
+        log.info("Extracción %s: anclaje de citas: %s", str(ext.id)[:8], resumen_de_niveles(ext.anclas))
 
     def _auditar(self, ext: Extraccion, ctx: _Contexto) -> Comparacion:
         ext.pasar(EstadoExtraccion.AUDITANDO)
-        self._guardar(ext)
+        self._avance(ext, "auditando")
+        log.info("Extracción %s: auditor de evidencia y codificador ciego trabajando en paralelo…", str(ext.id)[:8])
         imagenes = sorted(ctx.imagenes)
         s_aud, m_aud = roles.auditor(ctx.libro_sistema, ext.salida, [a.a_dict() for a in ext.anclas],
                                      ctx.etiquetado.texto, imagenes)
@@ -217,6 +238,8 @@ class ExtraerArticulo:
             r_aud, r_cie = f_aud.result(), f_cie.result()
         ext.registrar_uso("auditor", r_aud.uso)
         ext.registrar_uso("ciego", r_cie.uso)
+        _registrar_uso(ext, "auditor", r_aud.uso)
+        _registrar_uso(ext, "ciego", r_cie.uso)
         auditoria = roles.lista_de(r_aud.texto) if r_aud.texto.strip() not in ("", "[]") else []
         ciega = roles.lista_de(r_cie.texto)
         hallazgos = [Hallazgo(estudio=_entero(h.get("estudio")), columna=str(h.get("columna") or "Estudio"),
@@ -235,7 +258,10 @@ class ExtraerArticulo:
                 detalle=f"Extractor: {json.dumps(d.valor_a, ensure_ascii=False)}; "
                         f"codificador ciego: {json.dumps(d.valor_b, ensure_ascii=False)}"))
         ext.registrar_hallazgos(ciega, hallazgos)
+        ext.avanzar("auditando", 84)
         self._guardar(ext)
+        log.info("Extracción %s: comparación con el ciego: %d diferencias · %d hallazgos del auditor", str(ext.id)[:8],
+                 len(comparacion.diferencias), len(hallazgos) - len(comparacion.diferencias))
         return comparacion
 
     def _puntos(self, ext: Extraccion, ctx: _Contexto, comparacion: Comparacion) -> list[_Punto]:
@@ -274,9 +300,14 @@ class ExtraerArticulo:
 
     def _conciliar(self, ext: Extraccion, ctx: _Contexto, comparacion: Comparacion) -> None:
         ext.pasar(EstadoExtraccion.CONCILIANDO)
+        self._avance(ext, "conciliando")
         puntos = self._puntos(ext, ctx, comparacion)
+        log.info("Extracción %s: el conciliador decide %d punto(s)", str(ext.id)[:8], len(puntos))
         with ThreadPoolExecutor(max_workers=max(1, self._p.concurrencia)) as ex:
-            decisiones = list(ex.map(lambda p: self._decidir(ctx, p), puntos))
+            futuros = [ex.submit(self._decidir, ctx, p) for p in puntos]
+            for hechos, _ in enumerate(as_completed(futuros), 1):  # cada decisión mueve la barra
+                self._avance(ext, "conciliando", 85 + 13 * hechos // len(puntos))
+            decisiones = [f.result() for f in futuros]
         anclador = self._anclador(ctx)
         nueva = copy.deepcopy(ext.salida)
         con_cambio = list(ext.hallazgos)  # si se aplican los cambios
@@ -345,6 +376,10 @@ class ExtraerArticulo:
         return None
 
     # ------------------------------------------------------------------ apoyo
+    def _avance(self, ext: Extraccion, paso: str, progreso: int | None = None) -> None:
+        ext.avanzar(paso, progreso)
+        self._guardar(ext)
+
     def _guardar(self, ext: Extraccion) -> None:
         with self._udt() as u:
             u.extracciones.agregar(ext)
@@ -366,6 +401,11 @@ class ExtraerArticulo:
             hallazgos_pendientes=sum(h.estado.value == "PENDIENTE" for h in ext.hallazgos),
             errores=list(ext.errores_validador) or ([ext.error] if ext.error else []),
             costo_usd=round(sum(float(r.get("costo_usd") or 0) for r in ext.uso_tokens.values()), 4))
+
+
+def _registrar_uso(ext: Extraccion, rol: str, uso: dict[str, Any]) -> None:
+    log.info("Extracción %s: rol %s terminó en %s s · %s turnos · %s USD equivalentes", str(ext.id)[:8], rol,
+             uso.get("segundos"), uso.get("turnos"), uso.get("costo_usd"))
 
 
 def _entero(valor: Any) -> int | None:
@@ -403,6 +443,11 @@ class ConsultasDeExtraccion:
     def de_articulo(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID) -> list[Extraccion]:
         with self._udt() as u:
             return u.extracciones.de_articulo(proyecto_id, articulo_id)
+
+    def recientes(self, proyecto_id: uuid.UUID, minutos: int = 15) -> list[Extraccion]:
+        """Extracciones en curso y las terminadas hace menos de `minutos` (para el avance de la interfaz)."""
+        with self._udt() as u:
+            return u.extracciones.recientes(proyecto_id, ahora() - timedelta(minutes=minutos))
 
     def ultima_completada(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID) -> Extraccion:
         completadas = [e for e in self.de_articulo(proyecto_id, articulo_id) if e.estado == EstadoExtraccion.COMPLETADA]

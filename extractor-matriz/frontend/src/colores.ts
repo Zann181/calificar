@@ -51,3 +51,14 @@ export function mostrarValor(valor: unknown, estadoDato: string | null): string 
   if (typeof valor === "object") return JSON.stringify(valor);
   return String(valor);
 }
+
+/** Color de neón con el que se resalta cada marca al filtrar (la leyenda y las celdas usan el mismo). */
+export const NEON: Record<Color, string> = {
+  gris: "#c7d0dc",
+  ninguno: "#00e5ff",
+  amarillo: "#ffe600",
+  "amarillo-borde": "#b6ff00",
+  naranja: "#ff8a00",
+  rojo: "#ff2d55",
+  verde: "#39ff14",
+};

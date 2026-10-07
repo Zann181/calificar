@@ -21,6 +21,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import Response
+from starlette.concurrency import run_in_threadpool
 
 BACKEND = "pipeline"
 IDIOMA = os.environ.get("MINERU_IDIOMA", "en")
@@ -88,7 +89,8 @@ async def convertir(archivo: UploadFile = File(...)) -> Response:
     if not datos.startswith(b"%PDF"):
         raise HTTPException(status_code=422, detail="El archivo no es un PDF")
     try:
-        zip_bytes, segundos = convertir_bytes(datos, archivo.filename or "articulo.pdf")
+        # En un hilo: la conversión dura minutos y, en el bucle de eventos, dejaría /salud sin respuesta.
+        zip_bytes, segundos = await run_in_threadpool(convertir_bytes, datos, archivo.filename or "articulo.pdf")
     except Exception as e:  # la causa exacta llega al adaptador, que la guarda en DetalleError
         raise HTTPException(status_code=500, detail=f"MinerU falló: {type(e).__name__}: {e}") from e
     return Response(content=zip_bytes, media_type="application/zip",

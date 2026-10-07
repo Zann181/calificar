@@ -9,6 +9,7 @@ Con FOR UPDATE SKIP LOCKED varios despachadores pueden correr a la vez sin repet
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from collections import defaultdict
 from collections.abc import Callable
@@ -29,6 +30,9 @@ class Despachador:
     def __init__(self, fabrica: Callable[[], Session]) -> None:
         self._fabrica = fabrica
         self._manejadores: dict[str, list[Manejador]] = defaultdict(list)
+        self._hilo: threading.Thread | None = None
+        self._parar = threading.Event()
+        self.ultimo_latido: float | None = None  # time.monotonic() de la última pasada del hilo
 
     def suscribir(self, nombre_evento: str, manejador: Manejador) -> None:
         self._manejadores[nombre_evento].append(manejador)
@@ -60,6 +64,42 @@ class Despachador:
                     despachados += 1
                 sesion.commit()
         return despachados
+
+    @property
+    def activo(self) -> bool:
+        return self._hilo is not None and self._hilo.is_alive()
+
+    def iniciar_en_hilo(self, intervalo: float = 1.0, periodica: Callable[[], None] | None = None,
+                        cada: float = 15.0) -> None:
+        """Corre el despachador dentro de este proceso. `periodica` se ejecuta cada `cada` segundos
+        (barrido de lo que quedó pendiente aunque su evento ya se haya despachado)."""
+        if self.activo:
+            return
+        self._parar.clear()
+
+        def bucle() -> None:
+            log.info("Despachador de eventos iniciado dentro del servidor")
+            ultima = 0.0
+            while not self._parar.is_set():
+                try:
+                    trabajo = self.despachar_pendientes()
+                    if periodica is not None and time.monotonic() - ultima >= cada:
+                        ultima = time.monotonic()
+                        periodica()
+                except Exception:
+                    log.exception("El despachador falló en una pasada; reintenta en %s s", intervalo)
+                    trabajo = 0
+                self.ultimo_latido = time.monotonic()
+                if trabajo == 0:
+                    self._parar.wait(intervalo)
+
+        self._hilo = threading.Thread(target=bucle, name="despachador", daemon=True)
+        self._hilo.start()
+
+    def detener(self) -> None:
+        self._parar.set()
+        if self._hilo is not None:
+            self._hilo.join(timeout=5)
 
     def correr(self, intervalo: float = 1.0) -> None:  # pragma: no cover - bucle del proceso
         log.info("Despachador de outbox iniciado")

@@ -46,7 +46,8 @@ def fabrica(tmp_path: Path) -> Iterator[Callable[[], Session]]:
 
 @pytest.fixture
 def ajustes() -> Settings:
-    return Settings(_env_file=None, sesion_secreto="secreto-de-prueba", admin_clave="clave-de-prueba-123")
+    return Settings(_env_file=None, sesion_secreto="secreto-de-prueba", admin_clave="clave-de-prueba-123",
+                    despachador_en_servidor=False)
 
 
 @pytest.fixture

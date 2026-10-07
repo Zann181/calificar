@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from sqlalchemy import select
 
 from app.compartido.db import RegistroOutbox
 from app.composicion import Contenedor
+from app.config import Settings
 from app.contextos.biblioteca.dominio.articulo import EstadoArticulo
 from tests.conftest import FIXTURES
 from tests.integracion.conftest import nuevo_proyecto
@@ -47,13 +49,29 @@ def test_conversion_fallida_queda_en_error(contenedor: Contenedor, proyecto: uui
     assert articulo.error is not None and articulo.error.paso == EstadoArticulo.CONVIRTIENDO
 
 
-def test_despachador_convierte_al_cargar(contenedor: Contenedor, proyecto: uuid.UUID) -> None:
+def test_por_defecto_un_pdf_cargado_queda_en_nuevo(contenedor: Contenedor, proyecto: uuid.UUID) -> None:
+    """Sin «convertir_al_cargar», el PDF espera a que la persona pulse su estado (convierte y extrae de corrido)."""
     r = contenedor.biblioteca.cargar.ejecutar(proyecto, "kumar_2022.pdf", KUMAR)
     assert r.articulo_id is not None
     while contenedor.despachador.despachar_pendientes():
         pass
-    assert contenedor.biblioteca.consultas.articulo(proyecto, r.articulo_id).estado == EstadoArticulo.LISTO
-    with contenedor.fabrica() as s:
+    assert contenedor.biblioteca.consultas.articulo(proyecto, r.articulo_id).estado == EstadoArticulo.NUEVO
+
+
+def test_despachador_convierte_al_cargar_si_se_pide(fabrica: Any, ajustes: Settings) -> None:
+    from app.composicion import construir
+    from app.contextos.biblioteca.adaptadores.almacen import AlmacenEnMemoria
+    from app.contextos.biblioteca.adaptadores.mineru import ConversorFijo
+
+    c = construir(ajustes.model_copy(update={"convertir_al_cargar": True}), fabrica=fabrica,
+                  almacen=AlmacenEnMemoria(), conversor=ConversorFijo(FIXTURES / "mineru"))
+    proyecto = nuevo_proyecto(c, "Convertir al cargar")
+    r = c.biblioteca.cargar.ejecutar(proyecto, "kumar_2022.pdf", KUMAR)
+    assert r.articulo_id is not None
+    while c.despachador.despachar_pendientes():
+        pass
+    assert c.biblioteca.consultas.articulo(proyecto, r.articulo_id).estado == EstadoArticulo.LISTO
+    with c.fabrica() as s:
         pendientes = s.scalars(select(RegistroOutbox).where(RegistroOutbox.despachado_en.is_(None))).all()
     assert pendientes == []
 

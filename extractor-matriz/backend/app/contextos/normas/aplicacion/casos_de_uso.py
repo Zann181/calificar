@@ -9,6 +9,7 @@ from typing import Any
 
 from app.compartido.columnas import DefinicionDeColumna
 from app.compartido.dominio import ErrorDeDominio
+from app.contextos.normas.dominio.catalogo import derivar_protocolo
 from app.contextos.normas.dominio.modelos import VersionDelLibro
 from app.contextos.normas.puertos import UnidadDeTrabajoNormas
 
@@ -51,6 +52,9 @@ class ConsultasDeNormas:
 
     def columnas(self, proyecto_id: uuid.UUID) -> list[DefinicionDeColumna]:
         return self.libro_activo(proyecto_id).catalogo().columnas
+
+    def protocolo(self, proyecto_id: uuid.UUID) -> dict[str, Any]:
+        return derivar_protocolo(self.libro_activo(proyecto_id).contenido)
 
     def versiones(self, proyecto_id: uuid.UUID) -> list[VersionDelLibro]:
         with self._udt() as u:

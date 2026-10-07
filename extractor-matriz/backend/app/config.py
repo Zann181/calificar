@@ -27,15 +27,23 @@ class Settings(BaseSettings):
 
     mineru_url: str = "http://localhost:8001"
     mineru_tiempo_max: int = 1800
+    # Entorno de Python de servicio-mineru; el lanzador lo arranca si existe.
+    mineru_python: Path = RAIZ_REPO / "servicio-mineru" / ".venv" / "Scripts" / "python.exe"
 
     # Modelo de lenguaje: Claude Code CLI (ADR 0002). Los modelos se confirman en F0.
     claude_cli: str = "claude"
+    # pdftotext para el validador (V23). Vacío: se busca en PATH y en la instalación de Git para Windows.
+    pdftotext: str = ""
     modelo_extractor: str = "claude-opus-5-5"
     modelo_auditor: str = "claude-opus-5-5"
     modelo_ciego: str = "claude-sonnet-5-5"
     modelo_conciliador: str = "claude-opus-5-5"
 
     concurrencia_extraccion: int = 2
+    # Extracciones simultáneas lanzadas desde la interfaz (cada una cuesta ~7 USD y ~11 min); las demás esperan.
+    extracciones_en_paralelo: int = 1
+    # Cuánto espera un pedido de extraer a que su PDF se convierta (MinerU apagado u ocupado), en segundos.
+    espera_conversion_max: int = 5400
     umbral_similitud: int = 95
     max_iteraciones_validador: int = 3
     umbral_acuerdo: float = 0.80
@@ -55,6 +63,13 @@ class Settings(BaseSettings):
     # Interfaz compilada (npm run build). Si existe, la API la sirve en "/" y basta un solo proceso.
     interfaz_dir: Path = RAIZ_REPO / "frontend" / "dist"
     cors_origenes: str = "http://localhost:5173"
+    # Registro de eventos que muestra la interfaz (una línea JSON por evento).
+    # El servidor corre el despachador de eventos en un hilo (conversión al cargar, filas al extraer).
+    despachador_en_servidor: bool = True
+    # False (por defecto): un PDF cargado queda en Nuevo hasta que la persona pulsa su estado; entonces se convierte
+    # y se extrae de corrido. True: el despachador convierte cada PDF al cargarlo, sin esperar ese clic.
+    convertir_al_cargar: bool = False
+    registro_ruta: Path = RAIZ_REPO / "datos" / "registro.jsonl"
 
     @property
     def libro_de_codigos(self) -> Path:

@@ -24,6 +24,12 @@ def sin_escapes(texto: str) -> str:
     return _ESCAPE.sub(r"\1", texto)
 
 
+def sin_cortes(texto: str) -> str:
+    """Une las palabras cortadas al final de línea ("facto-\\nrial" → "factorial"), como hace norm() del
+    validador con el texto de pdftotext. Si no, el modelo cita "facto- rial" y V23 la rechaza."""
+    return texto.replace("-\n", "").replace("\n", " ").strip()
+
+
 def necesita_capa(b: BloqueDeTrabajo) -> bool:
     """H1 y H3: bloques de texto que MinerU dejó vacíos o con LaTeX."""
     return not b.es_tabla and b.tipo != "figura" and (not b.texto.strip() or "$" in b.texto)
@@ -67,11 +73,11 @@ def texto_etiquetado(doc: DocumentoDeTrabajo, capa: dict[str, str] | None = None
             efectivo[b.id] = norm(sin_escapes(base))
             continue
         if b.tipo == "figura":
-            texto = sin_escapes(b.texto.replace("\n", " ").strip())
+            texto = sin_escapes(sin_cortes(b.texto))
             linea = f"[{b.id} | figura | imagen] {texto or '(sin texto)'} (ver página {b.pagina} en PNG)"
         else:
             texto = capa.get(b.id, "") if necesita_capa(b) else b.texto
-            texto = sin_escapes(texto.replace("\n", " ").strip())
+            texto = sin_escapes(sin_cortes(texto))
             if not texto:
                 continue
             linea = f"[{b.id} | {b.tipo}] {texto}"

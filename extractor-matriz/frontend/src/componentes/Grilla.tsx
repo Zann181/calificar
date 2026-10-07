@@ -7,6 +7,7 @@ import type {
   CellMouseOverEvent,
   ColDef,
   GridApi,
+  IRowNode,
   ValueGetterParams,
 } from "ag-grid-community";
 import "ag-grid-community/styles/ag-grid.css";
@@ -15,12 +16,11 @@ import { AgGridReact } from "ag-grid-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "../api";
-import { colorDe, LEYENDA, mostrarValor, revisada } from "../colores";
+import { type Color, colorDe, LEYENDA, mostrarValor, NEON, revisada } from "../colores";
 import { useNavegacion } from "../navegacion";
 import { usePedirRevision } from "../revision";
 import type { Columna, Fila } from "../tipos";
 import { etiquetaEvidencia, FichaEvidencia } from "./FichaEvidencia";
-import { Icono } from "./Icono";
 
 const FIJAS = new Set(["Documento", "Estudio", "Cita"]);
 
@@ -38,25 +38,65 @@ const ANCHAS: Record<string, number> = { Title: 320, Author: 220, "Aim of study"
 
 type Ficha = { estudio: number; clave: string; x: number; y: number; fija: boolean };
 
-type Props = { pid: string; columnas: Columna[]; filas: Fila[]; documento?: number; onQuitarFiltro: () => void };
+type Props = { pid: string; columnas: Columna[]; filas: Fila[]; articulosMarcados: Set<string> };
 
-export function Grilla({ pid, columnas, filas, documento, onQuitarFiltro }: Props) {
+export function Grilla({ pid, columnas, filas, articulosMarcados }: Props) {
   const qc = useQueryClient();
   const { actual, ir } = useNavegacion();
   const pedir = usePedirRevision(pid);
   const [api_, setApi] = useState<GridApi<Fila> | null>(null);
   const [soloExtraidas, setSoloExtraidas] = useState(false);
+  const [marcas, setMarcas] = useState<Set<Color>>(new Set()); // filtros de la leyenda: resaltan y filtran
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const oscuro = useOscuro();
+  const [zoom, setZoomCrudo] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem("extractor.zoom.tabla"));
+      return v >= 0.6 && v <= 2 ? v : 1;
+    } catch {
+      return 1;
+    }
+  });
+  const setZoom = useCallback((f: (z: number) => number) => {
+    setZoomCrudo((z) => {
+      const n = Math.round(Math.min(2, Math.max(0.6, f(z))) * 100) / 100;
+      try {
+        localStorage.setItem("extractor.zoom.tabla", String(n));
+      } catch {
+        /* solo esta sesión */
+      }
+      return n;
+    });
+  }, []);
   const temporizador = useRef<number>();
   const dentroDeFicha = useRef(false);
 
   const porClave = useMemo(() => new Map(columnas.map((c) => [c.clave, c])), [columnas]);
+  const base = useMemo(() => filas.filter((f) => !soloExtraidas || f.origen === "EXTRAIDA"), [filas, soloExtraidas]);
+  // Cuántas celdas hay de cada marca (se muestra en la leyenda).
+  const conteo = useMemo(() => {
+    const m = new Map<Color, number>();
+    for (const f of base) for (const c of Object.values(f.celdas)) m.set(colorDe(c), (m.get(colorDe(c)) ?? 0) + 1);
+    return m;
+  }, [base]);
+  // Con marcas activas solo quedan las filas que tienen alguna celda marcada.
   const visibles = useMemo(
-    () =>
-      filas.filter((f) => (!soloExtraidas || f.origen === "EXTRAIDA") && (documento === undefined || f.documento === documento)),
-    [filas, soloExtraidas, documento],
+    () => (marcas.size === 0 ? base : base.filter((f) => Object.values(f.celdas).some((c) => marcas.has(colorDe(c))))),
+    [base, marcas],
   );
+  const columnasMarcadas = useMemo(() => {
+    const s = new Set<string>();
+    if (marcas.size === 0) return s;
+    for (const f of visibles) for (const [k, c] of Object.entries(f.celdas)) if (marcas.has(colorDe(c))) s.add(k);
+    return s;
+  }, [visibles, marcas]);
+  const alternarMarca = (color: Color) =>
+    setMarcas((m) => {
+      const n = new Set(m);
+      if (n.has(color)) n.delete(color);
+      else n.add(color);
+      return n;
+    });
 
   const columnDefs = useMemo<ColDef<Fila>[]>(
     () =>
@@ -70,11 +110,48 @@ export function Grilla({ pid, columnas, filas, documento, onQuitarFiltro }: Prop
           const celda = p.data?.celdas[c.clave];
           return celda ? mostrarValor(celda.valor, celda.estado_dato) : "";
         },
-        cellClass: (p: CellClassParams<Fila>) => `celda-${colorDe(p.data?.celdas[c.clave])}`,
+        cellClass: (p: CellClassParams<Fila>) => {
+          const color = colorDe(p.data?.celdas[c.clave]);
+          if (marcas.size === 0) return `celda-${color}`;
+          return marcas.has(color) ? `celda-${color} neon neon-${color}` : `celda-${color} atenuada`;
+        },
+        headerClass: columnasMarcadas.has(c.clave) ? "cabecera-neon" : undefined,
         sortable: false,
       })),
-    [columnas],
+    [columnas, marcas, columnasMarcadas],
   );
+
+  // Las clases de celda dependen de las marcas: se vuelven a calcular al cambiarlas.
+  useEffect(() => {
+    api_?.refreshCells({ force: true });
+    api_?.refreshHeader();
+    // Al activar un filtro, la tabla se desplaza a la primera columna con celdas marcadas.
+    const primera = columnas.find((c) => !FIJAS.has(c.clave) && columnasMarcadas.has(c.clave));
+    if (primera) api_?.ensureColumnVisible(primera.clave, "start");
+  }, [api_, marcas, columnasMarcadas, columnas]);
+
+  // Artículos con el chulito marcado en la lista: sus filas quedan marcadas en la tabla y se desmarcan al quitarlo.
+  const filasMarcadas = useMemo(
+    () =>
+      articulosMarcados.size === 0
+        ? 0
+        : visibles.filter((f) => f.articulo_id !== null && articulosMarcados.has(f.articulo_id)).length,
+    [visibles, articulosMarcados],
+  );
+  const previos = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!api_) return;
+    api_.redrawRows();
+    // La tabla se desplaza a la primera fila del artículo que se acaba de marcar.
+    const nuevos = [...articulosMarcados].filter((id) => !previos.current.has(id));
+    previos.current = new Set(articulosMarcados);
+    if (nuevos.length === 0 || actual.estudio) return; // con un Estudio elegido manda el salto a su celda
+    let primera: IRowNode<Fila> | null = null;
+    api_.forEachNodeAfterFilterAndSort((n) => {
+      if (!primera && n.data?.articulo_id && nuevos.includes(n.data.articulo_id)) primera = n;
+    });
+    if (primera) api_.ensureNodeVisible(primera, "middle");
+  }, [api_, articulosMarcados, visibles, actual.estudio]);
 
   // Al volver o saltar a un Estudio, la grilla lo muestra y enfoca la celda.
   useEffect(() => {
@@ -114,7 +191,14 @@ export function Grilla({ pid, columnas, filas, documento, onQuitarFiltro }: Prop
   const alHacerClic = async (fila: Fila, clave: string) => {
     const celda = fila.celdas[clave];
     if (!celda || celda.evidencias === 0 || !fila.articulo_id) {
-      ir({ estudio: fila.estudio, columna: clave, articuloId: fila.articulo_id ?? undefined, visor: actual.visor });
+      // Sin cita que mostrar: se conserva la página abierta, pero sin el resaltado de otra celda; si no había PDF,
+      // se abre el artículo para que el panel «Por qué este valor» tenga dónde mostrarse junto a él.
+      const visor = fila.articulo_id
+        ? actual.visor?.articuloId === fila.articulo_id
+          ? { ...actual.visor, rect: null, cita: undefined, etiqueta: undefined }
+          : { articuloId: fila.articulo_id, pagina: 1, zoom: actual.visor?.zoom ?? 1 }
+        : undefined;
+      ir({ estudio: fila.estudio, columna: clave, articuloId: fila.articulo_id ?? undefined, visor });
       return;
     }
     const d = await qc.fetchQuery({ queryKey: ["celda", pid, fila.estudio, clave], queryFn: () => api.celda(pid, fila.estudio, clave) });
@@ -170,6 +254,12 @@ export function Grilla({ pid, columnas, filas, documento, onQuitarFiltro }: Prop
     }
   };
 
+  // Ctrl + rueda sobre la tabla, o Ctrl + «+» / «−» / «0», agranda y achica filas y letra.
+  const alRueda = (e: React.WheelEvent) => {
+    if (!e.ctrlKey) return;
+    setZoom((z) => z + (e.deltaY < 0 ? 0.1 : -0.1));
+  };
+
   const filaFicha = ficha && filas.find((f) => f.estudio === ficha.estudio);
   const extraidas = filas.filter((f) => f.origen === "EXTRAIDA").length;
 
@@ -180,27 +270,55 @@ export function Grilla({ pid, columnas, filas, documento, onQuitarFiltro }: Prop
           <input type="checkbox" checked={soloExtraidas} onChange={(e) => setSoloExtraidas(e.target.checked)} />
           Solo extraídas ({extraidas})
         </label>
-        {documento !== undefined && (
-          <span className="filtro">
-            Documento {documento}
-            <button onClick={onQuitarFiltro} aria-label="Quitar filtro">
-              <Icono nombre="cerrar" tam={12} grosor={2.4} />
-            </button>
-          </span>
-        )}
         <span className="tenue">
           {visibles.length} filas · {columnas.length} columnas
         </span>
-        <div className="leyenda">
+        {articulosMarcados.size > 0 && (
+          <span className={`articulo-abierto ${filasMarcadas ? "" : "sin-filas"}`} role="status">
+            {filasMarcadas
+              ? `${articulosMarcados.size} artículo${articulosMarcados.size === 1 ? "" : "s"} marcado${articulosMarcados.size === 1 ? "" : "s"} · ${filasMarcadas} fila${filasMarcadas === 1 ? "" : "s"}`
+              : `${articulosMarcados.size} marcado${articulosMarcados.size === 1 ? "" : "s"}: aún sin filas extraídas`}
+          </span>
+        )}
+        <div className="zoom-tabla" role="group" aria-label="Zoom de la tabla">
+          <button onClick={() => setZoom((z) => z - 0.1)} disabled={zoom <= 0.6} aria-label="Achicar tabla" title="Achicar (Ctrl + rueda)">
+            −
+          </button>
+          <output onDoubleClick={() => setZoom(() => 1)} title="Doble clic: 100 %">
+            {Math.round(zoom * 100)} %
+          </output>
+          <button onClick={() => setZoom((z) => z + 0.1)} disabled={zoom >= 2} aria-label="Agrandar tabla" title="Agrandar (Ctrl + rueda)">
+            +
+          </button>
+        </div>
+        <div className="leyenda" role="group" aria-label="Filtrar y resaltar por marca">
           {LEYENDA.map(([color, texto]) => (
-            <span key={color} title={texto}>
+            <button
+              key={color}
+              type="button"
+              className={`filtro-marca ${marcas.has(color) ? "activa" : ""}`}
+              style={{ "--neon": NEON[color] } as React.CSSProperties}
+              aria-pressed={marcas.has(color)}
+              onClick={() => alternarMarca(color)}
+              title={`${marcas.has(color) ? "Quitar" : "Resaltar y filtrar"}: ${texto}`}
+            >
               <i className={`punto ${color}`} />
               {texto}
-            </span>
+              <b className="cuenta-marca">{conteo.get(color) ?? 0}</b>
+            </button>
           ))}
+          {marcas.size > 0 && (
+            <button type="button" className="filtro-marca limpiar" onClick={() => setMarcas(new Set())}>
+              Quitar filtros
+            </button>
+          )}
         </div>
       </div>
-      <div className={`${oscuro ? "ag-theme-quartz-dark" : "ag-theme-quartz"} tabla`}>
+      <div
+        className={`${oscuro ? "ag-theme-quartz-dark" : "ag-theme-quartz"} tabla`}
+        style={{ "--ag-font-size": `${12.5 * zoom}px` } as React.CSSProperties}
+        onWheel={alRueda}
+      >
         <AgGridReact<Fila>
           rowData={visibles}
           columnDefs={columnDefs}
@@ -210,11 +328,15 @@ export function Grilla({ pid, columnas, filas, documento, onQuitarFiltro }: Prop
           onCellMouseOut={alSalir}
           onCellClicked={(e) => e.data && e.colDef.colId && alHacerClic(e.data, e.colDef.colId)}
           onCellKeyDown={alTeclear}
-          rowClassRules={{ "fila-extraida": (p) => p.data?.origen === "EXTRAIDA", "fila-actual": (p) => p.data?.estudio === actual.estudio }}
+          rowClassRules={{
+            "fila-extraida": (p) => p.data?.origen === "EXTRAIDA",
+            "fila-actual": (p) => p.data?.estudio === actual.estudio,
+            "fila-del-articulo": (p) => !!p.data?.articulo_id && articulosMarcados.has(p.data.articulo_id),
+          }}
           tooltipShowDelay={300}
           tooltipInteraction
-          headerHeight={44}
-          rowHeight={32}
+          headerHeight={Math.round(44 * zoom)}
+          rowHeight={Math.round(32 * zoom)}
           suppressDragLeaveHidesColumns
         />
       </div>

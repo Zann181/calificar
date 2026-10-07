@@ -38,6 +38,9 @@ class RegistroExtraccion(Base):
     error: Mapped[str | None] = mapped_column(Text)
     iniciada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     terminada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    progreso: Mapped[int] = mapped_column(Integer, server_default="0")
+    paso: Mapped[str] = mapped_column(String(20), server_default="preparando")
+    paso_desde: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     actualizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -51,7 +54,8 @@ def _a_dominio(r: RegistroExtraccion) -> Extraccion:
         iteraciones_validador=r.iteraciones_validador, errores_validador=list(r.errores_validador),
         avisos_validador=list(r.avisos_validador), uso_tokens=dict(r.uso_tokens), paso_fallido=r.paso_fallido,
         error=r.error, iniciada_en=r.iniciada_en, terminada_en=r.terminada_en, creado_en=r.creado_en,
-        actualizado_en=r.actualizado_en,
+        actualizado_en=r.actualizado_en, progreso=r.progreso, paso=r.paso,
+        paso_desde=r.paso_desde or r.actualizado_en,
     )
 
 
@@ -65,6 +69,7 @@ def _volcar(e: Extraccion, r: RegistroExtraccion) -> None:
     r.uso_tokens, r.paso_fallido, r.error = e.uso_tokens, e.paso_fallido, e.error
     r.iniciada_en, r.terminada_en = e.iniciada_en, e.terminada_en
     r.creado_en, r.actualizado_en = e.creado_en, e.actualizado_en
+    r.progreso, r.paso, r.paso_desde = e.progreso, e.paso, e.paso_desde
 
 
 class RepositorioDeExtraccionesSql:
@@ -83,6 +88,14 @@ class RepositorioDeExtraccionesSql:
     def de_articulo(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID) -> list[Extraccion]:
         q = (select(RegistroExtraccion)
              .where(RegistroExtraccion.proyecto_id == proyecto_id, RegistroExtraccion.articulo_id == articulo_id)
+             .order_by(RegistroExtraccion.iniciada_en))
+        return [_a_dominio(r) for r in self._s.scalars(q)]
+
+    def recientes(self, proyecto_id: uuid.UUID, desde: datetime) -> list[Extraccion]:
+        """Las que siguen en curso y las que terminaron después de `desde`."""
+        q = (select(RegistroExtraccion)
+             .where(RegistroExtraccion.proyecto_id == proyecto_id)
+             .where((RegistroExtraccion.terminada_en.is_(None)) | (RegistroExtraccion.terminada_en >= desde))
              .order_by(RegistroExtraccion.iniciada_en))
         return [_a_dominio(r) for r in self._s.scalars(q)]
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Protocol
 
 from app.compartido.unidad_de_trabajo import UnidadDeTrabajo
@@ -37,6 +38,10 @@ class ResultadoValidacion:
 
 
 class ValidadorDeExtraccion(Protocol):
+    def comprobar(self) -> None:
+        """Lanza una excepción si al validador le falta algo para correr. Se llama antes de pagar al modelo."""
+        ...
+
     def validar(self, salida: list[dict[str, Any]], libro: dict[str, Any], pdf: bytes | None) -> ResultadoValidacion: ...
 
 
@@ -86,6 +91,7 @@ class RepositorioDeExtracciones(Protocol):
     def agregar(self, extraccion: Extraccion) -> None: ...
     def obtener(self, proyecto_id: uuid.UUID, extraccion_id: uuid.UUID) -> Extraccion: ...
     def de_articulo(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID) -> list[Extraccion]: ...
+    def recientes(self, proyecto_id: uuid.UUID, desde: datetime) -> list[Extraccion]: ...
 
 
 class UnidadDeTrabajoExtraccion(UnidadDeTrabajo, Protocol):

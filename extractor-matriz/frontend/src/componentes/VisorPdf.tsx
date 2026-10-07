@@ -8,6 +8,7 @@ import { api } from "../api";
 import { Icono } from "./Icono";
 import { useNavegacion, type VistaVisor } from "../navegacion";
 import { norm } from "../normalizar";
+import { PanelRazonamiento } from "./PanelRazonamiento";
 
 pdfjs.GlobalWorkerOptions.workerSrc = trabajador;
 
@@ -141,6 +142,25 @@ export function VisorPdf({ pid, visor, nombre, onCerrar }: Props) {
     };
   }, [url, visor.pagina, visor.zoom, visor.rect, visor.cita]);
 
+  // Ctrl + rueda sobre el PDF acerca o aleja sin zoom del navegador; doble clic en el porcentaje vuelve a «ajustar al ancho».
+  const zoomActual = useRef(visor.zoom);
+  zoomActual.current = visor.zoom;
+  const accion = useRef({ actual, ir, visor });
+  accion.current = { actual, ir, visor };
+  useEffect(() => {
+    const el = contenedor.current;
+    if (!el) return;
+    const alRueda = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const z = Math.min(4, Math.max(0.25, Math.round((zoomActual.current + (e.deltaY < 0 ? 0.1 : -0.1)) * 100) / 100));
+      const { actual, ir, visor } = accion.current;
+      ir({ ...actual, visor: { ...visor, zoom: z } });
+    };
+    el.addEventListener("wheel", alRueda, { passive: false });
+    return () => el.removeEventListener("wheel", alRueda);
+  }, []);
+
   const cambiar = (cambio: Partial<VistaVisor>) =>
     ir({ ...actual, visor: { ...visor, rect: null, cita: undefined, etiqueta: undefined, ...cambio } });
 
@@ -159,11 +179,16 @@ export function VisorPdf({ pid, visor, nombre, onCerrar }: Props) {
         <button disabled={!!total && visor.pagina >= total} onClick={() => cambiar({ pagina: visor.pagina + 1 })} aria-label="Página siguiente">
           <Icono nombre="adelante" tam={16} />
         </button>
-        <button onClick={() => ir({ ...actual, visor: { ...visor, zoom: Math.max(0.5, visor.zoom - 0.25) } })} aria-label="Alejar">
+        <button onClick={() => ir({ ...actual, visor: { ...visor, zoom: Math.max(0.25, visor.zoom - 0.25) } })} aria-label="Alejar">
           <Icono nombre="menos" tam={16} />
         </button>
-        <span>{Math.round(visor.zoom * 100)} %</span>
-        <button onClick={() => ir({ ...actual, visor: { ...visor, zoom: Math.min(3, visor.zoom + 0.25) } })} aria-label="Acercar">
+        <span
+          onDoubleClick={() => ir({ ...actual, visor: { ...visor, zoom: 1 } })}
+          title="Doble clic: ajustar al ancho"
+        >
+          {Math.round(visor.zoom * 100)} %
+        </span>
+        <button onClick={() => ir({ ...actual, visor: { ...visor, zoom: Math.min(4, visor.zoom + 0.25) } })} aria-label="Acercar">
           <Icono nombre="mas" tam={16} />
         </button>
         {onCerrar && (
@@ -182,6 +207,7 @@ export function VisorPdf({ pid, visor, nombre, onCerrar }: Props) {
         </div>
         {estado === "cargando" && <div className="cargando">Cargando página…</div>}
       </div>
+      <PanelRazonamiento pid={pid} />
     </section>
   );
 }

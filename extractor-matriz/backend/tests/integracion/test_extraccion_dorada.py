@@ -82,10 +82,25 @@ def test_kumar(fabrica: Callable[[], Session], ajustes: Settings, libro_json: di
     c.matriz.importar.ejecutar(pid, MATRIZ.read_bytes(), MATRIZ.name)
     aid = _cargar(c, pid, "kumar_2022")
 
+    hitos: list[tuple[str, int]] = []
+    original = c.extraccion.extraer._avance
+
+    def espia(e: Any, paso: str, progreso: int | None = None) -> None:
+        original(e, paso, progreso)
+        hitos.append((paso, e.progreso))
+
+    c.extraccion.extraer._avance = espia  # type: ignore[method-assign]
     r = c.extraccion.extraer.ejecutar(pid, aid, OpcionesDeExtraccion(documento=1, estudio_inicial=1, covidence=671))
     ext = c.extraccion.consultas.obtener(pid, r.extraccion_id)
     assert r.estado == "COMPLETADA", r.errores
     assert ext.errores_validador == [] and ext.iteraciones_validador == 1
+
+    # El avance pasa por los hitos en orden, nunca baja y termina en 100 %.
+    pasos = list(dict.fromkeys(p for p, _ in hitos))
+    assert pasos == ["preparando", "extrayendo", "anclando", "auditando", "conciliando"], hitos
+    porcentajes = [x for _, x in hitos]
+    assert porcentajes == sorted(porcentajes) and porcentajes[0] == 2 and porcentajes[-1] <= 99, hitos
+    assert (ext.progreso, ext.paso) == (100, "completada")
 
     # Los campos críticos coinciden con ejemplo_verificado.salida del libro.
     verificado = comparar(ext.salida, libro_json["ejemplo_verificado"]["salida"])

@@ -9,14 +9,18 @@ from __future__ import annotations
 
 import copy
 import logging
+import threading
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.compartido.db import crear_motor, fabrica_de_sesiones
+from app.compartido.db import RegistroProyecto, crear_motor, fabrica_de_sesiones
+from app.compartido.dominio import ErrorDeDominio
 from app.compartido.outbox import Despachador
 from app.config import Settings
 from app.contextos.biblioteca.adaptadores.almacen import AlmacenEnDisco, AlmacenS3
@@ -46,6 +50,12 @@ from app.contextos.extraccion.aplicacion.casos_de_uso import (
     ConsultasDeExtraccion,
     ExtraerArticulo,
     ParametrosDelMotor,
+)
+from app.contextos.extraccion.aplicacion.ejecutor import (
+    CONVIRTIENDO,
+    ESPERANDO_MINERU,
+    EjecutorDeExtracciones,
+    PedidoDeExtraccion,
 )
 from app.contextos.extraccion.dominio.extraccion import Extraccion, Hallazgo
 from app.contextos.extraccion.puertos import ArticuloParaExtraer, LibroVigente, ModeloDeLenguaje
@@ -196,6 +206,10 @@ class Contenedor:
     extraccion: CasosDeExtraccion
     exportar: ExportarMatriz
     despachador: Despachador
+    # None si MinerU no responde; si responde, su /salud ({} para conversores sin servicio, como el de pruebas).
+    ejecutor: EjecutorDeExtracciones
+    mineru: Callable[[], dict[str, Any] | None]
+    convertir_nuevos: Callable[[], int]
 
 
 def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None,
@@ -249,7 +263,7 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
         extraer=ExtraerArticulo(
             udt_ext, ArticulosDesdeBiblioteca(biblioteca), NormasParaExtraccion(consultas_normas),
             NumeracionDesdeMatriz(consultas_matriz), modelo,
-            ScriptValidador(ajustes.recursos_dir / "validar_extraccion.py"), LectorPyMuPdf(),
+            ScriptValidador(ajustes.recursos_dir / "validar_extraccion.py", pdftotext=ajustes.pdftotext), LectorPyMuPdf(),
             ParametrosDelMotor(max_iteraciones_validador=ajustes.max_iteraciones_validador,
                                umbral_similitud=ajustes.umbral_similitud,
                                concurrencia=ajustes.concurrencia_extraccion)),
@@ -262,10 +276,75 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
 
     despachador = Despachador(fabrica)
 
+    def preparar_extraccion(pedido: PedidoDeExtraccion, informar: Callable[[str], None]) -> None:
+        """«Extraer» sobre un PDF sin convertir lo convierte primero con MinerU; si MinerU está apagado, espera."""
+        limite = time.monotonic() + ajustes.espera_conversion_max
+        reintentada = False  # un PDF que falló al convertirse se reintenta una vez; si vuelve a fallar, se informa
+        while True:
+            with candado_conversion:
+                articulo = biblioteca.consultas.articulo(pedido.proyecto_id, pedido.articulo_id)
+                estado = articulo.estado
+                if (estado == EstadoArticulo.ERROR and not reintentada and articulo.error is not None
+                        and articulo.error.paso == EstadoArticulo.CONVIRTIENDO):
+                    biblioteca.reintentar.ejecutar(pedido.proyecto_id, pedido.articulo_id)
+                    reintentada, estado = True, EstadoArticulo.NUEVO
+                if estado == EstadoArticulo.NUEVO and mineru() is not None:
+                    informar(CONVIRTIENDO)
+                    estado = biblioteca.convertir.ejecutar(pedido.proyecto_id, pedido.articulo_id)
+            if estado == EstadoArticulo.ERROR:
+                articulo = biblioteca.consultas.articulo(pedido.proyecto_id, pedido.articulo_id)
+                if articulo.error is not None and articulo.error.paso == EstadoArticulo.CONVIRTIENDO:
+                    raise ErrorDeDominio(f"«{pedido.nombre}»: la conversión falló; no se puede extraer (ver el registro)")
+                return  # el error fue al extraer: ExtraerArticulo retoma la extracción desde ese paso
+            if estado not in (EstadoArticulo.NUEVO, EstadoArticulo.CONVIRTIENDO):
+                return
+            if time.monotonic() > limite:
+                raise ErrorDeDominio(f"«{pedido.nombre}»: no se convirtió a tiempo (¿MinerU apagado?)")
+            informar(ESPERANDO_MINERU if estado == EstadoArticulo.NUEVO else CONVIRTIENDO)
+            time.sleep(3)
+
+    ejecutor = EjecutorDeExtracciones(extraccion.extraer, ajustes.extracciones_en_paralelo, preparar_extraccion)
+
+    def mineru() -> dict[str, Any] | None:
+        salud = getattr(conversor, "salud", None)
+        if salud is None:
+            return {}
+        try:
+            return dict(salud())
+        except Exception:
+            return None
+
+    candado_conversion = threading.Lock()  # una conversión a la vez, venga del barrido o de un pedido de extraer
+
+    def convertir_nuevos() -> int:
+        """Convierte los artículos que siguen en Nuevo, si MinerU responde. Devuelve cuántos intentó."""
+        with fabrica() as s:
+            proyectos = [p.id for p in s.scalars(select(RegistroProyecto)).all()]
+        pendientes = [(pid, a) for pid in proyectos
+                      for a in biblioteca.consultas.listar(pid, EstadoArticulo.NUEVO).articulos]
+        if not pendientes or mineru() is None:
+            return 0
+        hechos = 0
+        for pid, a in pendientes:
+            with candado_conversion:
+                if biblioteca.consultas.articulo(pid, a.id).estado == EstadoArticulo.NUEVO:  # otro pudo ganarle
+                    biblioteca.convertir.ejecutar(pid, a.id)
+                    hechos += 1
+        return hechos
+
     def al_cargar_articulo(datos: dict[str, Any]) -> None:
         # F1: la conversión corre en el despachador. En F3 la toma Orquestación (Trabajo + Dramatiq).
         pid, aid = uuid.UUID(datos["proyecto_id"]), uuid.UUID(datos["articulo_id"])
+        if not ajustes.convertir_al_cargar:
+            log.info("Artículo %s: cargado; queda en Nuevo hasta que se pulse su estado para convertir y extraer",
+                     str(aid)[:8])
+            return
         if biblioteca.consultas.articulo(pid, aid).estado == EstadoArticulo.NUEVO:
+            if mineru() is None:
+                log.warning("Artículo %s: MinerU no responde en %s; queda en Nuevo y se convertirá solo cuando "
+                            "MinerU responda", str(aid)[:8], ajustes.mineru_url)
+                return
+            log.info("Artículo %s: el despachador inicia su conversión", str(aid)[:8])
             estado = biblioteca.convertir.ejecutar(pid, aid)
             log.info("Artículo %s convertido: %s", aid, estado)
 
@@ -286,4 +365,5 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
 
     return Contenedor(ajustes=ajustes, fabrica=fabrica, almacen=almacen, biblioteca=biblioteca, normas=normas,
                       matriz=matriz, extraccion=extraccion, exportar=exportar,
-                      despachador=despachador)
+                      despachador=despachador, ejecutor=ejecutor, mineru=mineru,
+                      convertir_nuevos=convertir_nuevos)

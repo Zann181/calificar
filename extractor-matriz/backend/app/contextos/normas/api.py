@@ -30,6 +30,11 @@ def columnas(proyecto_id: uuid.UUID = Depends(proyecto_valido), c: CasosDeNormas
     return [col.a_dict() for col in c.consultas.columnas(proyecto_id)]
 
 
+@enrutador.get("/protocolo")
+def protocolo(proyecto_id: uuid.UUID = Depends(proyecto_valido), c: CasosDeNormas = Depends(casos)) -> dict[str, Any]:
+    return c.consultas.protocolo(proyecto_id)
+
+
 @enrutador.get("/libros")
 def versiones(proyecto_id: uuid.UUID = Depends(proyecto_valido), c: CasosDeNormas = Depends(casos)) -> list[dict[str, Any]]:
     return [_version_json(v) for v in c.consultas.versiones(proyecto_id)]

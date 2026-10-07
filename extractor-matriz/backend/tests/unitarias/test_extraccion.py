@@ -151,3 +151,24 @@ def test_regla_del_conciliador_para_campos_estructurales(libro: dict) -> None:  
     assert regla_para_campo(libro, "número de filas") == construccion["regla_para_abrir_una_fila_nueva"]
     assert regla_para_campo(libro, "Muestra") == libro["columnas"]["Muestra"]["instruccion_operativa"]
     assert regla_para_campo(libro, "tipo_de_efecto") == libro["trazabilidad_por_fila"]["campos"]["tipo_de_efecto"]
+
+
+def test_el_avance_sube_por_hitos_y_nunca_baja() -> None:
+    e = _extraccion()
+    assert (e.progreso, e.paso) == (0, "preparando")
+    e.avanzar("preparando")
+    e.avanzar("extrayendo")
+    assert e.progreso == 8
+    e.avanzar("corrigiendo")
+    assert e.progreso == 45
+    e.avanzar("extrayendo")  # volver a un hito anterior cambia el paso mostrado pero no baja el porcentaje
+    assert e.progreso == 45
+    e.avanzar("conciliando", 200)  # un valor fuera del hito se recorta a su tope
+    assert e.progreso == 99
+
+
+def test_completar_deja_el_avance_en_100() -> None:
+    e = _extraccion()
+    _hasta_conciliar(e)
+    e.completar(acuerdo=0.95)
+    assert (e.progreso, e.paso) == (100, "completada")

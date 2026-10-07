@@ -73,6 +73,9 @@ class Validador:
         self._errores = list(errores)
         self.validadas: list[list[dict[str, Any]]] = []
 
+    def comprobar(self) -> None:
+        pass
+
     def validar(self, salida: list[dict[str, Any]], libro: dict[str, Any], pdf: bytes | None) -> ResultadoValidacion:
         self.validadas.append(salida)
         return ResultadoValidacion(errores=self._errores.pop(0) if self._errores else [], avisos=[])

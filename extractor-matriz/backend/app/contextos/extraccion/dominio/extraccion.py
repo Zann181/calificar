@@ -34,6 +34,19 @@ class EstadoExtraccion(StrEnum):
 
 
 X = EstadoExtraccion
+
+# Hitos del avance mostrado en la interfaz: clave → (% al empezar, % al terminar, segundos típicos, texto).
+# Los segundos son los medidos en una corrida real de 19 páginas (Bibi 2022); sirven para animar la barra
+# entre hitos. El porcentaje oficial sube solo cuando el motor termina un paso.
+PASOS: dict[str, tuple[int, int, int, str]] = {
+    "preparando": (2, 8, 5, "Preparando el artículo: texto etiquetado e imágenes de páginas"),
+    "extrayendo": (8, 45, 300, "Extractor: leyendo el artículo y llenando las 54 columnas"),
+    "corrigiendo": (45, 58, 180, "Extractor: corrigiendo los errores del validador"),
+    "anclando": (58, 62, 5, "Anclando cada cita a su bloque y rectángulo del PDF"),
+    "auditando": (62, 85, 100, "Auditor de evidencia y codificador ciego, en paralelo"),
+    "conciliando": (85, 99, 90, "Conciliador: resolviendo diferencias y hallazgos"),
+    "completada": (100, 100, 0, "Completada"),
+}
 TRANSICIONES: dict[EstadoExtraccion, frozenset[EstadoExtraccion]] = {
     X.EXTRAYENDO: frozenset({X.VALIDANDO}),
     X.VALIDANDO: frozenset({X.EXTRAYENDO, X.ANCLANDO}),
@@ -119,6 +132,9 @@ class Extraccion(Entidad):
     error: str | None = None
     iniciada_en: datetime = field(default_factory=ahora)
     terminada_en: datetime | None = None
+    progreso: int = 0  # 0 a 100, sube con cada hito (PASOS)
+    paso: str = "preparando"
+    paso_desde: datetime = field(default_factory=ahora)
 
     @classmethod
     def iniciar(cls, *, proyecto_id: uuid.UUID, articulo_id: uuid.UUID, version_libro_id: uuid.UUID,
@@ -139,6 +155,13 @@ class Extraccion(Entidad):
             raise ErrorDeDominio(f"Transición inválida de la extracción: {self.estado} → {nuevo}")
         self.estado = nuevo
         self.actualizado_en = ahora()
+
+    def avanzar(self, paso: str, progreso: int | None = None) -> None:
+        """Marca el hito `paso`. El porcentaje nunca baja; `progreso` afina el avance dentro del paso."""
+        desde, hasta, _, _ = PASOS[paso]
+        nuevo = desde if progreso is None else min(max(progreso, desde), hasta)
+        self.progreso = max(self.progreso, nuevo)
+        self.paso, self.paso_desde = paso, ahora()
 
     def registrar_salida(self, salida: list[dict[str, Any]]) -> None:
         if self.estado != X.EXTRAYENDO:
@@ -200,6 +223,7 @@ class Extraccion(Entidad):
         self.acuerdo_campos_criticos = acuerdo
         self.estado = X.COMPLETADA
         self.terminada_en = ahora()
+        self.progreso, self.paso, self.paso_desde = 100, "completada", self.terminada_en
         for a in self.anclas:
             if a.nivel == NivelAncla.NO_VERIFICABLE:
                 self.registrar(CitaNoVerificable(proyecto_id=self.proyecto_id, extraccion_id=self.id,

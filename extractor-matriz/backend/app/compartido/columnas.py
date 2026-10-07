@@ -6,7 +6,7 @@ contextos/normas/dominio/catalogo.py.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 NO_INDICA = "No indica"
@@ -29,6 +29,8 @@ class DefinicionDeColumna:
     requiere_evidencia: bool
     nivel_de_registro: str
     nota_encabezado: str
+    # Guía de lectura de la columna, derivada del libro (para qué sirve, dónde buscar, regla, faltante, ejemplo).
+    guia: dict[str, Any] = field(default_factory=dict, compare=False)
 
     @property
     def es_numerica(self) -> bool:
@@ -47,4 +49,5 @@ class DefinicionDeColumna:
             "nivel_de_registro": self.nivel_de_registro,
             "nota_encabezado": self.nota_encabezado,
             "es_numerica": self.es_numerica,
+            "guia": self.guia,
         }

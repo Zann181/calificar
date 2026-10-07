@@ -2,12 +2,17 @@
 // Teléfono: patrones de iOS (barra de navegación con título grande y barra de pestañas).
 // PC: herramienta de tabla (barra de herramientas, barra lateral, tabla e inspector).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api, ErrorApi } from "./api";
+import { BarraGlobal } from "./componentes/BarraGlobal";
+import { Divisor, useAnchoPanel } from "./componentes/Divisor";
+import { EstadoServicios } from "./componentes/EstadoServicios";
 import { Grilla } from "./componentes/Grilla";
 import { Icono } from "./componentes/Icono";
 import { PanelArticulos } from "./componentes/PanelArticulos";
+import { PanelRazonamiento } from "./componentes/PanelRazonamiento";
+import { PanelRegistro } from "./componentes/PanelRegistro";
 import { Tarjetas } from "./componentes/Tarjetas";
 import { VisorPdf } from "./componentes/VisorPdf";
 import { describir, useNavegacion } from "./navegacion";
@@ -45,7 +50,13 @@ function Entrar() {
         <h1>Extractor de matriz</h1>
         <p className="tenue">Felicidad en el trabajo y desempeño laboral</p>
         <div className="grupo">
-          <input value={correo} onChange={(e) => setCorreo(e.target.value)} autoComplete="username" placeholder="Correo" aria-label="Correo" />
+          <input
+            value={correo}
+            onChange={(e) => setCorreo(e.target.value)}
+            autoComplete="username"
+            placeholder="Correo"
+            aria-label="Correo"
+          />
           <input
             type="password"
             value={clave}
@@ -55,8 +66,13 @@ function Entrar() {
             aria-label="Contraseña"
           />
         </div>
-        {entrar.error && <p className="error">{(entrar.error as Error).message}</p>}
-        <button className="primario grande" disabled={entrar.isPending || !clave}>
+        {entrar.error && (
+          <p className="error">{(entrar.error as Error).message}</p>
+        )}
+        <button
+          className="primario grande"
+          disabled={entrar.isPending || !clave}
+        >
           Entrar
         </button>
       </form>
@@ -67,14 +83,27 @@ function Entrar() {
 function Migas() {
   const { pila, actual, volver, irA, ir } = useNavegacion();
   const [lista, setLista] = useState(false);
-  const ultimas = pila.map((v, i) => ({ v, i })).slice(-10).reverse();
+  const ultimas = pila
+    .map((v, i) => ({ v, i }))
+    .slice(-10)
+    .reverse();
   return (
     <nav className="migas">
       <div className="segmento">
-        <button disabled={!pila.length} onClick={volver} title="Volver (Alt + ←)" aria-label="Volver">
+        <button
+          disabled={!pila.length}
+          onClick={volver}
+          title="Volver (Alt + ←)"
+          aria-label="Volver"
+        >
           <Icono nombre="atras" tam={16} />
         </button>
-        <button disabled={!pila.length} onClick={() => setLista(!lista)} aria-label="Historial de navegación" title="Historial">
+        <button
+          disabled={!pila.length}
+          onClick={() => setLista(!lista)}
+          aria-label="Historial de navegación"
+          title="Historial"
+        >
           <Icono nombre="reloj" tam={16} />
         </button>
       </div>
@@ -99,13 +128,21 @@ function Migas() {
         {actual.estudio && (
           <>
             <Icono nombre="adelante" tam={12} />
-            <button onClick={() => ir({ estudio: actual.estudio, articuloId: actual.articuloId })}>Estudio {actual.estudio}</button>
+            <button
+              onClick={() =>
+                ir({ estudio: actual.estudio, articuloId: actual.articuloId })
+              }
+            >
+              Estudio {actual.estudio}
+            </button>
           </>
         )}
         {actual.columna && (
           <>
             <Icono nombre="adelante" tam={12} />
-            <button onClick={() => ir({ ...actual, visor: undefined })}>{actual.columna}</button>
+            <button onClick={() => ir({ ...actual, visor: undefined })}>
+              {actual.columna}
+            </button>
           </>
         )}
         {actual.visor && (
@@ -120,36 +157,84 @@ function Migas() {
 }
 
 type Pestana = "articulos" | "revision" | "visor";
-const TITULOS: Record<Pestana, string> = { articulos: "Artículos", revision: "Revisión", visor: "Visor" };
+const TITULOS: Record<Pestana, string> = {
+  articulos: "Artículos",
+  revision: "Revisión",
+  visor: "Visor",
+};
 
-function Espacio({ pid, correo, onSalir }: { pid: string; correo: string; onSalir: () => void }) {
+function Espacio({
+  pid,
+  correo,
+  onSalir,
+}: {
+  pid: string;
+  correo: string;
+  onSalir: () => void;
+}) {
   const ancho = useAncho();
-  const { actual, ir, pila, volver } = useNavegacion();
+  const { actual, pila, volver } = useNavegacion();
   const [visorAbierto, setVisorAbierto] = useState(true);
+  const [marcados, setMarcados] = useState<Set<string>>(new Set()); // artículos con chulito
   const [cajon, setCajon] = useState(false);
   const [pestana, setPestana] = useState<Pestana>("revision");
-  const [pestanaTableta, setPestanaTableta] = useState<"matriz" | "visor">("matriz");
+  const [pestanaTableta, setPestanaTableta] = useState<"matriz" | "visor">(
+    "matriz",
+  );
   const [enrollado, setEnrollado] = useState(false);
+  // Paneles redimensionables: el tope deja siempre al menos 320 px a la tabla.
+  const topeLateral = useCallback(
+    () =>
+      Math.max(
+        200,
+        Math.min(window.innerWidth * 0.5, window.innerWidth - 320 - 280),
+      ),
+    [],
+  );
+  const lateral = useAnchoPanel("lateral", 290, 200, topeLateral);
+  const topeVisor = useCallback(
+    () => Math.max(280, window.innerWidth - 320 - lateral.ancho),
+    [lateral.ancho],
+  );
+  const panelVisor = useAnchoPanel(
+    "visor",
+    Math.round(window.innerWidth * 0.4),
+    280,
+    topeVisor,
+  );
 
-  const columnas = useQuery({ queryKey: ["columnas", pid], queryFn: () => api.columnas(pid) });
-  const filas = useQuery({ queryKey: ["filas", pid], queryFn: () => api.filas(pid) });
-  const articulos = useQuery({ queryKey: ["articulos", pid], queryFn: () => api.articulos(pid) });
+  const columnas = useQuery({
+    queryKey: ["columnas", pid],
+    queryFn: () => api.columnas(pid),
+  });
+  const filas = useQuery({
+    queryKey: ["filas", pid],
+    queryFn: () => api.filas(pid),
+  });
+  const articulos = useQuery({
+    queryKey: ["articulos", pid],
+    queryFn: () => api.articulos(pid),
+  });
 
-  const { documentoDe, conFilas } = useMemo(() => {
+  const { documentoDe, conFilas, covidenceDe } = useMemo(() => {
     const documentoDe = new Map<string, number>();
     const conFilas = new Set<string>();
+    const covidenceDe = new Map<number, number>(); // Documento → Covidence # ya registrado en la matriz
     for (const f of filas.data?.filas ?? []) {
+      const covidence = Number(f.celdas["Covidence #"]?.valor);
+      if (Number.isInteger(covidence) && covidence > 0)
+        covidenceDe.set(f.documento, covidence);
       if (f.articulo_id) {
         documentoDe.set(f.articulo_id, f.documento);
         conFilas.add(f.articulo_id);
       }
     }
-    return { documentoDe, conFilas };
+    return { documentoDe, conFilas, covidenceDe };
   }, [filas.data]);
 
-  // Al abrir un artículo la grilla se filtra por su Documento.
-  const documento = actual.articuloId ? documentoDe.get(actual.articuloId) : undefined;
-  const nombreArticulo = articulos.data?.articulos.find((a) => a.id === actual.visor?.articuloId)?.nombre_archivo;
+  const nombreArticulo = articulos.data?.articulos.find(
+    (a) => a.id === actual.visor?.articuloId,
+  )?.nombre_archivo;
 
   useEffect(() => {
     if (!actual.visor) return;
@@ -158,9 +243,14 @@ function Espacio({ pid, correo, onSalir }: { pid: string; correo: string; onSali
   }, [actual.visor]);
 
   if (columnas.error || filas.error || articulos.error) {
-    return <p className="error centro">{((columnas.error || filas.error || articulos.error) as Error).message}</p>;
+    return (
+      <p className="error centro">
+        {((columnas.error || filas.error || articulos.error) as Error).message}
+      </p>
+    );
   }
-  if (!columnas.data || !filas.data || !articulos.data) return <p className="centro tenue">Cargando matriz…</p>;
+  if (!columnas.data || !filas.data || !articulos.data)
+    return <p className="centro tenue">Cargando matriz…</p>;
 
   const panel = (
     <PanelArticulos
@@ -168,25 +258,41 @@ function Espacio({ pid, correo, onSalir }: { pid: string; correo: string; onSali
       articulos={articulos.data.articulos}
       contadores={articulos.data.contadores}
       documentoDe={documentoDe}
+      covidenceDe={covidenceDe}
       conFilas={conFilas}
       onAbrir={() => setPestana("visor")}
+      marcados={marcados}
+      setMarcados={setMarcados}
     />
   );
   const grilla = (
-    <Grilla
-      pid={pid}
-      columnas={columnas.data}
-      filas={filas.data.filas}
-      documento={documento}
-      onQuitarFiltro={() => ir({ ...actual, articuloId: undefined })}
-    />
+    <div className="zona-matriz">
+      <Grilla
+        pid={pid}
+        columnas={columnas.data}
+        filas={filas.data.filas}
+        articulosMarcados={marcados}
+      />
+      <PanelRegistro />
+    </div>
   );
   const visor = actual.visor ? (
-    <VisorPdf pid={pid} visor={actual.visor} nombre={nombreArticulo} onCerrar={ancho >= 1024 ? () => setVisorAbierto(false) : undefined} />
+    <VisorPdf
+      pid={pid}
+      visor={actual.visor}
+      nombre={nombreArticulo}
+      onCerrar={ancho >= 1024 ? () => setVisorAbierto(false) : undefined}
+    />
   ) : (
-    <section className="visor vacio">
-      <Icono nombre="visor" tam={40} grosor={1.2} />
-      <p>Elija una celda con evidencia o un artículo convertido para ver el PDF con la cita resaltada.</p>
+    <section className="visor">
+      <div className="visor-vacio">
+        <Icono nombre="visor" tam={40} grosor={1.2} />
+        <p>
+          Elija una celda con evidencia o un artículo convertido para ver el PDF
+          con la cita resaltada.
+        </p>
+      </div>
+      <PanelRazonamiento pid={pid} />
     </section>
   );
 
@@ -212,18 +318,38 @@ function Espacio({ pid, correo, onSalir }: { pid: string; correo: string; onSali
             <span />
           )}
         </header>
-        <div className="ios-contenido" onScroll={(e) => setEnrollado((e.target as HTMLElement).scrollTop > 30)}>
-          {pestana !== "visor" && <h1 className="ios-titulo-grande">{TITULOS[pestana]}</h1>}
+        <div
+          className="ios-contenido"
+          onScroll={(e) =>
+            setEnrollado((e.target as HTMLElement).scrollTop > 30)
+          }
+        >
+          {pestana !== "visor" && (
+            <h1 className="ios-titulo-grande">{TITULOS[pestana]}</h1>
+          )}
           {pestana === "articulos" && panel}
           {pestana === "revision" && (
-            <Tarjetas pid={pid} columnas={columnas.data} filas={filas.data.filas} onVerPdf={() => setPestana("visor")} />
+            <Tarjetas
+              pid={pid}
+              columnas={columnas.data}
+              filas={filas.data.filas}
+              onVerPdf={() => setPestana("visor")}
+            />
           )}
           {pestana === "visor" && visor}
         </div>
         <nav className="ios-pestanas">
           {(["articulos", "revision", "visor"] as Pestana[]).map((p) => (
-            <button key={p} className={pestana === p ? "activo" : ""} onClick={() => setPestana(p)}>
-              <Icono nombre={p === "articulos" ? "documentos" : p} tam={24} grosor={pestana === p ? 2.1 : 1.7} />
+            <button
+              key={p}
+              className={pestana === p ? "activo" : ""}
+              onClick={() => setPestana(p)}
+            >
+              <Icono
+                nombre={p === "articulos" ? "documentos" : p}
+                tam={24}
+                grosor={pestana === p ? 2.1 : 1.7}
+              />
               <span>{TITULOS[p]}</span>
             </button>
           ))}
@@ -244,10 +370,16 @@ function Espacio({ pid, correo, onSalir }: { pid: string; correo: string; onSali
           </button>
           {!lado && (
             <div className="segmentado">
-              <button className={pestanaTableta === "matriz" ? "activo" : ""} onClick={() => setPestanaTableta("matriz")}>
+              <button
+                className={pestanaTableta === "matriz" ? "activo" : ""}
+                onClick={() => setPestanaTableta("matriz")}
+              >
                 Matriz
               </button>
-              <button className={pestanaTableta === "visor" ? "activo" : ""} onClick={() => setPestanaTableta("visor")}>
+              <button
+                className={pestanaTableta === "visor" ? "activo" : ""}
+                onClick={() => setPestanaTableta("visor")}
+              >
                 Visor
               </button>
             </div>
@@ -258,13 +390,36 @@ function Espacio({ pid, correo, onSalir }: { pid: string; correo: string; onSali
             </button>
           )}
         </div>
-        <div className={`cuerpo ${lado && visorAbierto ? "dos" : "uno"}`}>
+        <div
+          className={`cuerpo ${lado && visorAbierto ? "dos" : "uno"}`}
+          style={
+            { "--w-visor": `${panelVisor.ancho}px` } as React.CSSProperties
+          }
+        >
           {(lado || pestanaTableta === "matriz") && grilla}
-          {((lado && visorAbierto) || (!lado && pestanaTableta === "visor")) && visor}
+          {lado && visorAbierto && (
+            <Divisor
+              etiqueta="Ancho del visor"
+              ancho={panelVisor.ancho}
+              lado="der"
+              onCambio={panelVisor.fijar}
+              onAlternar={panelVisor.alternar}
+            />
+          )}
+          {((lado && visorAbierto) || (!lado && pestanaTableta === "visor")) &&
+            visor}
         </div>
         {cajon && (
-          <div className="velo" onMouseDown={(e) => e.target === e.currentTarget && setCajon(false)}>
-            <div className="cajon" onClick={(e) => (e.target as HTMLElement).closest(".nombre") && setCajon(false)}>
+          <div
+            className="velo"
+            onMouseDown={(e) => e.target === e.currentTarget && setCajon(false)}
+          >
+            <div
+              className="cajon"
+              onClick={(e) =>
+                (e.target as HTMLElement).closest(".nombre") && setCajon(false)
+              }
+            >
               {panel}
             </div>
           </div>
@@ -273,15 +428,56 @@ function Espacio({ pid, correo, onSalir }: { pid: string; correo: string; onSali
     );
   }
 
-  // Escritorio: barra lateral, tabla e inspector (plegable).
+  // Escritorio: barra lateral, tabla e inspector; los tres anchos se ajustan arrastrando los divisores.
+  const estilo = {
+    "--w-lateral": `${lateral.ancho}px`,
+    "--w-visor":
+      visorAbierto && panelVisor.ancho > 0 ? `${panelVisor.ancho}px` : "44px",
+  } as React.CSSProperties;
   return (
-    <div className={`escritorio ${visorAbierto ? "con-visor" : "sin-visor"}`}>
-      {panel}
+    <div
+      className={`escritorio ${visorAbierto ? "con-visor" : "sin-visor"}`}
+      style={estilo}
+    >
+      <div className="panel-lateral" hidden={lateral.ancho === 0}>
+        {panel}
+      </div>
+      <Divisor
+        etiqueta="Ancho de artículos"
+        ancho={lateral.ancho}
+        lado="izq"
+        onCambio={lateral.fijar}
+        onAlternar={lateral.alternar}
+      />
       {grilla}
       {visorAbierto ? (
-        visor
+        <>
+          <Divisor
+            etiqueta="Ancho del visor"
+            ancho={panelVisor.ancho}
+            lado="der"
+            onCambio={panelVisor.fijar}
+            onAlternar={panelVisor.alternar}
+          />
+          {panelVisor.ancho === 0 ? (
+            <button
+              className="desplegar-visor"
+              onClick={panelVisor.restablecer}
+              title="Mostrar visor"
+            >
+              <Icono nombre="visor" tam={18} />
+              <span>Visor</span>
+            </button>
+          ) : (
+            visor
+          )}
+        </>
       ) : (
-        <button className="desplegar-visor" onClick={() => setVisorAbierto(true)} title="Mostrar visor">
+        <button
+          className="desplegar-visor"
+          onClick={() => setVisorAbierto(true)}
+          title="Mostrar visor"
+        >
           <Icono nombre="visor" tam={18} />
           <span>Visor</span>
         </button>
@@ -298,8 +494,15 @@ export function App() {
     queryFn: api.quien,
     retry: (n, e) => !(e instanceof ErrorApi && e.estado === 401) && n < 2,
   });
-  const proyectos = useQuery({ queryKey: ["proyectos"], queryFn: api.proyectos, enabled: !!sesion.data });
-  const salir = useMutation({ mutationFn: api.salir, onSuccess: () => qc.clear() });
+  const proyectos = useQuery({
+    queryKey: ["proyectos"],
+    queryFn: api.proyectos,
+    enabled: !!sesion.data,
+  });
+  const salir = useMutation({
+    mutationFn: api.salir,
+    onSuccess: () => qc.clear(),
+  });
 
   if (sesion.isLoading) return <p className="centro tenue">Cargando…</p>;
   if (!sesion.data) return <Entrar />;
@@ -307,6 +510,7 @@ export function App() {
 
   return (
     <div className="app">
+      {proyecto && <BarraGlobal pid={proyecto.id} />}
       {ancho >= 768 && (
         <header className="herramientas">
           <div className="titulo-app">
@@ -317,16 +521,25 @@ export function App() {
             <span className="tenue">{proyecto?.nombre}</span>
           </div>
           <Migas />
+          <EstadoServicios pid={proyecto?.id ?? ""} />
           <div className="cuenta">
             <span className="tenue">{sesion.data.correo}</span>
-            <button className="sin-borde" onClick={() => salir.mutate()} title="Cerrar sesión">
+            <button
+              className="sin-borde"
+              onClick={() => salir.mutate()}
+              title="Cerrar sesión"
+            >
               <Icono nombre="salir" tam={18} />
             </button>
           </div>
         </header>
       )}
       {proyecto ? (
-        <Espacio pid={proyecto.id} correo={sesion.data.correo} onSalir={() => salir.mutate()} />
+        <Espacio
+          pid={proyecto.id}
+          correo={sesion.data.correo}
+          onSalir={() => salir.mutate()}
+        />
       ) : (
         <p className="centro tenue">Sin proyectos. Ejecute la semilla.</p>
       )}

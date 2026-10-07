@@ -23,6 +23,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
+from app.compartido import registro
 from app.compartido.db import RegistroProyecto
 from app.compartido.seguridad import crear_usuario
 from app.composicion import Contenedor, construir
@@ -161,6 +162,7 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("rol", choices=["extractor", "revisor", "administrador"])
     x.set_defaults(f=usuario)
     a = p.parse_args(argv)
+    registro.instalar(settings().registro_ruta)
     a.f(construir(settings()), a)
 
 

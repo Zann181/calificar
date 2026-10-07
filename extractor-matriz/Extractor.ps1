@@ -38,7 +38,7 @@ function Abrir-Ventana {
     # Perfil propio: la ventana es un proceso aparte que termina al cerrarla.
     return Start-Process -FilePath $edge -PassThru -ArgumentList @(
         "--app=$url", "--user-data-dir=`"$perfil`"", "--no-first-run", "--no-default-browser-check",
-        "--window-size=1440,900")
+        "--start-maximized")
 }
 
 function Traer-Al-Frente {
@@ -64,7 +64,12 @@ function Puerto-Abierto {
 $creado = $false
 $candado = New-Object System.Threading.Mutex($true, "Local\ExtractorMatriz", [ref]$creado)
 if (-not $creado) {
-    if (-not (Traer-Al-Frente)) { Abrir-Ventana | Out-Null }
+    # La primera instancia puede seguir actualizando y aún no tener ventana: se espera a que aparezca.
+    # Nunca se abre otra ventana desde aquí (apuntaría a un puerto que no es el de esta instancia).
+    for ($i = 0; $i -lt 120; $i++) {
+        if (Traer-Al-Frente) { break }
+        Start-Sleep -Milliseconds 500
+    }
     exit 0
 }
 
@@ -126,6 +131,7 @@ function Actualizar {
 }
 
 $servidor = $null
+$mineru = $null
 try {
     # Si el puerto ya lo usa otro programa (p. ej. una copia vieja del extractor), se toma el siguiente libre:
     # la ventana debe abrir SIEMPRE el servidor de esta carpeta. Una segunda instancia nuestra ya salió por el candado.
@@ -143,6 +149,25 @@ try {
         $npm = Start-Process -FilePath "npm.cmd" -ArgumentList "run", "build" -WorkingDirectory $frontend `
             -WindowStyle Hidden -Wait -PassThru -RedirectStandardOutput "$registro.npm"
         if ($npm.ExitCode -ne 0) { throw "No se pudo compilar la interfaz (ver $registro.npm)." }
+    }
+
+    # --- MinerU (conversión de PDF): se arranca si está instalado y no responde ya en el puerto 8001 ---
+    $pythonMineru = Join-Path $raiz "servicio-mineru\.venv\Scripts\python.exe"
+    $clienteMineru = New-Object System.Net.Sockets.TcpClient
+    try { $mineruAbierto = $true; $clienteMineru.Connect("127.0.0.1", 8001) } catch { $mineruAbierto = $false } finally { $clienteMineru.Dispose() }
+    if ($mineruAbierto) {
+        Add-Content $registro "$(Get-Date -Format s) MinerU ya responde en el puerto 8001."
+    } elseif (Test-Path $pythonMineru) {
+        Add-Content $registro "$(Get-Date -Format s) Arrancando MinerU en el puerto 8001..."
+        # Modelos locales (descargar_modelos.py los deja en servicio-mineru\modelos): sin esto MinerU intenta descargarlos.
+        $configMineru = Join-Path $raiz "servicio-mineru\mineru.json"
+        if (Test-Path $configMineru) { $env:MINERU_MODEL_SOURCE = "local"; $env:MINERU_TOOLS_CONFIG_JSON = $configMineru }
+        $env:PYTHONIOENCODING = "utf-8"
+        $mineru = Start-Process -FilePath $pythonMineru -WorkingDirectory (Join-Path $raiz "servicio-mineru") -WindowStyle Hidden -PassThru `
+            -ArgumentList "-m", "uvicorn", "app:app", "--host", "127.0.0.1", "--port", "8001" `
+            -RedirectStandardOutput (Join-Path $datos "mineru.log") -RedirectStandardError (Join-Path $datos "mineru.log.err")
+    } else {
+        Add-Content $registro "$(Get-Date -Format s) MinerU no está instalado ($pythonMineru): los PDF nuevos no se convertirán."
     }
 
     # --- servidor ---
@@ -177,6 +202,7 @@ try {
 } finally {
     # python.exe del entorno virtual lanza un proceso hijo: se termina todo el árbol.
     if ($servidor -and -not $servidor.HasExited) { & taskkill.exe /PID $servidor.Id /T /F | Out-Null }
+    if ($mineru -and -not $mineru.HasExited) { & taskkill.exe /PID $mineru.Id /T /F | Out-Null }
     $candado.ReleaseMutex()
     $candado.Dispose()
 }

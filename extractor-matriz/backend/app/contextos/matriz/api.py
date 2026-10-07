@@ -37,6 +37,12 @@ def _discrepancias(fila: FilaDeEfecto, clave: str) -> list[dict[str, Any]]:
     return [d for d in lista if isinstance(d, dict) and d.get("columna") == clave]
 
 
+def _trazabilidad_fila(fila: FilaDeEfecto) -> dict[str, Any]:
+    """Trazabilidad de la fila tal como la entregó el extractor, sin las evidencias (ya van por celda)."""
+    traz = (fila.trazabilidad.get("salida") or {}).get("trazabilidad") or {}
+    return {k: v for k, v in traz.items() if k != "evidencia"}
+
+
 def _celda_resumen(fila: FilaDeEfecto, c: Celda) -> dict[str, Any]:
     return {
         "valor": c.valor, "estado_dato": c.estado_dato,
@@ -81,6 +87,7 @@ def celda(estudio: int, clave: str, proyecto_id: uuid.UUID = Depends(proyecto_va
         "nota_heredada": fila.trazabilidad.get("notas_heredadas", {}).get(clave),
         "hallazgos": _hallazgos(fila, clave),
         "discrepancias": _discrepancias(fila, clave),
+        "trazabilidad_fila": _trazabilidad_fila(fila),
         "historial": [{**asdict(h), "fecha": h.fecha.isoformat()} for h in cel.historial],
     }
 

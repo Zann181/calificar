@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+import logging
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -33,17 +35,23 @@ class ResultadoCarga:
     error: str | None = None
 
 
+log = logging.getLogger("biblioteca")
+
+
 class CargarPDF:
     def __init__(self, udt: FabricaUdT, almacen: AlmacenDeArchivos) -> None:
         self._udt, self._almacen = udt, almacen
 
     def ejecutar(self, proyecto_id: uuid.UUID, nombre_archivo: str, datos: bytes) -> ResultadoCarga:
         if not datos.startswith(b"%PDF"):
+            log.warning("%s: rechazado, no es un PDF", nombre_archivo)
             return ResultadoCarga(nombre_archivo, None, False, error="El archivo no es un PDF")
         sha = huella(datos)
         with self._udt() as u:
             existente = u.articulos.por_huella(proyecto_id, sha)
             if existente is not None:
+                log.warning("%s: duplicado de «%s» (misma huella SHA-256), no se carga", nombre_archivo,
+                            existente.nombre_archivo)
                 return ResultadoCarga(nombre_archivo, existente.id, True, duplicado_de=existente.nombre_archivo)
             clave = f"pdf/{proyecto_id}/{sha}.pdf"
             self._almacen.guardar(clave, datos, "application/pdf")
@@ -55,6 +63,8 @@ class CargarPDF:
             except HuellaDuplicada:
                 u.revertir()
                 return ResultadoCarga(nombre_archivo, None, True)
+        log.info("%s: cargado (%d KB, huella %s…). Estado: Nuevo; se convierte y extrae al pulsar «Nuevo»", nombre_archivo,
+                 len(datos) // 1024, sha[:10])
         return ResultadoCarga(nombre_archivo, articulo.id, False)
 
 
@@ -70,6 +80,8 @@ class ConvertirArticulo:
             if articulo.estado != EstadoArticulo.CONVIRTIENDO:
                 articulo.iniciar_conversion()
             u.confirmar()
+        log.info("%s: convirtiendo con MinerU (en CPU toma entre 11 y 21 s por página)", articulo.nombre_archivo)
+        inicio = time.perf_counter()
         try:
             pdf = self._almacen.leer(articulo.clave_almacen)
             conversion = self._conversor.convertir(pdf, articulo.nombre_archivo)
@@ -79,6 +91,7 @@ class ConvertirArticulo:
                 articulo = u.articulos.obtener(proyecto_id, articulo_id)
                 articulo.fallar(EstadoArticulo.CONVIRTIENDO, f"{type(e).__name__}: {e}")
                 u.confirmar()
+            log.error("%s: la conversión falló. %s: %s", articulo.nombre_archivo, type(e).__name__, e)
             return EstadoArticulo.ERROR
         with self._udt() as u:
             articulo = u.articulos.obtener(proyecto_id, articulo_id)
@@ -86,6 +99,9 @@ class ConvertirArticulo:
             articulo.completar_conversion(documento_estructurado_id=documento_id,
                                           paginas=len(conversion.documento.paginas))
             u.confirmar()
+        log.info("%s: convertido en %.0f s · %d páginas · %d bloques. Estado: %s", articulo.nombre_archivo,
+                 time.perf_counter() - inicio, len(conversion.documento.paginas), len(conversion.documento.bloques),
+                 articulo.estado.value)
         return articulo.estado
 
 

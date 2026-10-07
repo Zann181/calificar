@@ -8,7 +8,12 @@ import openpyxl
 import pytest
 
 from app.compartido.columnas import DefinicionDeColumna
-from app.contextos.normas.dominio.catalogo import CatalogoDeColumnas, LibroInvalido, derivar_columnas
+from app.contextos.normas.dominio.catalogo import (
+    CatalogoDeColumnas,
+    LibroInvalido,
+    derivar_columnas,
+    derivar_protocolo,
+)
 from app.contextos.normas.dominio.modelos import VersionDelLibro
 from tests.conftest import MATRIZ
 
@@ -87,3 +92,23 @@ def test_version_del_libro(libro: dict[str, Any]) -> None:
     otra = VersionDelLibro.publicar(proyecto_id=v.proyecto_id, contenido=libro)
     assert otra.hash == v.hash
     assert len(v.catalogo().columnas) == 54
+
+
+def test_la_guia_de_cada_columna_sale_del_libro(libro: dict[str, Any], por_clave: dict[str, DefinicionDeColumna]) -> None:
+    for clave, col in libro["columnas"].items():
+        guia = por_clave[clave].guia
+        assert guia["para_que_sirve"] == col["descripcion"]
+        assert bool(guia.get("donde_buscar")) == bool(col["instruccion_operativa"].get("donde_buscar"))
+    beta = por_clave["Beta Fel 1- JP"].guia
+    campos = {c["campo"] for c in beta["campos_de_trazabilidad"]}
+    assert {"tipo_de_efecto", "tecnica_del_beta", "covariables_del_beta"} <= campos
+    assert "evidencia" not in campos
+    assert por_clave["Incluir en meta análisi"].guia["campos_de_trazabilidad"]
+
+
+def test_el_protocolo_trae_las_reglas_generales_del_libro(libro: dict[str, Any]) -> None:
+    protocolo = derivar_protocolo(libro)
+    assert len(protocolo["principios_de_veracidad"]) == 12
+    assert protocolo["precedencia_de_fuentes"][0].startswith("1.")
+    assert "No indica" in protocolo["faltantes"]
+    assert protocolo["como_se_construye_cada_fila"]["regla_para_abrir_una_fila_nueva"]
