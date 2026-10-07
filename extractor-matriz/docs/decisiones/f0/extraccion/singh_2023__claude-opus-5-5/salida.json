@@ -1,0 +1,706 @@
+[
+ {
+  "fila": {
+   "Documento": 47,
+   "Estudio": 71,
+   "Covidence #": null,
+   "Incluir en meta análisi": "SEM latente",
+   "Cita": "Singh et al. (2023)",
+   "Title": "Effect of Perception of Organizational Support on Organizational Citizenship Behaviour: The Mediating Role of Employee Happiness",
+   "Author": "Shiwani Singh; Taruna; Jyoti Singh Bharti",
+   "Año": 2023,
+   "Pais": "India",
+   "Población": "Empleados de supermercados, tiendas departamentales y centros comerciales",
+   "Sector": "Retail",
+   "Desempeño": "Extra-rol",
+   "Tipo de desempeño": "Comportamiento de ciudadanía organizacional (OCB)",
+   "cómo lo llaman (desempeño)": "organizational citizenship behaviour (OCB)",
+   "Escala de medición: Performance": "Van Dyne y LePine (1998)",
+   "Fiabilidad Alfa - Omega (desempeño)": 0.965,
+   "Validez CFA": "Si",
+   "# Ítems": 7,
+   "Hedónica/eudaimónica": "Hedónica y eudaimónica",
+   "cómo lo llaman (felicidad)": "employee happiness (EH)",
+   "Tipo de felicidad real": "Índice compuesto (PHI, OHQ)",
+   "Instrumento felicidad": "Hills y Argyle (2002)",
+   "Items instrumento1": 6,
+   "Fiabilidad Alfa - Omega (felicidad)": 0.944,
+   "CFA": "Si",
+   "Validez?": "Si",
+   "Adaptado al trabajo": "No indica",
+   "Muestra": 219,
+   "How measure the employee perfomance": "No indica",
+   "Correlacion o Beta felicidad 1 - JP": "Correlación 0.463 (Tabla 4, p. 9 del PDF) | Beta .542 (Tabla 8, p. 12 del PDF)",
+   "Correlación Feli 1 - JP": 0.463,
+   "Beta Fel 1- JP": 0.542,
+   "Analysis method (principal)": "CB-SEM",
+   "Software": "AMOS 26",
+   "Nivel": "Individual",
+   "Ejemplo ítem felicidad": "No indica",
+   "Ejemplo ítem desempeño": "No indica",
+   "Study design": "Cross sectional study",
+   "Teoría 1": "Intercambio social (Blau, 1964)",
+   "Teoría 2": null,
+   "Teoria 3": null,
+   "Definition Happiness": "Paráfrasis: la felicidad es una noción multifacética que abarca el bienestar psicológico, las emociones positivas y la satisfacción general con el trabajo y la vida (Diener, 2000; Fisher, 2010; Grant et al., 2007; p. 3 del PDF).",
+   "Definition Performance": "Paráfrasis: la OCB es la conducta individual discrecional, no reconocida directa ni explícitamente por el sistema formal de recompensas, que en conjunto promueve el funcionamiento eficaz de la organización (Organ, 1988; p. 3 del PDF).",
+   "Direccionalidad de la relación": "HP",
+   "Aim of study": "Examinar empíricamente la relación entre la percepción de apoyo organizacional (POS) y la conducta de ciudadanía organizacional (OCB), y determinar el papel mediador de la felicidad del empleado (EH) en esa relación.",
+   "Start date": "No indica",
+   "End date": "No indica",
+   "Inclusion criteria": "No indica",
+   "Exclusion criteria": "Se descartaron los cuestionarios no válidos (no diligenciados completamente): de 247 respuestas recibidas, 219 fueron válidas.",
+   "Método de aplicación": "No indica",
+   "Tipo de muestreo": "Conveniencia",
+   "Validez de las escalas": "AFC: Felicidad (EH): AVE = .737; CR = .943; diagonal de Fornell y Larcker = 0.858. Desempeño (OCB): AVE = .801; CR = .965; diagonal de Fornell y Larcker = 0.894. Modelo (Tabla 5): χ²/df = 2.32; SRMR = .057; RMSEA = .08; CFI = .95; NFI = .92; TLI = .94; AGFI = .81.",
+   "Analysis method (detalle)": "Estadística descriptiva de características demográficas\nAnálisis factorial confirmatorio (AFC)\nModelos de ecuaciones estructurales (CB-SEM) en AMOS 26\nAnálisis de mediación en cuatro pasos de Baron y Kenny\nBootstrapping con 5000 remuestreos para el efecto indirecto",
+   "Conclusion": "Los autores concluyen, con base en la teoría del intercambio social, que la percepción de apoyo organizacional aumenta la felicidad de los empleados y que los empleados felices son más propensos a realizar conductas extra-rol (OCB). La felicidad del empleado se relaciona positiva y significativamente con la OCB y media parcialmente la relación entre POS y OCB."
+  },
+  "trazabilidad": {
+   "id_muestra": "D47-M1",
+   "via_de_identificacion": "Otros métodos: búsqueda manual",
+   "estado_del_dato": {},
+   "evidencia": {
+    "Title": [
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Encabezado",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "of Perception of Organizational Support on Organizational Citizenship Behaviour: The Mediating Role of Employee Happiness",
+      "leido_de_figura": false
+     }
+    ],
+    "Author": [
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Encabezado",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Shiwani Singh",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Encabezado",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Jyoti Singh Bharti",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Nota de autores",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Taruna drtaruna@gmail.com",
+      "leido_de_figura": false
+     }
+    ],
+    "Año": [
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Nota de derechos de autor",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "part of Springer Nature 2023",
+      "leido_de_figura": false
+     }
+    ],
+    "Pais": [
+     {
+      "pagina_pdf": 6,
+      "ubicacion": "Research Methodology",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Gorakhpur City (Uttar Pradesh, India)",
+      "leido_de_figura": false
+     }
+    ],
+    "Población": [
+     {
+      "pagina_pdf": 6,
+      "ubicacion": "Research Methodology",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "employees who were either full or part-time employed in supermarkets, departmental stores and shopping malls",
+      "leido_de_figura": false
+     }
+    ],
+    "cómo lo llaman (desempeño)": [
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Resumen",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "organizational citizenship behaviour (OCB)",
+      "leido_de_figura": false
+     }
+    ],
+    "Escala de medición: Performance": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Tabla 2",
+      "fila_tabla": "OCB",
+      "columna_tabla": "Source",
+      "cita_textual": "(Van Dyne & LePine, 1998)",
+      "leido_de_figura": false
+     }
+    ],
+    "Fiabilidad Alfa - Omega (desempeño)": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Tabla 3",
+      "fila_tabla": "Organizational citizenship behaviour",
+      "columna_tabla": "Alpha",
+      "cita_textual": ".965",
+      "leido_de_figura": false
+     }
+    ],
+    "Validez CFA": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Data Analysis",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "confirmatory factor analysis (CFA) was applied to verify the measurement scale’s validity and reliability",
+      "leido_de_figura": false
+     }
+    ],
+    "# Ítems": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Tabla 2",
+      "fila_tabla": "OCB",
+      "columna_tabla": "Number of items",
+      "cita_textual": "7",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Tabla 3",
+      "fila_tabla": "OCB 7",
+      "columna_tabla": "Factor loading",
+      "cita_textual": ".812",
+      "leido_de_figura": false
+     }
+    ],
+    "cómo lo llaman (felicidad)": [
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Resumen",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "employee happiness (EH)",
+      "leido_de_figura": false
+     }
+    ],
+    "Instrumento felicidad": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Tabla 2",
+      "fila_tabla": "EH",
+      "columna_tabla": "Source",
+      "cita_textual": "(Hills & Argyle, 2002)",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 17,
+      "ubicacion": "Referencias",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "The Oxford happiness questionnaire: A compact scale for the measurement of psychological well-being",
+      "leido_de_figura": false
+     }
+    ],
+    "Items instrumento1": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Tabla 3",
+      "fila_tabla": "EH 6",
+      "columna_tabla": "Factor loading",
+      "cita_textual": ".853",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 9,
+      "ubicacion": "Figura 2 (Measurement model)",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "EH6",
+      "leido_de_figura": true
+     }
+    ],
+    "Fiabilidad Alfa - Omega (felicidad)": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Tabla 3",
+      "fila_tabla": "Employee happiness",
+      "columna_tabla": "Alpha",
+      "cita_textual": ".944",
+      "leido_de_figura": false
+     }
+    ],
+    "CFA": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Data Analysis",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "confirmatory factor analysis (CFA) was applied to verify the measurement scale’s validity and reliability",
+      "leido_de_figura": false
+     }
+    ],
+    "Muestra": [
+     {
+      "pagina_pdf": 6,
+      "ubicacion": "Research Methodology",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "A total of 247 responses were received out of which 219 were found to be valid (duly filled).",
+      "leido_de_figura": false
+     }
+    ],
+    "Correlacion o Beta felicidad 1 - JP": [
+     {
+      "pagina_pdf": 9,
+      "ubicacion": "Tabla 4 (insertada como imagen)",
+      "fila_tabla": "OCB",
+      "columna_tabla": "EH",
+      "cita_textual": "0.463",
+      "leido_de_figura": true
+     },
+     {
+      "pagina_pdf": 12,
+      "ubicacion": "Tabla 8",
+      "fila_tabla": "EH- OCB",
+      "columna_tabla": "Beta",
+      "cita_textual": ".542",
+      "leido_de_figura": false
+     }
+    ],
+    "Correlación Feli 1 - JP": [
+     {
+      "pagina_pdf": 9,
+      "ubicacion": "Tabla 4 (insertada como imagen); diagonal = validez discriminante (valores que coinciden con la raíz de AVE)",
+      "fila_tabla": "OCB",
+      "columna_tabla": "EH",
+      "cita_textual": "0.463",
+      "leido_de_figura": true
+     }
+    ],
+    "Beta Fel 1- JP": [
+     {
+      "pagina_pdf": 12,
+      "ubicacion": "Tabla 8",
+      "fila_tabla": "EH- OCB",
+      "columna_tabla": "Beta",
+      "cita_textual": ".542",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 11,
+      "ubicacion": "Structural model, Condition 3",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Table 8 reveals that the OCB is significantly impacted by the EH (Beta = 0.542, p < 0.01)",
+      "leido_de_figura": false
+     }
+    ],
+    "Analysis method (principal)": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Data Analysis",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "the direct and mediation hypotheses were tested using the SEM with AMOS 26",
+      "leido_de_figura": false
+     }
+    ],
+    "Software": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Data Analysis",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "the direct and mediation hypotheses were tested using the SEM with AMOS 26",
+      "leido_de_figura": false
+     }
+    ],
+    "Study design": [
+     {
+      "pagina_pdf": 6,
+      "ubicacion": "Research Methodology",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "A standardized questionnaire was used to gather the data from small and medium retail sector employees working in Gorakhpur City",
+      "leido_de_figura": false
+     }
+    ],
+    "Teoría 1": [
+     {
+      "pagina_pdf": 4,
+      "ubicacion": "Theoretical Foundation and Hypotheses Development",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "The current study examines POS, EH and OCB all within the framework of social exchange theory (SET).",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 4,
+      "ubicacion": "Theoretical Foundation and Hypotheses Development",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "According to (Blau, 1964) positive behaviour from others are more likely to be reciprocated by employees.",
+      "leido_de_figura": false
+     }
+    ],
+    "Definition Happiness": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Literature Review, Employee Happiness",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Happiness is a multifaceted notion that encompasses psychological well-being, positive emotions, and overall satisfaction with work and life",
+      "leido_de_figura": false
+     }
+    ],
+    "Definition Performance": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Literature Review, Organizational Citizenship Behaviour",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "individual behavior that is discretionary, not directly or explicitly recognized by the formal reward system",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Literature Review, Organizational Citizenship Behaviour",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "and that in the aggregate promotes the",
+      "leido_de_figura": false
+     }
+    ],
+    "Direccionalidad de la relación": [
+     {
+      "pagina_pdf": 12,
+      "ubicacion": "Tabla 8",
+      "fila_tabla": "EH- OCB",
+      "columna_tabla": "Result",
+      "cita_textual": "Significant",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 11,
+      "ubicacion": "Structural model, Condition 3",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Table 8 reveals that the OCB is significantly impacted by the EH (Beta = 0.542, p < 0.01)",
+      "leido_de_figura": false
+     }
+    ],
+    "Aim of study": [
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Resumen",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "This study is focused on an empirical investigation of the relationship between organizational support perception (POS) and organizational citizenship behaviour (OCB)",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Resumen",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "of employee happiness (EH) as a mediating variable on this relationship",
+      "leido_de_figura": false
+     }
+    ],
+    "Exclusion criteria": [
+     {
+      "pagina_pdf": 6,
+      "ubicacion": "Research Methodology",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "A total of 247 responses were received out of which 219 were found to be valid (duly filled).",
+      "leido_de_figura": false
+     }
+    ],
+    "Tipo de muestreo": [
+     {
+      "pagina_pdf": 6,
+      "ubicacion": "Research Methodology",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "A convenience sampling method was adopted to distribute 350 survey forms",
+      "leido_de_figura": false
+     }
+    ],
+    "Validez de las escalas": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Tabla 3",
+      "fila_tabla": "Employee happiness",
+      "columna_tabla": "AVE",
+      "cita_textual": ".737",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Tabla 3",
+      "fila_tabla": "Employee happiness",
+      "columna_tabla": "CR",
+      "cita_textual": ".943",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Tabla 3",
+      "fila_tabla": "Organizational citizenship behaviour",
+      "columna_tabla": "AVE",
+      "cita_textual": ".801",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 9,
+      "ubicacion": "Tabla 4 (insertada como imagen)",
+      "fila_tabla": "EH",
+      "columna_tabla": "EH (diagonal)",
+      "cita_textual": "0.858",
+      "leido_de_figura": true
+     },
+     {
+      "pagina_pdf": 9,
+      "ubicacion": "Tabla 4 (insertada como imagen)",
+      "fila_tabla": "OCB",
+      "columna_tabla": "OCB (diagonal)",
+      "cita_textual": "0.894",
+      "leido_de_figura": true
+     },
+     {
+      "pagina_pdf": 10,
+      "ubicacion": "Tabla 5",
+      "fila_tabla": "SRMR",
+      "columna_tabla": "Obtained value",
+      "cita_textual": ".057",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 10,
+      "ubicacion": "Tabla 5",
+      "fila_tabla": "x2/df",
+      "columna_tabla": "Obtained value",
+      "cita_textual": "2.32",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 10,
+      "ubicacion": "Tabla 5",
+      "fila_tabla": "AGFI",
+      "columna_tabla": "Obtained value",
+      "cita_textual": ".81",
+      "leido_de_figura": false
+     }
+    ],
+    "Analysis method (detalle)": [
+     {
+      "pagina_pdf": 8,
+      "ubicacion": "Data Analysis",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "confirmatory factor analysis (CFA) was applied to verify the measurement scale’s validity and reliability",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 10,
+      "ubicacion": "Structural model",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Four steps mediation process suggested by Baron and Kenny was utilized",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 11,
+      "ubicacion": "Structural model, Condition 4",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "A bootstrapping technique with 5000 resamples",
+      "leido_de_figura": false
+     }
+    ],
+    "Conclusion": [
+     {
+      "pagina_pdf": 15,
+      "ubicacion": "Conclusion",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Happy employees are more inclined to indulge in extra-role performance.",
+      "leido_de_figura": false
+     },
+     {
+      "pagina_pdf": 14,
+      "ubicacion": "Discussion",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "our study supports the hypothesis that POS is crucial in promoting EH at work, which in turn causes OCB.",
+      "leido_de_figura": false
+     }
+    ]
+   },
+   "tipo_fiabilidad_desempeno": "alfa",
+   "tipo_fiabilidad_felicidad": "alfa",
+   "fiabilidad_alternativa_desempeno": [
+    {
+     "tipo": "CR",
+     "valor": 0.965
+    }
+   ],
+   "fiabilidad_alternativa_felicidad": [
+    {
+     "tipo": "CR",
+     "valor": 0.943
+    }
+   ],
+   "items_aplicados_desempeno": null,
+   "items_aplicados_felicidad": 8,
+   "metodo_obtencion_r": "Correlación entre variables latentes CB-SEM",
+   "r_derivado": null,
+   "r_imputado_desde_beta": null,
+   "tipo_de_efecto": "simple",
+   "tecnica_del_beta": "CB-SEM latente",
+   "covariables_del_beta": "Ninguna",
+   "signo_armonizado": false,
+   "misma_fuente": "No indica",
+   "retardo_meses": 0,
+   "n_nivel_2": null,
+   "n_observaciones": null,
+   "sensibilidad_r_cero": false,
+   "conjunto_sugerido": "Sensibilidad",
+   "motivo_decision_inclusion": "Condición 9: los únicos coeficientes felicidad-desempeño son latentes de CB-SEM (correlación latente de la Tabla 4 y ruta estandarizada de la Tabla 8); no se reporta r observado entre puntuaciones de escala.",
+   "otros_coeficientes": [
+    {
+     "descripcion": "Ruta directa EH → OCB en el modelo de mediación con POS (leída de figura)",
+     "valor": ".26",
+     "evidencia": "Figura 6, p. 14 del PDF (leído de figura; sin tabla que lo confirme)"
+    },
+    {
+     "descripcion": "Covarianza no estandarizada EH ↔ OCB en el modelo de medida",
+     "valor": ".52",
+     "evidencia": "Figura 2, p. 9 del PDF (leído de figura)"
+    },
+    {
+     "descripcion": "Efecto indirecto POS → EH → OCB",
+     "valor": "0.14 (p = .015)",
+     "evidencia": "Tabla 9, p. 13 del PDF"
+    },
+    {
+     "descripcion": "Ruta POS → EH",
+     "valor": "0.510 (p = 0.000)",
+     "evidencia": "Tabla 6, p. 10 del PDF"
+    },
+    {
+     "descripcion": "Efecto total y directo POS → OCB",
+     "valor": "0.49 (total); 0.35 (directo)",
+     "evidencia": "Tabla 9, p. 13 del PDF"
+    }
+   ],
+   "mapa_de_efectos": "Una muestra (219 empleados del retail en Gorakhpur, India); una medida de felicidad (employee happiness, Hills y Argyle, 2002; 6 ítems retenidos); una medida de desempeño (OCB, Van Dyne y LePine, 1998; 7 ítems); fuente evaluadora no declarada; una sola oleada. POS es antecedente, no felicidad ni desempeño. Se abre una fila (EH-OCB).",
+   "inferencias": [
+    {
+     "columna": "metodo_obtencion_r",
+     "valor": "Correlación entre variables latentes CB-SEM",
+     "regla_aplicada": "instruccion_operativa de Correlación Feli 1 - JP",
+     "razonamiento": "La Tabla 4 no dice si sus correlaciones son observadas o latentes. Al dividir las covarianzas de la Figura 2 por las raíces de las varianzas latentes, el resultado coincide con la Tabla 4 (.52/raíz(.96×1.30) ≈ .465 frente a 0.463; .75/raíz(1.49×.96) ≈ .627 frente a 0.633). Por eso clasifiqué estas correlaciones como latentes del modelo de medida AMOS. La alternativa es No especificado; en ese caso la ruta de la Tabla 8 sigue siendo el único coeficiente latente y la condición 9 no cambia."
+    },
+    {
+     "columna": "Validez de las escalas",
+     "valor": "La diagonal de la Tabla 4 se trató como la raíz de AVE",
+     "regla_aplicada": "P10",
+     "razonamiento": "La nota de la Tabla 4 solo dice 'Discriminant validity is depicted diagonally'. Los valores (0.858, 0.894) coinciden con la raíz de las AVE de la Tabla 3 (.737, .801)."
+    },
+    {
+     "columna": "Tipo de felicidad real",
+     "valor": "Índice compuesto (PHI, OHQ)",
+     "regla_aplicada": "Codificación por instrumento",
+     "razonamiento": "La Tabla 2 cita Hills y Argyle (2002) para EH, y la lista de referencias del propio artículo titula esa obra 'The Oxford happiness questionnaire'. El texto del artículo no usa la sigla OHQ, por eso Instrumento felicidad se escribe como Autor (año)."
+    },
+    {
+     "columna": "Study design (y retardo_meses = 0)",
+     "valor": "Cross sectional study",
+     "regla_aplicada": "instruccion_operativa de Study design: una sola aplicación",
+     "razonamiento": "Se describe una sola aplicación de cuestionario; los autores no usan la palabra transversal."
+    },
+    {
+     "columna": "Teoría 1",
+     "valor": "Intercambio social (Blau, 1964)",
+     "regla_aplicada": "instruccion_operativa de Teoría 1: marco general declarado",
+     "razonamiento": "La hipótesis EH → OCB (H13) no cita ninguna teoría. El artículo declara SET como marco del estudio y cita a Blau (1964) en esa sección. También cita a Cropanzano y Mitchell (2005) sobre SET."
+    },
+    {
+     "columna": "Población",
+     "valor": "Empleados de supermercados, tiendas departamentales y centros comerciales",
+     "regla_aplicada": "Codificación",
+     "razonamiento": "Paráfrasis de la descripción de la muestra."
+    },
+    {
+     "columna": "Desempeño",
+     "valor": "Extra-rol",
+     "regla_aplicada": "regla_de_decision de Desempeño",
+     "razonamiento": "La escala mide OCB (Van Dyne y LePine, 1998). El artículo no muestra los ítems; la clasificación se basa en el constructo y en el título de la referencia ('Helping and voice extra-role behaviors')."
+    },
+    {
+     "columna": "Validez?",
+     "valor": "Si",
+     "regla_aplicada": "instruccion_operativa de Validez?",
+     "razonamiento": "La escala EH tiene AFC, AVE y Fornell y Larcker calculados en la muestra."
+    },
+    {
+     "columna": "Año",
+     "valor": "2023",
+     "regla_aplicada": "instruccion_operativa de Año (versión online first)",
+     "razonamiento": "El PDF no indica volumen ni número. El año se toma de la nota de derechos de autor de la p. 1 ('part of Springer Nature 2023'), que coincide con las fechas de aceptación y publicación en línea de la misma página."
+    }
+   ],
+   "discrepancias_en_el_articulo": [
+    {
+     "columna": "Items instrumento1",
+     "fuente_1": "La Tabla 2 (p. 8) indica 8 ítems para EH",
+     "fuente_2": "La Tabla 3 (p. 8) y la Figura 2 (p. 9) solo muestran EH1 a EH6",
+     "valor_adoptado": "6 ítems retenidos; 8 aplicados en items_aplicados_felicidad"
+    },
+    {
+     "columna": "Beta Fel 1- JP",
+     "fuente_1": "La Tabla 8 (p. 12) rotula como estandarizado el beta .542 de EH → OCB, en un modelo con un solo predictor (Figura 5)",
+     "fuente_2": "La Tabla 4 (p. 9) da una correlación EH-OCB de 0.463. En un modelo de un solo predictor, el beta estandarizado debería ser igual a esa correlación latente",
+     "valor_adoptado": "Se registran ambos valores rotulados (r = 0.463; Beta = 0.542); confianza Baja"
+    },
+    {
+     "columna": "Validez de las escalas",
+     "fuente_1": "El texto (p. 8) dice que la AVE de cada variable es mayor que cualquier coeficiente de correlación",
+     "fuente_2": "La diagonal de la Tabla 4 contiene valores que coinciden con la raíz de AVE, no con la AVE",
+     "valor_adoptado": "Se describe la diagonal como Fornell y Larcker con los valores de la tabla"
+    }
+   ],
+   "advertencias_pendientes": [
+    "El aviso V28 (efecto simple con r = 0.463 y Beta = 0.542) corresponde a una contradicción interna del artículo. Está registrada en discrepancias_en_el_articulo y no se corrigió: se transcriben los valores rotulados. Verificador: decidir qué valor usar.",
+    "El artículo no declara quién respondió la escala de OCB. Probablemente es autoinforme, porque hay un solo cuestionario para los empleados. Verificador: decidir si se acepta Self perception.",
+    "El artículo no presenta ítems ni consigna de la escala de felicidad. Según las referencias, el instrumento citado es el Oxford happiness questionnaire, que es general. Dejé Adaptado al trabajo = No indica; el verificador debe confirmar si corresponde No.",
+    "Método de aplicación: el artículo dice que distribuyeron 'survey forms', pero no precisa si en papel ni si fue en el lugar de trabajo. Dejé No indica.",
+    "En el texto etiquetado, los valores de la Tabla 4 aparecen dentro del bloque de la Tabla 3 de la p. 8, pero en el PDF la Tabla 4 es una imagen en la p. 9. Las citas de la Tabla 4 se marcaron con leido_de_figura = true y la p. 9.",
+    "La capa de texto pierde la ligadura 'ff' (Efect, efective). El título se escribió como Effect, según la imagen de la p. 1. Las citas textuales evitan las palabras afectadas por esa pérdida.",
+    "El año corresponde a la versión online first (p. 1: publicada en línea el 31 de mayo de 2023). El PDF no indica volumen ni número. Las citas de la línea 'Published online' y del título de la Tabla 1 no se encontraron literales en el PDF, por eso se reemplazaron por otras citas de la misma página o de la sección de método.",
+    "V21: el diseño es transversal y los autores usan lenguaje causal ('which in turn causes OCB'). No modifiqué la paráfrasis de la conclusión.",
+    "No está claro si la Tabla 5 corresponde al modelo de medida o al modelo estructural. El texto solo dice 'The SEM results shown in Table 5'.",
+    "Error del artículo ajeno a esta fila: al describir la condición 2, que se refiere a POS → OCB, la p. 10 dice 'the relationship between POS and EH is significant'.",
+    "La ruta directa EH → OCB de la Figura 6 (.26) se leyó de la imagen y no aparece en ninguna tabla. Verificar a mano."
+   ],
+   "confianza": "Baja",
+   "extractor": "Claude Opus 5.5 (claude-opus-5-5)",
+   "fecha_extraccion": "2026-10-05",
+   "verificador": null
+  }
+ }
+]

@@ -1,0 +1,18 @@
+.env
+**/.venv/
+**/__pycache__/
+**/node_modules/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+frontend/dist/
+servicio-mineru/modelos/
+servicio-mineru/mineru.json
+.import_linter_cache/
+*.egg-info/
+docs/decisiones/f0/extraccion/*/sistema_*.txt
+docs/decisiones/f0/extraccion/*/pag-*.png
+datos/
+# generado por herramientas/crear_icono_y_acceso.py: lleva rutas del equipo
+Extractor.vbs

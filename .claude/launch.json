@@ -3,16 +3,16 @@
   "configurations": [
     {
       "name": "api",
-      "runtimeExecutable": "C:\\Users\\Motaz\\Videos\\calificar\\extractor-matriz\\backend\\.venv\\Scripts\\uvicorn.exe",
-      "runtimeArgs": ["app.main:app", "--host", "127.0.0.1", "--port", "8000", "--app-dir", "C:\\Users\\Motaz\\Videos\\calificar\\extractor-matriz\\backend"],
-      "cwd": "C:\\Users\\Motaz\\Videos\\calificar\\extractor-matriz\\backend",
+      "runtimeExecutable": "C:\\Users\\maleg\\Music\\ZANN\\calificar\\extractor-matriz\\backend\\.venv\\Scripts\\uvicorn.exe",
+      "runtimeArgs": ["app.main:app", "--host", "127.0.0.1", "--port", "8000", "--app-dir", "C:\\Users\\maleg\\Music\\ZANN\\calificar\\extractor-matriz\\backend"],
+      "cwd": "C:\\Users\\maleg\\Music\\ZANN\\calificar\\extractor-matriz\\backend",
       "port": 8000
     },
     {
       "name": "interfaz",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "C:\\Users\\Motaz\\Videos\\calificar\\extractor-matriz\\frontend", "run", "dev"],
-      "cwd": "C:\\Users\\Motaz\\Videos\\calificar\\extractor-matriz\\frontend",
+      "runtimeArgs": ["--prefix", "C:\\Users\\maleg\\Music\\ZANN\\calificar\\extractor-matriz\\frontend", "run", "dev"],
+      "cwd": "C:\\Users\\maleg\\Music\\ZANN\\calificar\\extractor-matriz\\frontend",
       "port": 5173
     }
   ]

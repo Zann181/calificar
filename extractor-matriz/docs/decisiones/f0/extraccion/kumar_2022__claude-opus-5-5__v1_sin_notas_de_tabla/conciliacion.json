@@ -1,0 +1,43 @@
+[
+ {
+  "fila": null,
+  "estudio": 1,
+  "campo": "mapa_de_efectos (número de filas)",
+  "a": null,
+  "b": [
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b05",
+    "cita_textual": "Job satisfaction was measured by a scale developed by Jenkins, Nadler, Lawler, and Cammann (1975). The scale consisted of three items."
+   },
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b09",
+    "fila_tabla": "JP",
+    "columna_tabla": "JS",
+    "cita_textual": ".71**"
+   },
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b09",
+    "fila_tabla": "JS",
+    "columna_tabla": "Reliability (Cronbach's Alpha)",
+    "cita_textual": ".88"
+   },
+   {
+    "pagina_pdf": 2,
+    "bloque_id": "p02-b03",
+    "cita_textual": "job satisfaction is \"the happiness and peacefulness employees feel when what they gain at the workplace meets their material and spiritual needs\""
+   }
+  ],
+  "detalle": "Falta una fila. La regla_para_abrir_una_fila_nueva, punto 2, abre una fila nueva cuando cambia el indicador de felicidad y pone como ejemplo 'afecto positivo y satisfacción laboral en el mismo artículo'. Además, 'Satisfacción laboral' es una categoría de Tipo de felicidad real. El artículo mide la satisfacción laboral con una escala propia: Jenkins et al. (1975), 3 ítems, alfa .88. También informa su correlación con desempeño (JP-JS = .71**, Tabla 1) y su ruta hacia desempeño (β = .127*, Tabla IV y Figura 5). El propio artículo presenta la satisfacción laboral como felicidad, citando a Güney (2011). El par JS-JP cumple la regla y debía abrir una segunda fila con la misma muestra (D1-M1). Que el artículo trate a JS como antecedente no es un criterio de exclusión del libro de códigos. Nota: el ejemplo_verificado tiene una sola fila; esa contradicción entre el ejemplo y la regla normativa la debe resolver el equipo.",
+  "origen": "Auditor de evidencia",
+  "conciliacion": {
+   "decision": "PENDIENTE",
+   "valor": null,
+   "bloque_id": "p03-b05",
+   "cita_textual": "Job satisfaction was measured by a scale developed by Jenkins, Nadler, Lawler, and Cammann (1975). The scale consisted of three items.",
+   "razonamiento": "Los bloques muestran dos medidas de felicidad con correlación con JP (JS-JP = .71** y SWB-JP = .73**). Pero la regla recibida solo define qué debe contener mapa_de_efectos; no incluye la regla_para_abrir_una_fila_nueva ni la lista de categorías de Tipo de felicidad, y el valor alternativo es una lista de evidencias, no un número de filas, así que el texto disponible no alcanza para fijar cuántas filas corresponden."
+  }
+ }
+]

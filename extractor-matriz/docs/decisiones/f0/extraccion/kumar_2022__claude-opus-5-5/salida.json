@@ -1,0 +1,725 @@
+[
+ {
+  "fila": {
+   "Documento": 1,
+   "Estudio": 1,
+   "Covidence #": 671,
+   "Incluir en meta análisi": "PLS",
+   "Cita": "Kumar (2022)",
+   "Title": "Influence of University teachers’ job satisfaction on subjective well-being and job performance",
+   "Author": "S Pavan Kumar",
+   "Año": 2022,
+   "Pais": "India",
+   "Población": "Docentes de instituciones privadas de ingeniería",
+   "Sector": "Educación",
+   "Desempeño": "In-rol",
+   "Tipo de desempeño": "Cumplimiento de requisitos formales del cargo docente",
+   "cómo lo llaman (desempeño)": "Job performance",
+   "Escala de medición: Performance": "Lynch, Eisenberger y Armeli (1999)",
+   "Fiabilidad Alfa - Omega (desempeño)": 0.9,
+   "Validez CFA": "PLS",
+   "# Ítems": 9,
+   "Hedónica/eudaimónica": "Hedónica",
+   "cómo lo llaman (felicidad)": "Subjective well-being (SWB)",
+   "Tipo de felicidad real": "Satisfacción con la vida",
+   "Instrumento felicidad": "Diener, Emmons, Larsen y Griffin (1985)",
+   "Items instrumento1": 5,
+   "Fiabilidad Alfa - Omega (felicidad)": 0.87,
+   "CFA": "PLS",
+   "Validez?": "Si",
+   "Adaptado al trabajo": "No",
+   "Muestra": 395,
+   "How measure the employee perfomance": "No indica",
+   "Correlacion o Beta felicidad 1 - JP": "Correlación .73** (Tabla 1, p. 3 del PDF) | Beta .287** (Figura 5 y Tabla IV, p. 5 del PDF)",
+   "Correlación Feli 1 - JP": 0.73,
+   "Beta Fel 1- JP": 0.287,
+   "Analysis method (principal)": "PLS-SEM",
+   "Software": "SPSS 20.0; SmartPLS 3.0",
+   "Nivel": "Individual",
+   "Ejemplo ítem felicidad": "\"In most ways, my life is close to my ideal\"",
+   "Ejemplo ítem desempeño": "\"Employees perform tasks that are expected of them\"",
+   "Study design": "Cross sectional study",
+   "Teoría 1": "Ampliación y construcción (Fredrickson y Losada, 2005)",
+   "Teoría 2": null,
+   "Teoria 3": null,
+   "Definition Happiness": "Paráfrasis: el bienestar subjetivo es el grado en que el docente juzga de forma agradable la calidad global de su vida como un todo; se operacionaliza como juicio global de la vida, es decir, satisfacción con la vida (Kumar, 2020; p. 2 y p. 3 del PDF).",
+   "Definition Performance": "Paráfrasis: el desempeño laboral es el logro en el trabajo o el grado de éxito demostrado en un cargo (Demirtaş y Güneş, 2002; p. 2 del PDF).",
+   "Direccionalidad de la relación": "HP",
+   "Aim of study": "Investigar el efecto de la satisfacción laboral de los docentes sobre su desempeño laboral y verificar el papel del bienestar subjetivo como moderador de esa relación.",
+   "Start date": "No indica",
+   "End date": "No indica",
+   "Inclusion criteria": "No indica",
+   "Exclusion criteria": "Se eliminaron las respuestas no comprometidas (unengaged responses); no hubo valores atípicos.",
+   "Método de aplicación": "No indica",
+   "Tipo de muestreo": "Muestreo Aleatorio",
+   "Validez de las escalas": "PLS: Desempeño: AVE = .57; raíz de AVE = .75. Felicidad (SWB): AVE = .66; raíz de AVE = .81; cargas = .746 a .847. Modelo: SRMR = 0.06; NFI = 0.85.",
+   "Analysis method (detalle)": "Estadística descriptiva\nCorrelación entre variables latentes\nAnálisis de condiciones necesarias (NCA)\nPLS-SEM\nAnálisis de moderación",
+   "Conclusion": "Los autores concluyen que la evidencia respalda incorporar tanto el bienestar subjetivo como la satisfacción laboral en la tesis del trabajador feliz y productivo. El bienestar subjetivo modera la relación entre satisfacción laboral y desempeño; el desempeño fue mayor cuando los docentes informaron bienestar subjetivo bajo o medio, y el NCA indica que la satisfacción laboral y el bienestar subjetivo son condiciones necesarias del desempeño."
+  },
+  "trazabilidad": {
+   "id_muestra": "D1-M1",
+   "via_de_identificacion": "Covidence",
+   "estado_del_dato": {},
+   "evidencia": {
+    "Title": [
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Encabezado",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Influence of University teachers’ job satisfaction on subjective well-being and job performance",
+      "leido_de_figura": false,
+      "bloque_id": "p01-b01"
+     }
+    ],
+    "Author": [
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Encabezado",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Dr S Pavan Kumar",
+      "leido_de_figura": false,
+      "bloque_id": "p01-b02"
+     }
+    ],
+    "Año": [
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Pie de la revista",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Volume No 35, January 2022, Special issue",
+      "leido_de_figura": false,
+      "bloque_id": "p01-b11"
+     }
+    ],
+    "Pais": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Método",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Telangana and Andhra Pradesh states of India",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b03"
+     }
+    ],
+    "Población": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Método",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "The study is based on a sample of 395 teachers working for various private engineering institutions",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b03"
+     }
+    ],
+    "cómo lo llaman (desempeño)": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1, nota",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "JP – Job Performance",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     }
+    ],
+    "Escala de medición: Performance": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Conceptualization and Operationalization of Variables",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "To measure teachers’ job performance scale developed by Lynch, Eisenberger, and Armeli (1999) was used.",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b05"
+     }
+    ],
+    "Fiabilidad Alfa - Omega (desempeño)": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1",
+      "fila_tabla": "JP",
+      "columna_tabla": "Reliability (Cronbach's Alpha)",
+      "cita_textual": ".90",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     }
+    ],
+    "Validez CFA": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1, leyenda",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Average variance extracted (AVEs) (diagonal values in italics) and Square root of AVEs",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     }
+    ],
+    "# Ítems": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Conceptualization and Operationalization of Variables",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "This scale comprised nine items.",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b05"
+     }
+    ],
+    "cómo lo llaman (felicidad)": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1, nota",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "SWB – Subjective Well-being",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     }
+    ],
+    "Instrumento felicidad": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Conceptualization and Operationalization of Variables",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Subjective wellbeing was measured by a five-item scale developed by Diener, Emmons, Larsen, and Griffin (1985).",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b05"
+     }
+    ],
+    "Items instrumento1": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Conceptualization and Operationalization of Variables",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Subjective wellbeing was measured by a five-item scale",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b05"
+     }
+    ],
+    "Fiabilidad Alfa - Omega (felicidad)": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1",
+      "fila_tabla": "SWB",
+      "columna_tabla": "Reliability (Cronbach's Alpha)",
+      "cita_textual": ".87",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     }
+    ],
+    "CFA": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1, leyenda",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Average variance extracted (AVEs) (diagonal values in italics) and Square root of AVEs",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     }
+    ],
+    "Adaptado al trabajo": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Conceptualization and Operationalization of Variables",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Subjective wellbeing scale was about the overall judgment of life to measure the concept of life satisfaction.",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b05"
+     }
+    ],
+    "Muestra": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Método",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "The study is based on a sample of 395 teachers",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b03"
+     }
+    ],
+    "Correlacion o Beta felicidad 1 - JP": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1",
+      "fila_tabla": "SWB",
+      "columna_tabla": "JP",
+      "cita_textual": ".73**",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     },
+     {
+      "pagina_pdf": 5,
+      "ubicacion": "Tabla IV (texto extraído con formato de ecuación; valor leído de la imagen de la página)",
+      "fila_tabla": "H3 SWB → JS",
+      "columna_tabla": "Path Coefficients (β)",
+      "cita_textual": ".287**",
+      "leido_de_figura": true,
+      "bloque_id": "p05-b07"
+     }
+    ],
+    "Correlación Feli 1 - JP": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1",
+      "fila_tabla": "SWB",
+      "columna_tabla": "JP",
+      "cita_textual": ".73**",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     }
+    ],
+    "Beta Fel 1- JP": [
+     {
+      "pagina_pdf": 5,
+      "ubicacion": "Figura 5, ruta Subjective well-being → Job Performance",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "0.287",
+      "leido_de_figura": true,
+      "bloque_id": "p05-b02"
+     }
+    ],
+    "Analysis method (principal)": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Findings and Results",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "moderation analysis were tested using SmartPLS 3.0",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b07"
+     }
+    ],
+    "Software": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Findings and Results",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Descriptive statistics were performed by using SPSS 20.0",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b07"
+     },
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Findings and Results",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "moderation analysis were tested using SmartPLS 3.0",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b07"
+     }
+    ],
+    "Ejemplo ítem felicidad": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Conceptualization and Operationalization of Variables",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "In most ways, my life is close to my ideal",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b05"
+     }
+    ],
+    "Ejemplo ítem desempeño": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Conceptualization and Operationalization of Variables",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Employees perform tasks that are expected of them",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b05"
+     }
+    ],
+    "Study design": [
+     {
+      "pagina_pdf": 7,
+      "ubicacion": "Limitations and Recommendations",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "The present work was carried out on cross-sectional data",
+      "leido_de_figura": false,
+      "bloque_id": "p07-b03"
+     }
+    ],
+    "Teoría 1": [
+     {
+      "pagina_pdf": 2,
+      "ubicacion": "Literature Review",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Fredrickson and Losada (2005), in their broaden-and-build model suggested that satisfied and well-being employees are more likely to demonstrate better job performance",
+      "leido_de_figura": false,
+      "bloque_id": "p02-b05"
+     }
+    ],
+    "Definition Happiness": [
+     {
+      "pagina_pdf": 2,
+      "ubicacion": "Literature Review",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "focuses on the degree to which an individual teacher judges, the overall quality of his or her life as a whole in a pleasant way",
+      "leido_de_figura": false,
+      "bloque_id": "p02-b05"
+     },
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Conceptualization and Operationalization of Variables",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Subjective wellbeing scale was about the overall judgment of life to measure the concept of life satisfaction.",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b05"
+     }
+    ],
+    "Definition Performance": [
+     {
+      "pagina_pdf": 2,
+      "ubicacion": "Literature Review",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Job performance means work accomplishment or the degree of success demonstrated in any job (Demirtaş & Güneş, 2002).",
+      "leido_de_figura": false,
+      "bloque_id": "p02-b04"
+     }
+    ],
+    "Direccionalidad de la relación": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1, nota",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "All correlations are significant at ** p<.001",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     }
+    ],
+    "Aim of study": [
+     {
+      "pagina_pdf": 2,
+      "ubicacion": "Literature Review",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "the current study aims to investigate the impact of teachers’ job satisfaction on job performance",
+      "leido_de_figura": false,
+      "bloque_id": "p02-b05"
+     },
+     {
+      "pagina_pdf": 1,
+      "ubicacion": "Introducción",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "This study is designed to verify the role of teachers’ subjective well-being on the relationship between teachers’ job satisfaction and job performance.",
+      "leido_de_figura": false,
+      "bloque_id": "p01-b10"
+     }
+    ],
+    "Exclusion criteria": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Findings and Results",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Unengaged responses were deleted, there were no outliers",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b07"
+     }
+    ],
+    "Tipo de muestreo": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Método",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Random sampling method was adopted to collect the data.",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b03"
+     }
+    ],
+    "Validez de las escalas": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1",
+      "fila_tabla": "JP",
+      "columna_tabla": "JP (diagonal: AVE y raíz de AVE entre paréntesis)",
+      "cita_textual": ".57(.75)",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     },
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1",
+      "fila_tabla": "SWB",
+      "columna_tabla": "SWB (diagonal: AVE y raíz de AVE entre paréntesis)",
+      "cita_textual": ".66(.81)",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     },
+     {
+      "pagina_pdf": 5,
+      "ubicacion": "Figura 5, cargas SW1 a SW5 (mínima)",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "0.746",
+      "leido_de_figura": true,
+      "bloque_id": "p05-b02"
+     },
+     {
+      "pagina_pdf": 5,
+      "ubicacion": "Figura 5, cargas SW1 a SW5 (máxima)",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "0.847",
+      "leido_de_figura": true,
+      "bloque_id": "p05-b02"
+     },
+     {
+      "pagina_pdf": 5,
+      "ubicacion": "Model Quality",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "SRMR for the present model is 0.06",
+      "leido_de_figura": false,
+      "bloque_id": "p05-b06"
+     },
+     {
+      "pagina_pdf": 5,
+      "ubicacion": "Model Quality",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "NFI is found to be 0.85",
+      "leido_de_figura": false,
+      "bloque_id": "p05-b06"
+     }
+    ],
+    "Analysis method (detalle)": [
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Findings and Results",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Descriptive statistics were performed by using SPSS 20.0",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b07"
+     },
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Tabla 1, leyenda",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Correlations among latent variables",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b09"
+     },
+     {
+      "pagina_pdf": 4,
+      "ubicacion": "Necessary Condition Analysis",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "NCA scatterplots, statistics, and bottleneck analysis had proven the necessity of one relationship for another.",
+      "leido_de_figura": false,
+      "bloque_id": "p04-b05"
+     },
+     {
+      "pagina_pdf": 3,
+      "ubicacion": "Findings and Results",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "moderation analysis were tested using SmartPLS 3.0",
+      "leido_de_figura": false,
+      "bloque_id": "p03-b07"
+     }
+    ],
+    "Conclusion": [
+     {
+      "pagina_pdf": 7,
+      "ubicacion": "Conclusion",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "provides enough evidence supporting the incorporation of both teachers' subjective well-being (SWB) and teachers' job satisfaction in consideration of the happy/productive worker",
+      "leido_de_figura": false,
+      "bloque_id": "p07-b05"
+     },
+     {
+      "pagina_pdf": 7,
+      "ubicacion": "Conclusion",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "Job performance was highest when teachers reported low to average scores on SWB.",
+      "leido_de_figura": false,
+      "bloque_id": "p07-b05"
+     },
+     {
+      "pagina_pdf": 7,
+      "ubicacion": "Conclusion",
+      "fila_tabla": null,
+      "columna_tabla": null,
+      "cita_textual": "teachers job satisfaction and teachers subjective well-being are the necessary conditions to predict teachers job performance",
+      "leido_de_figura": false,
+      "bloque_id": "p07-b05"
+     }
+    ]
+   },
+   "tipo_fiabilidad_desempeno": "alfa",
+   "tipo_fiabilidad_felicidad": "alfa",
+   "fiabilidad_alternativa_desempeno": [
+    {
+     "tipo": "CR",
+     "valor": 0.92
+    }
+   ],
+   "fiabilidad_alternativa_felicidad": [
+    {
+     "tipo": "CR",
+     "valor": 0.91
+    }
+   ],
+   "items_aplicados_desempeno": null,
+   "items_aplicados_felicidad": null,
+   "metodo_obtencion_r": "Correlación entre compuestos PLS",
+   "r_derivado": null,
+   "r_imputado_desde_beta": null,
+   "tipo_de_efecto": "condicional",
+   "tecnica_del_beta": "PLS",
+   "covariables_del_beta": "Satisfacción laboral (JS) y término de interacción JS × SWB",
+   "signo_armonizado": false,
+   "misma_fuente": "No indica",
+   "retardo_meses": 0,
+   "n_nivel_2": null,
+   "n_observaciones": null,
+   "sensibilidad_r_cero": false,
+   "conjunto_sugerido": "Sensibilidad",
+   "motivo_decision_inclusion": "Condición 8: el r de la Tabla 1 es una correlación entre variables latentes de un modelo PLS (no hay r observado) y el beta es una ruta PLS condicional; no se cumplen las condiciones 6 ni 7.",
+   "otros_coeficientes": [
+    {
+     "descripcion": "Ruta JS → JP (H1)",
+     "valor": ".127*",
+     "evidencia": "Tabla IV, p. 5 del PDF (bloque p05-b07); texto p. 6 (p06-b04)"
+    },
+    {
+     "descripcion": "Ruta JS → SWB (H2; rotulada JS → SWP en la tabla)",
+     "valor": ".681**",
+     "evidencia": "Tabla IV, p. 5 del PDF (bloque p05-b07)"
+    },
+    {
+     "descripcion": "Interacción JS × SWB → JP (H4)",
+     "valor": "-.380**",
+     "evidencia": "Tabla IV, p. 5 del PDF (bloque p05-b07); texto p. 6 (p06-b04)"
+    },
+    {
+     "descripcion": "t de la ruta SWB → JP (H3)",
+     "valor": "5.28",
+     "evidencia": "Tabla IV, p. 5 del PDF; Figura 6 (5.275 leído de figura)"
+    },
+    {
+     "descripcion": "Tamaño del efecto NCA (cr-fdh) SWB → JP; no es un r",
+     "valor": ".160",
+     "evidencia": "Tabla II, p. 4 del PDF (bloque p04-b07)"
+    },
+    {
+     "descripcion": "Correlación JS–JP (no es par felicidad-desempeño de la fila)",
+     "valor": ".71**",
+     "evidencia": "Tabla 1, p. 3 del PDF (bloque p03-b09)"
+    }
+   ],
+   "mapa_de_efectos": "Una muestra (395 docentes de instituciones privadas de ingeniería de Telangana y Andhra Pradesh, India); una medida de felicidad (SWB, escala de Diener et al., 1985); una medida de desempeño (Lynch et al., 1999), sin fuente evaluadora declarada; una oleada (transversal). La satisfacción laboral (JS) es la variable independiente del modelo; se trata como predictor y no abre fila propia porque el modelo y el libro centran el par SWB–JP (decisión a confirmar por el verificador: JS es un indicador de felicidad según el vocabulario, y JS–JP tiene r = .71** y β = .127* en el artículo). Se abrió una fila (SWB–JP).",
+   "inferencias": [
+    {
+     "columna": "Población",
+     "valor": "Docentes de instituciones privadas de ingeniería",
+     "regla_aplicada": "Codificación",
+     "razonamiento": "El método dice teachers working for various private engineering institutions; el título dice University teachers."
+    },
+    {
+     "columna": "Study design (y retardo_meses = 0)",
+     "valor": "Cross sectional study",
+     "regla_aplicada": "Declaración de los autores",
+     "razonamiento": "Los autores declaran datos transversales; por eso ambas medidas son simultáneas."
+    },
+    {
+     "columna": "metodo_obtencion_r",
+     "valor": "Correlación entre compuestos PLS",
+     "regla_aplicada": "instruccion_operativa de Correlación Feli 1 - JP",
+     "razonamiento": "La leyenda de la Tabla 1 dice Correlations among latent variables y el modelo se estimó en SmartPLS."
+    },
+    {
+     "columna": "Desempeño",
+     "valor": "In-rol",
+     "regla_aplicada": "Clasificación por ítems",
+     "razonamiento": "El artículo dice que la escala evalúa the formal performance requirement for their job y el ítem de ejemplo se refiere a tareas esperadas."
+    },
+    {
+     "columna": "Tipo de felicidad real",
+     "valor": "Satisfacción con la vida",
+     "regla_aplicada": "Codificación según lo que miden los ítems",
+     "razonamiento": "El artículo dice que la escala mide the concept of life satisfaction; el ítem de ejemplo es de satisfacción con la vida. No se usa sigla porque el artículo no la usa."
+    },
+    {
+     "columna": "Exclusion criteria",
+     "valor": "Respuestas no comprometidas eliminadas",
+     "regla_aplicada": "Motivos explícitos de exclusión de casos",
+     "razonamiento": "El artículo declara la eliminación de casos durante la depuración de datos, pero no indica cuántos casos se eliminaron."
+    },
+    {
+     "columna": "Items instrumento1 y # Ítems",
+     "valor": "5 y 9",
+     "regla_aplicada": "Ítems retenidos",
+     "razonamiento": "La Figura 5 muestra 5 cargas para SW1–SW5 y 9 para PERF1–PERF9, igual que los ítems declarados; no hay evidencia de que se eliminaran ítems."
+    },
+    {
+     "columna": "Beta Fel 1- JP (tipo_de_efecto)",
+     "valor": "condicional",
+     "regla_aplicada": "Definición de tipo_de_efecto",
+     "razonamiento": "La ruta SWB → JP se estima en un modelo con el término de interacción JS × SWB."
+    }
+   ],
+   "discrepancias_en_el_articulo": [
+    {
+     "columna": "Beta Fel 1- JP",
+     "fuente_1": "La Tabla IV (p. 5) y el texto de p. 5 (p05-b08) rotulan H3 como SWB → JS (β = .287)",
+     "fuente_2": "La Figura 5 (p. 5) dibuja la ruta 0.287 de Subjective well-being hacia Job Performance; la hipótesis H3 (p. 2) y el texto de p. 6 (p06-b02) dicen que SWB tiene efecto sobre el desempeño",
+     "valor_adoptado": "0.287 como SWB → JP (la figura prevalece para identificar la ruta)"
+    },
+    {
+     "columna": "Conclusion",
+     "fuente_1": "La discusión (p. 6, p06-b09) dice que los docentes más satisfechos demuestran decreased job satisfaction cuando el SWB es alto",
+     "fuente_2": "La conclusión (p. 7) y la Figura 7 hablan de desempeño (Job performance was highest when teachers reported low to average scores on SWB)",
+     "valor_adoptado": "Se parafrasea la conclusión de p. 7; en la discusión, job satisfaction parece una errata por job performance"
+    },
+    {
+     "columna": "otros_coeficientes (H2)",
+     "fuente_1": "La Tabla IV rotula H2 como JS → SWP",
+     "fuente_2": "La hipótesis H2 y el texto de p. 5 se refieren a subjective well-being",
+     "valor_adoptado": "Se interpreta como JS → SWB"
+    }
+   ],
+   "advertencias_pendientes": [
+    "El artículo no declara quién respondió la escala de desempeño; probablemente fue autoinforme de los docentes. El verificador debe decidir si se acepta Self perception.",
+    "Se eliminaron respuestas no comprometidas sin informar cuántas; no queda claro si N = 395 es el N antes o después de la depuración. Los valores faltantes se imputaron con la media de la serie.",
+    "SWB es moderador en el modelo PLS; el beta .287 es condicional y no se puede convertir a r. El r = .73 es una correlación entre variables latentes de PLS, por eso la fila queda en PLS y no en SI.",
+    "V21: el diseño es transversal y los autores usan lenguaje causal (causal inferences, predicts). La paráfrasis de Conclusion no se corrigió.",
+    "La satisfacción laboral (JS) también es un indicador de felicidad según el vocabulario (Satisfacción laboral). El equipo debe decidir si se abre una segunda fila JS–JP (r = .71**; β = .127*, Tabla 1 y Tabla IV).",
+    "Tabla IV: el texto extraído viene en formato de ecuación; los valores se leyeron de la imagen de la página 5 y deben verificarse a mano.",
+    "Errores de rotulación sin efecto en la fila: el título de la Figura 4 dice Subjective well-being and Job Performance, pero sus ejes son JS y SWB; la leyenda de la Tabla III dice JS (Y) en lugar de JP.",
+    "Se quitó de Validez de las escalas el rango de VIF (1.66 a 2.98, p. 4, bloque p04-b03): el validador no encontró la cita literal en el texto del PDF, probablemente por el carácter del guion. Además, el VIF mide colinealidad, no validez. El verificador puede reincorporarlo si confirma la cita a mano."
+   ],
+   "confianza": "Media",
+   "extractor": "claude-opus-5-5",
+   "fecha_extraccion": "2026-10-05",
+   "verificador": null
+  }
+ }
+]

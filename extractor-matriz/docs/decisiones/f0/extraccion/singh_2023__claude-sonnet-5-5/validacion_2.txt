@@ -1,0 +1,3 @@
+AVISO   [V28] fila 1: Efecto simple con r = 0.463 y Beta = 0.542: revisar
+
+1 filas | 0 errores | 1 advertencias

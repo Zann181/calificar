@@ -1,0 +1,165 @@
+[
+ {
+  "fila": {
+   "Estudio": 1,
+   "Muestra": 395,
+   "Correlación Feli 1 - JP": 0.73,
+   "Beta Fel 1- JP": 0.287,
+   "Fiabilidad Alfa - Omega (desempeño)": 0.9,
+   "Fiabilidad Alfa - Omega (felicidad)": 0.87,
+   "# Ítems": 9,
+   "Items instrumento1": 5,
+   "Desempeño": "In-rol",
+   "Hedónica/eudaimónica": "Hedónica",
+   "Tipo de felicidad real": "Satisfacción con la vida",
+   "How measure the employee perfomance": "No indica",
+   "Study design": "Cross sectional study",
+   "Nivel": "Individual",
+   "Analysis method (principal)": "PLS-SEM",
+   "Direccionalidad de la relación": "HP",
+   "Incluir en meta análisi": "PLS"
+  },
+  "trazabilidad": {
+   "metodo_obtencion_r": "Correlación entre compuestos PLS",
+   "tipo_de_efecto": "condicional",
+   "tecnica_del_beta": "PLS",
+   "tipo_fiabilidad_desempeno": "alfa",
+   "tipo_fiabilidad_felicidad": "alfa",
+   "mapa_de_efectos": "Una muestra (395 docentes), una medida de felicidad (SWB, escala de satisfacción con la vida), una medida de desempeño (Lynch et al., 1999, de 9 ítems), una oleada: una fila. JS es una tercera variable y no abre fila porque no es felicidad según el protocolo. Falta decidir si JS cuenta como indicador de felicidad; el artículo la define como orientación afectiva hacia el trabajo. Si el equipo la cuenta, habría que abrir una fila adicional.",
+   "motivo_decision_inclusion": "Condición 8: la correlación de la Tabla 1 y la ruta beta provienen del modelo PLS; no hay r observado ni beta convertible.",
+   "evidencia": {
+    "Muestra": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b03",
+      "cita_textual": "The study is based on a sample of 395 teachers"
+     }
+    ],
+    "Correlación Feli 1 - JP": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b09",
+      "cita_textual": ".73**"
+     }
+    ],
+    "metodo_obtencion_r": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b09",
+      "cita_textual": "Correlations among latent variables"
+     }
+    ],
+    "Beta Fel 1- JP": [
+     {
+      "pagina_pdf": 5,
+      "bloque_id": "p05-b08",
+      "cita_textual": "(β=.287,"
+     },
+     {
+      "pagina_pdf": 5,
+      "bloque_id": "p05-b02",
+      "cita_textual": "Inner values (β path coefficients)"
+     }
+    ],
+    "tipo_de_efecto": [
+     {
+      "pagina_pdf": 6,
+      "bloque_id": "p06-b04",
+      "cita_textual": "SWB is acting as a moderator between JS and JP relationship"
+     }
+    ],
+    "tecnica_del_beta": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b07",
+      "cita_textual": "causal inferences and moderation analysis were tested using SmartPLS 3.0"
+     }
+    ],
+    "Fiabilidad Alfa - Omega (desempeño)": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b09",
+      "cita_textual": ".90"
+     }
+    ],
+    "tipo_fiabilidad_desempeno": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b09",
+      "cita_textual": "Reliability (Cronbach's Alpha)"
+     }
+    ],
+    "Fiabilidad Alfa - Omega (felicidad)": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b09",
+      "cita_textual": ".87"
+     }
+    ],
+    "tipo_fiabilidad_felicidad": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b09",
+      "cita_textual": "Reliability (Cronbach's Alpha)"
+     }
+    ],
+    "# Ítems": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b05",
+      "cita_textual": "This scale comprised nine items."
+     }
+    ],
+    "Items instrumento1": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b05",
+      "cita_textual": "Subjective wellbeing was measured by a five-item scale"
+     }
+    ],
+    "Desempeño": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b05",
+      "cita_textual": "to evaluate the formal performance requirement for their job"
+     }
+    ],
+    "Hedónica/eudaimónica": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b05",
+      "cita_textual": "to measure the concept of life satisfaction"
+     }
+    ],
+    "Tipo de felicidad real": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b05",
+      "cita_textual": "to measure the concept of life satisfaction"
+     }
+    ],
+    "Study design": [
+     {
+      "pagina_pdf": 7,
+      "bloque_id": "p07-b03",
+      "cita_textual": "The present work was carried out on cross-sectional data"
+     }
+    ],
+    "Analysis method (principal)": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b07",
+      "cita_textual": "causal inferences and moderation analysis were tested using SmartPLS 3.0"
+     }
+    ],
+    "Direccionalidad de la relación": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b09",
+      "cita_textual": "All correlations are significant at ** p<.001"
+     }
+    ]
+   }
+  }
+ }
+]

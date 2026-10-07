@@ -1,0 +1,20 @@
+{
+ "articulo": "singh_2023",
+ "modelo_extractor": "claude-sonnet-5-5",
+ "caracteres_etiquetado": 64048,
+ "caracteres_libro_sistema": 114829,
+ "imagenes": "pag-01.png, pag-04.png, pag-09.png, pag-11.png, pag-12.png, pag-13.png, pag-14.png",
+ "filas": 1,
+ "iteraciones_validador": 2,
+ "errores_validador": 0,
+ "acuerdo_con_verificado": 0.955,
+ "por_rol": {
+  "extractor": {
+   "llamadas": 2,
+   "tokens_entrada": 247321,
+   "tokens_salida": 28906,
+   "costo_usd": 0.7832
+  }
+ },
+ "costo_total_usd": 0.7832
+}

@@ -1,0 +1,4 @@
+.venv/
+modelos/
+mineru.json
+__pycache__/

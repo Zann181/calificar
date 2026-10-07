@@ -1,0 +1,3 @@
+rol,modelo,segundos,turnos,input,cache_escritura,cache_lectura,output,costo_usd,error
+extractor,claude-sonnet-5-5,62.1,2,4,71824,71823,11622,0.41788860000000005,False
+extractor,claude-sonnet-5-5,41.2,1,2,28432,51132,8890,0.2128584,False

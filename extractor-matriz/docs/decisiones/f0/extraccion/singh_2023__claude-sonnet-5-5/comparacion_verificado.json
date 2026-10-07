@@ -1,0 +1,13 @@
+{
+ "coincidencias": 21,
+ "total": 22,
+ "diferencias": [
+  {
+   "fila": 0,
+   "estudio": 71,
+   "campo": "Tipo de felicidad real",
+   "a": "Otro: felicidad del empleado (constructo multifacético, ítems no reportados)",
+   "b": "Índice compuesto (PHI, OHQ)"
+  }
+ ]
+}

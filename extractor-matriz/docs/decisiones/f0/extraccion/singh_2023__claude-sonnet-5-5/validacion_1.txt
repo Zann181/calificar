@@ -1,0 +1,6 @@
+ERROR   [V23] fila 1: Cita de 'Title' no se encuentra literal en el PDF: Efect of Perception of Organizational Support on Organizational Citizenship Beha
+ERROR   [V23] fila 1: Cita de 'Año' no se encuentra literal en el PDF: Published online: 31 May 2023
+ERROR   [V23] fila 1: Cita de 'Aim of study' no se encuentra literal en el PDF: also to find out the efect of employee happiness (EH) as a mediating variable on
+AVISO   [V28] fila 1: Efecto simple con r = 0.463 y Beta = 0.542: revisar
+
+1 filas | 3 errores | 1 advertencias

@@ -1,0 +1,20 @@
+{
+ "articulo": "singh_2023",
+ "modelo_extractor": "claude-opus-5-5",
+ "caracteres_etiquetado": 64048,
+ "caracteres_libro_sistema": 114592,
+ "imagenes": "pag-01.png, pag-04.png, pag-09.png, pag-11.png, pag-12.png, pag-13.png, pag-14.png",
+ "filas": 1,
+ "iteraciones_validador": 2,
+ "errores_validador": 0,
+ "acuerdo_con_verificado": 1.0,
+ "por_rol": {
+  "extractor": {
+   "llamadas": 2,
+   "tokens_entrada": 336198,
+   "tokens_salida": 33066,
+   "costo_usd": 1.7099
+  }
+ },
+ "costo_total_usd": 1.7099
+}

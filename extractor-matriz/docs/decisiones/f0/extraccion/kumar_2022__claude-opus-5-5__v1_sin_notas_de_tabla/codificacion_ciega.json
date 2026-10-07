@@ -1,0 +1,123 @@
+[
+ {
+  "fila": {
+   "Estudio": 1,
+   "Muestra": 395,
+   "Correlación Feli 1 - JP": 0.73,
+   "Beta Fel 1- JP": 0.287,
+   "Fiabilidad Alfa - Omega (desempeño)": 0.9,
+   "Fiabilidad Alfa - Omega (felicidad)": 0.87,
+   "# Ítems": 9,
+   "Items instrumento1": 5,
+   "Desempeño": "In-rol",
+   "Hedónica/eudaimónica": "Hedónica",
+   "Tipo de felicidad real": "Satisfacción con la vida",
+   "How measure the employee perfomance": "No indica",
+   "Study design": "Cross sectional study",
+   "Nivel": "Individual",
+   "Analysis method (principal)": "PLS-SEM",
+   "Direccionalidad de la relación": "HP",
+   "Incluir en meta análisi": "PLS"
+  },
+  "trazabilidad": {
+   "metodo_obtencion_r": "Correlación entre compuestos PLS",
+   "tipo_de_efecto": "condicional",
+   "tecnica_del_beta": "PLS",
+   "tipo_fiabilidad_desempeno": "alfa",
+   "tipo_fiabilidad_felicidad": "alfa",
+   "mapa_de_efectos": "Una muestra (395 docentes), una medida de felicidad (SWB, escala de satisfacción con la vida), una medida de desempeño (Lynch et al., 1999), una oleada: se abre una fila. JS (satisfacción laboral) es otra variable del modelo y no se cruza con JP como felicidad en esta fila. Discrepancia: la Tabla IV rotula H3 como SWB → JS (β = .287), pero la Figura 5 dibuja 0.287 desde Subjective well-being hacia Job Performance. Se adopta 0.287 como SWB → JP, porque la figura prevalece para identificar la ruta. El beta es el efecto principal de SWB en un modelo con JS y la interacción JS×SWB.",
+   "motivo_decision_inclusion": "Condición 8: el único coeficiente es una correlación entre compuestos PLS (Tabla 1) o una ruta PLS; no hay r observado.",
+   "evidencia": {
+    "Muestra": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b03",
+      "cita_textual": "The study is based on a sample of 395 teachers"
+     }
+    ],
+    "Correlación Feli 1 - JP": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b09",
+      "cita_textual": ".73**"
+     }
+    ],
+    "Beta Fel 1- JP": [
+     {
+      "pagina_pdf": 5,
+      "bloque_id": "p05-b08",
+      "cita_textual": "β=.287, p<.001, t=5.28"
+     },
+     {
+      "pagina_pdf": 5,
+      "bloque_id": "p05-b02",
+      "cita_textual": "Inner values (β path coefficients)"
+     }
+    ],
+    "Fiabilidad Alfa - Omega (desempeño)": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b09",
+      "cita_textual": ".90"
+     }
+    ],
+    "Fiabilidad Alfa - Omega (felicidad)": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b09",
+      "cita_textual": ".87"
+     }
+    ],
+    "# Ítems": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b05",
+      "cita_textual": "This scale comprised nine items."
+     }
+    ],
+    "Items instrumento1": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b05",
+      "cita_textual": "Subjective wellbeing was measured by a five-item scale"
+     }
+    ],
+    "Desempeño": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b05",
+      "cita_textual": "Employees perform tasks that are expected of them"
+     }
+    ],
+    "Tipo de felicidad real": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b05",
+      "cita_textual": "Subjective wellbeing scale was about the overall judgment of life to measure the concept of life satisfaction."
+     }
+    ],
+    "Study design": [
+     {
+      "pagina_pdf": 7,
+      "bloque_id": "p07-b03",
+      "cita_textual": "The present work was carried out on cross-sectional data"
+     }
+    ],
+    "Analysis method (principal)": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b07",
+      "cita_textual": "causal inferences and moderation analysis were tested using SmartPLS 3.0"
+     }
+    ],
+    "Direccionalidad de la relación": [
+     {
+      "pagina_pdf": 3,
+      "bloque_id": "p03-b09",
+      "cita_textual": ".73**"
+     }
+    ]
+   }
+  }
+ }
+]

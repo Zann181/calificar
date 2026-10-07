@@ -1,0 +1,43 @@
+{
+ "articulo": "kumar_2022",
+ "modelo_extractor": "claude-opus-5-5",
+ "caracteres_etiquetado": 51993,
+ "caracteres_libro_sistema": 114829,
+ "imagenes": "pag-02.png, pag-04.png, pag-05.png, pag-06.png",
+ "filas": 1,
+ "iteraciones_validador": 2,
+ "errores_validador": 0,
+ "acuerdo_con_verificado": 1.0,
+ "acuerdo_extractor_ciego": 1.0,
+ "hallazgos_auditor": 1,
+ "refutados": 1,
+ "discrepancias_ciego": 0,
+ "conciliaciones": 1,
+ "por_rol": {
+  "extractor": {
+   "llamadas": 2,
+   "tokens_entrada": 230365,
+   "tokens_salida": 27032,
+   "costo_usd": 1.4201
+  },
+  "ciego": {
+   "llamadas": 1,
+   "tokens_entrada": 143967,
+   "tokens_salida": 3016,
+   "costo_usd": 0.3322
+  },
+  "auditor": {
+   "llamadas": 1,
+   "tokens_entrada": 167029,
+   "tokens_salida": 4748,
+   "costo_usd": 0.7857
+  },
+  "conciliador": {
+   "llamadas": 1,
+   "tokens_entrada": 10949,
+   "tokens_salida": 613,
+   "costo_usd": 0.0998
+  }
+ },
+ "costo_total_usd": 2.6378
+}

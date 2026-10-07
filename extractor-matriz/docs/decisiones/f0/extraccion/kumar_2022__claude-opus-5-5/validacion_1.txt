@@ -1,0 +1,3 @@
+ERROR   [V23] fila 1: Cita de 'Validez de las escalas' no se encuentra literal en el PDF: For the present study, it was ranging from 1.66 - 2.98.
+
+1 filas | 1 errores | 0 advertencias

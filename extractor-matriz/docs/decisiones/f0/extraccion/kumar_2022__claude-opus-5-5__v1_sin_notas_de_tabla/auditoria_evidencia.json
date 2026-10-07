@@ -1,0 +1,74 @@
+[
+ {
+  "estudio": 1,
+  "columna": "mapa_de_efectos (número de filas)",
+  "auditor": "Auditor de evidencia",
+  "veredicto": "REFUTADO",
+  "hallazgo": "Falta una fila. La regla_para_abrir_una_fila_nueva, punto 2, abre una fila nueva cuando cambia el indicador de felicidad y pone como ejemplo 'afecto positivo y satisfacción laboral en el mismo artículo'. Además, 'Satisfacción laboral' es una categoría de Tipo de felicidad real. El artículo mide la satisfacción laboral con una escala propia: Jenkins et al. (1975), 3 ítems, alfa .88. También informa su correlación con desempeño (JP-JS = .71**, Tabla 1) y su ruta hacia desempeño (β = .127*, Tabla IV y Figura 5). El propio artículo presenta la satisfacción laboral como felicidad, citando a Güney (2011). El par JS-JP cumple la regla y debía abrir una segunda fila con la misma muestra (D1-M1). Que el artículo trate a JS como antecedente no es un criterio de exclusión del libro de códigos. Nota: el ejemplo_verificado tiene una sola fila; esa contradicción entre el ejemplo y la regla normativa la debe resolver el equipo.",
+  "evidencia": [
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b05",
+    "cita_textual": "Job satisfaction was measured by a scale developed by Jenkins, Nadler, Lawler, and Cammann (1975). The scale consisted of three items."
+   },
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b09",
+    "fila_tabla": "JP",
+    "columna_tabla": "JS",
+    "cita_textual": ".71**"
+   },
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b09",
+    "fila_tabla": "JS",
+    "columna_tabla": "Reliability (Cronbach's Alpha)",
+    "cita_textual": ".88"
+   },
+   {
+    "pagina_pdf": 2,
+    "bloque_id": "p02-b03",
+    "cita_textual": "job satisfaction is \"the happiness and peacefulness employees feel when what they gain at the workplace meets their material and spiritual needs\""
+   }
+  ],
+  "resolucion": null,
+  "estado": "Pendiente"
+ },
+ {
+  "estudio": 1,
+  "columna": "Incluir en meta análisi",
+  "auditor": "Auditor de evidencia",
+  "veredicto": "NO VERIFICABLE",
+  "hallazgo": "Para elegir entre PLS (condición 8) y SI (condición 6) hay que saber si la Tabla 1 contiene correlaciones entre constructos PLS o correlaciones de Pearson entre puntuaciones de escala. El texto etiquetado no trae el título ni la nota de la Tabla 1, y la página 3 no se entregó en PNG. Solo hay indicios indirectos: el texto compara la raíz del AVE con 'the correlations between constructs', y los descriptivos se calcularon en SPSS 20.0. Hay que revisar la Tabla 1 en el PDF original.",
+  "evidencia": [
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b10",
+    "cita_textual": "To determine discriminant validity, square roots of AVEs should be higher than the correlations between constructs."
+   },
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b07",
+    "cita_textual": "Descriptive statistics were performed by using SPSS 20.0"
+   }
+  ],
+  "resolucion": null,
+  "estado": "Pendiente"
+ },
+ {
+  "estudio": 1,
+  "columna": "trazabilidad.metodo_obtencion_r",
+  "auditor": "Auditor de evidencia",
+  "veredicto": "NO VERIFICABLE",
+  "hallazgo": "El valor 'Correlación entre compuestos PLS' es una inferencia que no se puede confirmar sin el título ni la nota de la Tabla 1. Ninguno de los dos aparece en el texto etiquetado, y no hay PNG de la página 3. De este campo dependen Incluir en meta análisi y conjunto_sugerido.",
+  "evidencia": [
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b09",
+    "cita_textual": "TABLE 1"
+   }
+  ],
+  "resolucion": null,
+  "estado": "Pendiente"
+ }
+]

@@ -1,0 +1,20 @@
+{
+ "articulo": "kumar_2022",
+ "modelo_extractor": "claude-sonnet-5-5",
+ "caracteres_etiquetado": 50810,
+ "caracteres_libro_sistema": 114829,
+ "imagenes": "pag-02.png, pag-04.png, pag-05.png, pag-06.png",
+ "filas": 1,
+ "iteraciones_validador": 2,
+ "errores_validador": 0,
+ "acuerdo_con_verificado": 1.0,
+ "por_rol": {
+  "extractor": {
+   "llamadas": 2,
+   "tokens_entrada": 223217,
+   "tokens_salida": 20512,
+   "costo_usd": 0.6308
+  }
+ },
+ "costo_total_usd": 0.6308
+}

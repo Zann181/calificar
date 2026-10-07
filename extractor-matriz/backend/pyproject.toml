@@ -1,0 +1,137 @@
+[project]
+name = "extractor-matriz"
+version = "0.1.0"
+description = "Extractor de la matriz de síntesis felicidad y desempeño"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+    "itsdangerous>=2.2",
+    "sqlalchemy>=2.0.30",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
+    "dramatiq[redis]>=1.17",
+    "boto3>=1.34",
+    "httpx>=0.27",
+    "rapidfuzz>=3.9",
+    "openpyxl>=3.1",
+    "jsonschema>=4.22",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.2",
+    "pymupdf>=1.24",  # capa de texto (H1, H3) y páginas en PNG para el modelo (sección 8.1)
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "testcontainers[postgres,redis]>=4.7",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "import-linter>=2.0",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integracion: adaptadores reales sobre SQLite y almacén en memoria (ADR 0003)",
+    "dorada: prueba dorada contra resultados esperados",
+]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Inyección de dependencias de FastAPI: se declaran como valores por defecto.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.File", "fastapi.Form", "fastapi.Query"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["app.contextos.*.dominio.*", "app.compartido.dominio", "app.compartido.normalizacion"]
+strict = true
+
+[tool.importlinter]
+root_package = "app"
+include_external_packages = true
+
+# 1. dominio/ no importa aplicacion/, adaptadores/, SQLAlchemy, FastAPI, anthropic ni subprocess (ADR 0002).
+[[tool.importlinter.contracts]]
+name = "El dominio no depende de infraestructura"
+type = "forbidden"
+source_modules = [
+    "app.contextos.biblioteca.dominio",
+    "app.contextos.normas.dominio",
+    "app.contextos.extraccion.dominio",
+    "app.contextos.matriz.dominio",
+    "app.contextos.orquestacion.dominio",
+    "app.contextos.exportacion.dominio",
+    "app.compartido.dominio",
+]
+forbidden_modules = [
+    "sqlalchemy", "fastapi", "anthropic", "starlette", "boto3", "httpx", "dramatiq", "subprocess",
+    "pymupdf",
+    "app.contextos.biblioteca.aplicacion", "app.contextos.biblioteca.adaptadores",
+    "app.contextos.normas.aplicacion", "app.contextos.normas.adaptadores",
+    "app.contextos.extraccion.aplicacion", "app.contextos.extraccion.adaptadores",
+    "app.contextos.matriz.aplicacion", "app.contextos.matriz.adaptadores",
+    "app.contextos.orquestacion.aplicacion", "app.contextos.orquestacion.adaptadores",
+    "app.contextos.exportacion.aplicacion", "app.contextos.exportacion.adaptadores",
+]
+
+# 2. aplicacion/ importa dominio/ y puertos.py, nunca adaptadores/ ni subprocess (ADR 0002).
+[[tool.importlinter.contracts]]
+name = "La aplicación no depende de adaptadores"
+type = "forbidden"
+source_modules = [
+    "app.contextos.biblioteca.aplicacion",
+    "app.contextos.normas.aplicacion",
+    "app.contextos.extraccion.aplicacion",
+    "app.contextos.matriz.aplicacion",
+    "app.contextos.orquestacion.aplicacion",
+    "app.contextos.exportacion.aplicacion",
+]
+forbidden_modules = [
+    "sqlalchemy", "fastapi", "boto3", "httpx", "anthropic", "subprocess", "pymupdf",
+    "app.contextos.biblioteca.adaptadores",
+    "app.contextos.normas.adaptadores",
+    "app.contextos.extraccion.adaptadores",
+    "app.contextos.matriz.adaptadores",
+    "app.contextos.orquestacion.adaptadores",
+    "app.contextos.exportacion.adaptadores",
+]
+
+# 3. Un contexto importa de otro solo sus eventos públicos (<contexto>/eventos.py).
+#    El cableado entre contextos vive en app.composicion (fuera de los contextos).
+[[tool.importlinter.contracts]]
+name = "Contextos independientes salvo eventos públicos"
+type = "independence"
+modules = [
+    "app.contextos.biblioteca",
+    "app.contextos.normas",
+    "app.contextos.extraccion",
+    "app.contextos.matriz",
+    "app.contextos.orquestacion",
+    "app.contextos.exportacion",
+]
+ignore_imports = [
+    "app.contextos.** -> app.contextos.*.eventos",
+]

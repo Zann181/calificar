@@ -1,0 +1,47 @@
+[
+ {
+  "fila": null,
+  "estudio": 1,
+  "campo": "mapa_de_efectos (número de filas del Documento 1)",
+  "a": null,
+  "b": [
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b09",
+    "ubicacion": "Tabla 1",
+    "fila_tabla": "JP",
+    "columna_tabla": "JS",
+    "cita_textual": ".71**"
+   },
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b05",
+    "ubicacion": "Conceptualization and Operationalization of Variables",
+    "cita_textual": "Job satisfaction was measured by a scale developed by Jenkins, Nadler, Lawler, and Cammann (1975). The scale consisted of three items."
+   },
+   {
+    "pagina_pdf": 3,
+    "bloque_id": "p03-b09",
+    "ubicacion": "Tabla 1",
+    "fila_tabla": "JS",
+    "columna_tabla": "Reliability (Cronbach's Alpha)",
+    "cita_textual": ".88"
+   },
+   {
+    "pagina_pdf": 5,
+    "bloque_id": "p05-b08",
+    "ubicacion": "Model Quality, texto",
+    "cita_textual": "(β=.127, p<.05, t=3.02)"
+   }
+  ],
+  "detalle": "Falta una fila. El extractor abrió solo la fila SWB–JP. La regla regla_para_abrir_una_fila_nueva, punto 2 ('Cambia el indicador de felicidad: por ejemplo, afecto positivo y satisfacción laboral en el mismo artículo'), obliga a abrir otra fila para la satisfacción laboral (JS), que en el vocabulario es la categoría 'Satisfacción laboral'. El par JS–JP tiene su propia medida y su propio coeficiente en la misma muestra. JS se midió con la escala de Jenkins, Nadler, Lawler y Cammann (1975), de 3 ítems, con alfa .88 y CR .93 en la Tabla 1, AVE .81 y raíz de AVE .90. Ítem de ejemplo: 'I get a feeling of personal satisfaction in doing my job'. La correlación JS–JP es .71** (Tabla 1, entre variables latentes de PLS) y la ruta JS → JP es β = .127* (Tabla IV, Figura 5). El propio extractor reconoce en el mapa y en advertencias_pendientes que JS es un indicador de felicidad, pero dejó la decisión al equipo en vez de aplicar la regla. Hay que abrir la fila JS–JP en D1-M1. Debería quedar como PLS, condición 8, con conjunto_sugerido Sensibilidad.",
+  "origen": "Auditor de evidencia",
+  "conciliacion": {
+   "decision": "PENDIENTE",
+   "valor": null,
+   "bloque_id": "p03-b05",
+   "cita_textual": "Job satisfaction was measured by a scale developed by Jenkins, Nadler, Lawler, and Cammann (1975). The scale consisted of three items.",
+   "razonamiento": "Los bloques muestran que JS tiene su propia medida y una relación propia con JP (r = .71**, β = .127*), pero la regla recibida no incluye 'regla_para_abrir_una_fila_nueva' ni el vocabulario que clasifica la satisfacción laboral como indicador de felicidad, así que no se puede fijar el número de filas. Además, el valor alternativo es una lista de evidencias y no un número de filas, por lo que tampoco sirve directamente como valor del campo."
+  }
+ }
+]
