@@ -5,7 +5,6 @@ en el trabajo. A partir de los PDF de los artículos se extraen las 54 columnas 
 conserva su evidencia: página, bloque, rectángulo y cita literal. **Un dato sin ubicación comprobable no entra como
 verificado.**
 
-Responsable del dominio: Pablo Andrés Erazo Muñoz, PhD.
 
 ## Qué hay en este repositorio
 
