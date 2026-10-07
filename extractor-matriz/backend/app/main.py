@@ -41,6 +41,10 @@ def crear_app(ajustes: Settings | None = None, contenedor: Any = None) -> FastAP
         else:
             servidor.warning("El despachador no corre dentro del servidor: la conversión y las filas de una "
                              "extracción necesitan `cli despachar`")
+        try:  # lo que quedó en cola o a medias al cerrar la aplicación sigue solo
+            c.ejecutor.reanudar(api_extracciones.SIN_ACTIVIDAD_S)
+        except Exception:
+            servidor.exception("No se pudieron retomar las extracciones pendientes")
         yield
         c.ejecutor.cerrar()
         c.despachador.detener()

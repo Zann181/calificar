@@ -35,9 +35,8 @@ const EXTRAIBLES: EstadoArticulo[] = [
   "ERROR",
   "POR_REVISAR",
 ];
-// Medido en una corrida real con los cuatro roles: Bibi 2022 (19 páginas) costó 6,82 USD equivalentes y 11 min.
-// En F0, Kumar (8 páginas) costó 2,64 USD y 4 min: el costo crece con las páginas y con las iteraciones del validador.
-const USD_POR_ARTICULO = 7;
+// Medido en una corrida real con los cuatro roles: Bibi 2022 (19 páginas) tardó 11 min; Kumar (8 páginas), 4 min.
+// El gasto de la cuenta (ventana de 5 horas) se ve en la cabecera.
 const MINUTOS_POR_ARTICULO = 11;
 
 /** Número de Documento sugerido: el prefijo numérico del nombre del archivo («3. Bibi 2022.pdf» → 3). */
@@ -129,21 +128,22 @@ export function PanelArticulos({
 
   // Clic en la etiqueta de estado de un artículo extraíble (Nuevo, Listo, Error o Heredado): empieza ya. Si está sin
   // convertir, el servidor lo convierte primero con MinerU y sigue solo; el avance sale en la cabecera y en el artículo.
+  // Un artículo en Error se retoma con los datos de su último intento. Si faltan el Documento o el Covidence #
+  // (ni el intento anterior ni la matriz los tienen), abre el diálogo de extracción para indicarlos.
   const [fallo, setFallo] = useState<string | null>(null);
   const extraerUno = useMutation({
-    mutationFn: (a: Articulo) => {
-      const documento = documentoDe.has(a.id)
-        ? String(documentoDe.get(a.id))
-        : documentoSugerido(a.nombre_archivo);
-      if (!ENTERO.test(documento))
-        throw new Error(
-          `«${a.nombre_archivo}»: indique el Documento con «Extraer seleccionados»`,
-        );
+    mutationFn: async (a: Articulo) => {
+      if (a.estado === "ERROR") {
+        const r = await api.retomar(pid, [a.id]);
+        if (!r[0]?.sin_datos) return r;
+      }
+      const documento = documentoDeArticulo(a);
       const covidence = covidenceDe.get(Number(documento));
-      if (covidence === undefined)
-        throw new Error(
-          `«${a.nombre_archivo}»: indique el Covidence # (o la vía si no pasó por Covidence) con «Extraer seleccionados»`,
-        );
+      if (!ENTERO.test(documento) || covidence === undefined) {
+        setMarcados((m) => new Set([...m, a.id]));
+        abrirDialogo([...extraibles.filter((x) => x.id !== a.id), a]);
+        return null;
+      }
       return api.extraer(
         pid,
         [
@@ -158,6 +158,7 @@ export function PanelArticulos({
       );
     },
     onSuccess: (r) => {
+      if (r === null) return; // se abrió el diálogo
       setFallo(r.find((x) => !x.encolado)?.error ?? null);
       qc.invalidateQueries({ queryKey: ["avance", pid] });
       qc.invalidateQueries({ queryKey: ["articulos", pid] });
@@ -254,6 +255,18 @@ export function PanelArticulos({
   );
   const todosVisiblesMarcados =
     visibles.length > 0 && visibles.every((a) => marcados.has(a.id));
+
+  const abrirDialogo = (lista: Articulo[]) => {
+    setRechazos([]);
+    setDocumentos(
+      Object.fromEntries(lista.map((a) => [a.id, documentoDeArticulo(a)])),
+    );
+    setCovidences(
+      Object.fromEntries(lista.map((a) => [a.id, covidenceDeArticulo(a)])),
+    );
+    setVias({});
+    setDialogo(true);
+  };
 
   const alternar = (id: string) =>
     setMarcados((m) => {
@@ -377,21 +390,7 @@ export function PanelArticulos({
         </label>
         <button
           disabled={extraibles.length === 0}
-          onClick={() => {
-            setRechazos([]);
-            setDocumentos(
-              Object.fromEntries(
-                extraibles.map((a) => [a.id, documentoDeArticulo(a)]),
-              ),
-            );
-            setCovidences(
-              Object.fromEntries(
-                extraibles.map((a) => [a.id, covidenceDeArticulo(a)]),
-              ),
-            );
-            setVias({});
-            setDialogo(true);
-          }}
+          onClick={() => abrirDialogo(extraibles)}
         >
           Extraer seleccionados{" "}
           {extraibles.length ? `(${extraibles.length})` : ""}
@@ -428,7 +427,7 @@ export function PanelArticulos({
                 className={`estado estado-${a.estado} accionable`}
                 disabled={extraerUno.isPending}
                 onClick={() => extraerUno.mutate(a)}
-                title={`${a.estado === "NUEVO" ? "Clic: convertir con MinerU y extraer" : a.estado === "LISTO" ? "Convertido, falta extraer. Clic: extraer" : "Clic: extraer"} (unos ${USD_POR_ARTICULO} USD y ${MINUTOS_POR_ARTICULO} min)`}
+                title={`${a.estado === "NUEVO" ? "Clic: convertir con MinerU y extraer" : a.estado === "LISTO" ? "Convertido, falta extraer. Clic: extraer" : "Clic: extraer"} (unos ${MINUTOS_POR_ARTICULO} min)`}
               >
                 {NOMBRE_ESTADO[a.estado]}
                 <span className="accion-extraer"> ▶ Extraer</span>
@@ -461,12 +460,10 @@ export function PanelArticulos({
               <h3>Extraer {extraibles.length} artículo(s)</h3>
               <p>
                 Estimación según una corrida real (19 páginas): unos{" "}
-                {(extraibles.length * USD_POR_ARTICULO).toLocaleString("es", {
-                  maximumFractionDigits: 2,
-                })}{" "}
-                USD equivalentes y {extraibles.length * MINUTOS_POR_ARTICULO}{" "}
-                min en total. Se procesan de a uno, en segundo plano; el avance
-                aparece en cada artículo.
+                {extraibles.length * MINUTOS_POR_ARTICULO} min en total. Se
+                procesan de a uno, en segundo plano; el avance aparece en cada
+                artículo. El gasto de la cuenta de Claude (ventana de 5 horas)
+                se ve arriba, en la cabecera.
               </p>
               {extraibles.some(
                 (a) => a.estado === "NUEVO" || a.estado === "CONVIRTIENDO",

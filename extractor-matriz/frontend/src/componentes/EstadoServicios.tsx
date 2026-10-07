@@ -1,4 +1,5 @@
-// Monitor de la cabecera: servicios (servidor, despachador, MinerU, Claude) y avance de la extracción.
+// Monitor de la cabecera: servicios (servidor, despachador, MinerU, Claude), uso de la cuenta de Claude en la
+// ventana de 5 horas (y cuándo se restablece) y avance de la extracción.
 // Dos modos que se recuerdan: «barra» (los cuatro indicadores y la dona) o «icono» (solo la dona). En ambos, un
 // clic en la dona despliega el detalle: en qué paso va cada extracción y el estado de cada servicio.
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { api } from "../api";
 import { enCurso, formatoTiempo, PASOS_VISIBLES, porcentajeVisible, useAvance } from "../avance";
-import type { AvanceExtraccion, Articulo, PendienteDeExtraccion } from "../tipos";
+import type { AvanceExtraccion, Articulo, CuentaClaude, PendienteDeExtraccion, VentanaCuenta } from "../tipos";
 import { Dona } from "./Dona";
 
 const ETIQUETA: Record<string, string> = {
@@ -26,6 +27,45 @@ function modoGuardado(): Modo {
   } catch {
     return "barra";
   }
+}
+
+/** «2 h 15 min», «8 min» o «menos de 1 min» hasta `iso`. */
+function faltaPara(iso: string, ahora: number): string {
+  const min = Math.ceil((Date.parse(iso) - ahora) / 60_000);
+  if (min <= 0) return "ya";
+  if (min < 60) return `${min} min`;
+  return `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`;
+}
+
+const hora = (iso: string) => new Date(iso).toLocaleTimeString("es", { hour: "numeric", minute: "2-digit" });
+
+function nivelCuenta(v: VentanaCuenta): "ok" | "aviso" | "error" {
+  return v.usado >= 90 ? "error" : v.usado >= 70 ? "aviso" : "ok";
+}
+
+function textoVentana(v: VentanaCuenta, ahora: number): string {
+  const quedan = Math.max(0, Math.round(100 - v.usado));
+  const reinicio = v.restablece ? ` · se restablece en ${faltaPara(v.restablece, ahora)} (${hora(v.restablece)})` : "";
+  return `${Math.round(v.usado)} % usado, quedan ${quedan} %${reinicio}`;
+}
+
+/** Píldora de la cabecera: lo que queda de la ventana de 5 horas y cuándo se restablece. */
+function PildoraCuenta({ cuenta, ahora }: { cuenta: CuentaClaude; ahora: number }) {
+  const v = cuenta.cinco_horas;
+  if (!v) return null;
+  const quedan = Math.max(0, Math.round(100 - v.usado));
+  const nivel = cuenta.bloqueada ? "error" : nivelCuenta(v);
+  return (
+    <span
+      className={`servicio limite-cuenta ${nivel}`}
+      title={`Cuenta de Claude, ventana de 5 horas: ${textoVentana(v, ahora)}`}
+    >
+      <span className="limite-pista" aria-hidden="true">
+        <span className="limite-relleno" style={{ width: `${Math.min(100, v.usado)}%` }} />
+      </span>
+      5 h: quedan {quedan} %{v.restablece ? ` · ${faltaPara(v.restablece, ahora)}` : ""}
+    </span>
+  );
 }
 
 function Pasos({ a, ahora }: { a: AvanceExtraccion; ahora: number }) {
@@ -137,7 +177,9 @@ export function EstadoServicios({ pid }: { pid: string }) {
               Sin conexión con el servidor
             </span>
           ) : (
-            servicios.map((c) => (
+            <>
+            {estado.data?.cuenta && <PildoraCuenta cuenta={estado.data.cuenta} ahora={ahora} />}
+            {servicios.map((c) => (
               <span key={c.id} className={`servicio ${c.estado}`} title={c.detalle}>
                 <i className="punto-servicio" />
                 {ETIQUETA[c.id] ?? c.nombre}
@@ -146,7 +188,8 @@ export function EstadoServicios({ pid }: { pid: string }) {
                   {c.estado === "ok" ? "activo" : c.estado === "aviso" ? "con aviso" : "con error"}
                 </span>
               </span>
-            ))
+            ))}
+            </>
           )}
         </div>
       )}
@@ -192,7 +235,7 @@ export function EstadoServicios({ pid }: { pid: string }) {
                   {a.fallida
                     ? "Falló"
                     : a.terminada_en
-                      ? `Completada · ${a.costo_usd.toLocaleString("es", { minimumFractionDigits: 2 })} USD`
+                      ? "Completada"
                       : formatoTiempo((ahora - Date.parse(a.iniciada_en)) / 1000)}
                 </span>
               </div>
@@ -200,6 +243,32 @@ export function EstadoServicios({ pid }: { pid: string }) {
               {a.fallida && a.error && <p className="error">{a.error}</p>}
             </div>
           ))}
+          {estado.data?.cuenta && (
+            <>
+              <h4>Cuenta de Claude</h4>
+              <ul className="servicios-detalle">
+                {estado.data.cuenta.cinco_horas && (
+                  <li className={estado.data.cuenta.bloqueada ? "error" : nivelCuenta(estado.data.cuenta.cinco_horas)}>
+                    <i className="punto-servicio" />
+                    <b>Ventana de 5 horas</b>
+                    <span className="tenue">{textoVentana(estado.data.cuenta.cinco_horas, ahora)}</span>
+                  </li>
+                )}
+                {estado.data.cuenta.siete_dias && (
+                  <li className={nivelCuenta(estado.data.cuenta.siete_dias)}>
+                    <i className="punto-servicio" />
+                    <b>Semana (7 días)</b>
+                    <span className="tenue">{textoVentana(estado.data.cuenta.siete_dias, ahora)}</span>
+                  </li>
+                )}
+              </ul>
+              <p className="tenue">
+                {estado.data.cuenta.bloqueada
+                  ? "Límite alcanzado: las extracciones fallarán hasta que se restablezca."
+                  : `Dato de las ${hora(estado.data.cuenta.actualizado)}; se actualiza con cada llamada al modelo.`}
+              </p>
+            </>
+          )}
           <h4>Servicios</h4>
           <ul className="servicios-detalle">
             {servicios.map((c) => (

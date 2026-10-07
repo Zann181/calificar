@@ -1,4 +1,4 @@
-// Barra de avance de una extracción: porcentaje, paso actual, tiempo transcurrido y costo.
+// Barra de avance de una extracción: porcentaje, paso actual y tiempo transcurrido.
 import { formatoTiempo, porcentajeVisible } from "../avance";
 import type { AvanceExtraccion, PendienteDeExtraccion } from "../tipos";
 
@@ -41,7 +41,7 @@ export function BarraAvance({ avance, pendiente, ahora }: Props) {
   const texto = fallida
     ? `Falló: ${avance.error ?? "error desconocido"}`
     : lista
-      ? `Completada en ${tiempo} · ${avance.costo_usd.toLocaleString("es", { minimumFractionDigits: 2 })} USD equivalentes${avance.acuerdo !== null ? ` · acuerdo ${Math.round(avance.acuerdo * 100)} %` : ""}`
+      ? `Completada en ${tiempo}${avance.acuerdo !== null ? ` · acuerdo ${Math.round(avance.acuerdo * 100)} %` : ""}`
       : avance.inactiva
         ? "Sin avance hace más de 30 min: el proceso pudo detenerse"
         : avance.paso_texto;

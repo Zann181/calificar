@@ -43,7 +43,10 @@ from app.contextos.exportacion.aplicacion.casos_de_uso import ExportarMatriz
 from app.contextos.exportacion.puertos import FilaExportable, MatrizBase
 from app.contextos.extraccion.adaptadores.claude_cli import ClaudeCli
 from app.contextos.extraccion.adaptadores.pdf import LectorPyMuPdf
-from app.contextos.extraccion.adaptadores.repositorio_sql import UnidadDeTrabajoExtraccionSql
+from app.contextos.extraccion.adaptadores.repositorio_sql import (
+    ColaDeExtraccionesSql,
+    UnidadDeTrabajoExtraccionSql,
+)
 from app.contextos.extraccion.adaptadores.validador import ScriptValidador
 from app.contextos.extraccion.aplicacion.casos_de_uso import (
     CasosDeExtraccion,
@@ -303,7 +306,8 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
             informar(ESPERANDO_MINERU if estado == EstadoArticulo.NUEVO else CONVIRTIENDO)
             time.sleep(3)
 
-    ejecutor = EjecutorDeExtracciones(extraccion.extraer, ajustes.extracciones_en_paralelo, preparar_extraccion)
+    ejecutor = EjecutorDeExtracciones(extraccion.extraer, ajustes.extracciones_en_paralelo, preparar_extraccion,
+                                      ColaDeExtraccionesSql(fabrica))
 
     def mineru() -> dict[str, Any] | None:
         salud = getattr(conversor, "salud", None)

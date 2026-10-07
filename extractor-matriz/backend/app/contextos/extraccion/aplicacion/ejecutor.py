@@ -2,6 +2,8 @@
 
 Cada pedido corre ExtraerArticulo en un hilo; con `en_paralelo = 1` las demás esperan en cola. El avance de
 cada una queda en la base (Extraccion.progreso), así que la interfaz lo ve igual si la lanzó la API o la CLI.
+La cola también se guarda en la base: al abrir la aplicación, reanudar() vuelve a lanzar lo que quedó pendiente
+o a medias al cerrarla (una extracción a medias empieza de nuevo: la llamada al modelo no se puede retomar).
 """
 
 from __future__ import annotations
@@ -12,10 +14,11 @@ import time
 import uuid
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from app.compartido.dominio import ErrorDeDominio
 from app.contextos.extraccion.aplicacion.casos_de_uso import ExtraerArticulo, OpcionesDeExtraccion
+from app.contextos.extraccion.puertos import ColaDeExtracciones, PedidoGuardado
 
 log = logging.getLogger("extraccion")
 
@@ -46,8 +49,10 @@ Preparar = Callable[[PedidoDeExtraccion, Callable[[str], None]], None]
 
 
 class EjecutorDeExtracciones:
-    def __init__(self, extraer: ExtraerArticulo, en_paralelo: int = 1, preparar: Preparar | None = None) -> None:
-        self._extraer, self._preparar = extraer, preparar
+    def __init__(self, extraer: ExtraerArticulo, en_paralelo: int = 1, preparar: Preparar | None = None,
+                 cola: ColaDeExtracciones | None = None) -> None:
+        self._extraer, self._preparar, self._cola = extraer, preparar, cola
+        self._cerrando = False
         self._pool = ThreadPoolExecutor(max_workers=max(1, en_paralelo), thread_name_prefix="extraccion")
         self._cerrojo = threading.Lock()
         self._pedidos: dict[uuid.UUID, PedidoDeExtraccion] = {}  # en cola o corriendo, en orden de llegada
@@ -62,6 +67,9 @@ class EjecutorDeExtracciones:
             posicion = len(self._pedidos)
             self._pedidos[pedido.articulo_id] = pedido
             self._fases[pedido.articulo_id] = (EN_COLA, time.time())
+        if self._cola is not None:
+            self._cola.guardar(PedidoGuardado(pedido.proyecto_id, pedido.articulo_id, pedido.nombre,
+                                              asdict(pedido.opciones)))
         log.info("«%s»: extracción encolada (posición %d) · Documento %s", pedido.nombre, posicion + 1,
                  pedido.opciones.documento)
         self._pool.submit(self._correr, pedido)
@@ -95,6 +103,31 @@ class EjecutorDeExtracciones:
                 self._pedidos.pop(p.articulo_id, None)
                 self._fases.pop(p.articulo_id, None)
                 self._corriendo.discard(p.articulo_id)
+            if self._cola is not None and not self._cerrando:  # cortada al cerrar: se retoma al abrir
+                self._cola.quitar(p.articulo_id)
+
+    def reanudar(self, sin_actividad_s: float) -> int:
+        """Al abrir la aplicación: cierra las extracciones que quedaron a medias y vuelve a encolar los pedidos
+        guardados, en su orden. Devuelve cuántos encoló."""
+        if self._cola is None:
+            return 0
+        guardados = self._cola.pendientes()
+        cerradas = self._extraer.cerrar_interrumpidas({g.articulo_id for g in guardados}, sin_actividad_s)
+        if cerradas:
+            log.warning("%d extracción(es) quedaron a medias al cerrar la aplicación", cerradas)
+        encolados = 0
+        for g in guardados:
+            try:
+                self.encolar(PedidoDeExtraccion(g.proyecto_id, g.articulo_id, g.nombre,
+                                                OpcionesDeExtraccion(**g.opciones)))
+                encolados += 1
+            except Exception:
+                log.exception("«%s»: no se pudo retomar la extracción pendiente", g.nombre)
+                self._cola.quitar(g.articulo_id)
+        if encolados:
+            log.info("Se retoman %d extracción(es) que quedaron pendientes al cerrar la aplicación", encolados)
+        return encolados
 
     def cerrar(self) -> None:
+        self._cerrando = True
         self._pool.shutdown(wait=False, cancel_futures=True)

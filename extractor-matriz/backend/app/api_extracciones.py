@@ -1,6 +1,7 @@
 """Lanzar extracciones desde la interfaz y consultar su avance.
 
 POST /extracciones           encola artículos (corren en segundo plano, uno tras otro)
+POST /extracciones/retomar   vuelve a lanzar artículos en Error con los datos de su último intento
 GET  /extracciones/avance    extracciones en curso o terminadas hace poco, con porcentaje y paso actual,
                              más los artículos que esperan en cola
 """
@@ -84,26 +85,53 @@ def avance(request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido),
 def extraer(datos: PedidoDeLote, request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido),
             _: Usuario = Depends(usuario_actual)) -> list[dict[str, Any]]:
     c = _contenedor(request)
+    return [_encolar(c, proyecto_id, a, datos.confirmar_reextraccion, datos.motivo) for a in datos.articulos]
+
+
+class PedidoDeRetomar(BaseModel):
+    articulos: list[uuid.UUID] = Field(min_length=1)
+
+
+@enrutador.post("/extracciones/retomar")
+def retomar(datos: PedidoDeRetomar, request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido),
+            _: Usuario = Depends(usuario_actual)) -> list[dict[str, Any]]:
+    """«Extraer» sobre un artículo en Error: lo vuelve a lanzar con los datos del equipo de su último intento."""
+    c = _contenedor(request)
     resultado: list[dict[str, Any]] = []
-    for a in datos.articulos:
-        item: dict[str, Any] = {"articulo_id": str(a.articulo_id), "encolado": False, "error": None}
-        try:
-            articulo = c.biblioteca.consultas.articulo(proyecto_id, a.articulo_id)
-            if articulo.estado not in EXTRAIBLES:
-                raise ErrorDeDominio(f"«{articulo.nombre_archivo}» está en estado {articulo.estado.value} y no se "
-                                     "puede extraer ahora")
-            if articulo.estado == EstadoArticulo.POR_REVISAR and not datos.confirmar_reextraccion:
-                raise ErrorDeDominio(f"«{articulo.nombre_archivo}» ya tiene filas por revisar: confirme la reextracción")
-            if a.covidence is None and a.via == "Covidence":  # V06: el modelo no puede corregirlo
-                raise ErrorDeDominio(f"«{articulo.nombre_archivo}»: falta Covidence #. Indíquelo, o elija otra vía "
-                                     "de identificación si el artículo no pasó por Covidence")
-            opciones = OpcionesDeExtraccion(documento=a.documento, estudio_inicial=a.estudio, covidence=a.covidence,
-                                            via=a.via, confirmar_reextraccion=datos.confirmar_reextraccion,
-                                            motivo=datos.motivo)
-            item["posicion"] = c.ejecutor.encolar(
-                PedidoDeExtraccion(proyecto_id, a.articulo_id, articulo.nombre_archivo, opciones)) + 1
-            item["encolado"] = True
-        except (ErrorDeDominio, LookupError) as e:
-            item["error"] = str(e)
+    for articulo_id in datos.articulos:
+        previos = [e.datos_del_equipo for e in c.extraccion.consultas.de_articulo(proyecto_id, articulo_id)
+                   if e.datos_del_equipo.get("documento")]
+        if not previos:
+            resultado.append({"articulo_id": str(articulo_id), "encolado": False, "sin_datos": True,
+                              "error": "No hay un intento anterior con sus datos: indíquelos con «Extraer seleccionados»"})
+            continue
+        d = previos[-1]
+        a = ArticuloAExtraer(articulo_id=articulo_id, documento=d["documento"], estudio=d.get("estudio_inicial"),
+                             covidence=d.get("covidence"), via=d.get("via") or "Covidence")
+        item = _encolar(c, proyecto_id, a, False, None)
+        item["sin_datos"] = a.covidence is None and a.via == "Covidence"  # falta el Covidence #: hay que indicarlo
         resultado.append(item)
     return resultado
+
+
+def _encolar(c: Contenedor, proyecto_id: uuid.UUID, a: ArticuloAExtraer, confirmar_reextraccion: bool,
+             motivo: str | None) -> dict[str, Any]:
+    item: dict[str, Any] = {"articulo_id": str(a.articulo_id), "encolado": False, "error": None}
+    try:
+        articulo = c.biblioteca.consultas.articulo(proyecto_id, a.articulo_id)
+        if articulo.estado not in EXTRAIBLES:
+            raise ErrorDeDominio(f"«{articulo.nombre_archivo}» está en estado {articulo.estado.value} y no se "
+                                 "puede extraer ahora")
+        if articulo.estado == EstadoArticulo.POR_REVISAR and not confirmar_reextraccion:
+            raise ErrorDeDominio(f"«{articulo.nombre_archivo}» ya tiene filas por revisar: confirme la reextracción")
+        if a.covidence is None and a.via == "Covidence":  # V06: el modelo no puede corregirlo
+            raise ErrorDeDominio(f"«{articulo.nombre_archivo}»: falta Covidence #. Indíquelo, o elija otra vía "
+                                 "de identificación si el artículo no pasó por Covidence")
+        opciones = OpcionesDeExtraccion(documento=a.documento, estudio_inicial=a.estudio, covidence=a.covidence,
+                                        via=a.via, confirmar_reextraccion=confirmar_reextraccion, motivo=motivo)
+        item["posicion"] = c.ejecutor.encolar(
+            PedidoDeExtraccion(proyecto_id, a.articulo_id, articulo.nombre_archivo, opciones)) + 1
+        item["encolado"] = True
+    except (ErrorDeDominio, LookupError) as e:
+        item["error"] = str(e)
+    return item

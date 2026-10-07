@@ -1771,6 +1771,27 @@ body.redimensionando .tabla {
 .servicio.error {
   color: var(--texto);
 }
+.limite-cuenta {
+  font-variant-numeric: tabular-nums;
+}
+.limite-pista {
+  width: 34px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(120, 120, 128, 0.28);
+  overflow: hidden;
+}
+.limite-relleno {
+  display: block;
+  height: 100%;
+  background: var(--verde);
+}
+.limite-cuenta.aviso .limite-relleno {
+  background: var(--amarillo);
+}
+.limite-cuenta.error .limite-relleno {
+  background: var(--rojo);
+}
 .sr-solo {
   position: absolute;
   width: 1px;

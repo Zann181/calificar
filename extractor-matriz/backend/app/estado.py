@@ -4,6 +4,10 @@ Servidor, despachador de eventos, MinerU (conversión de PDF), la CLI de Claude 
 pdftotext (lo usa el validador).
 Cada pieza devuelve `estado` (ok, aviso o error) y un `detalle` legible. La comprobación de Claude ejecuta la
 CLI, por eso se guarda un minuto.
+
+`cuenta` es el uso de la cuenta de Claude en la ventana de 5 horas (y de 7 días) y cuándo se restablece. Lo
+informa la CLI en cada llamada del modelo; si el dato tiene más de VIGENCIA_CUENTA, se pide de nuevo en segundo
+plano con una llamada mínima.
 """
 
 from __future__ import annotations
@@ -21,12 +25,14 @@ from fastapi import APIRouter, Depends, Request
 from app.compartido.seguridad import Usuario, usuario_actual
 from app.composicion import Contenedor
 from app.config import Settings
-from app.contextos.extraccion.adaptadores.claude_cli import entorno_cli
+from app.contextos.extraccion.adaptadores.claude_cli import LIMITE, entorno_cli, sondear_limite
 from app.contextos.extraccion.adaptadores.validador import buscar_pdftotext
 
 enrutador = APIRouter(prefix="/api/v1", tags=["estado"])
 
 VIGENCIA_CLAUDE = 60.0
+VIGENCIA_CUENTA = 15 * 60.0
+_sondeando = threading.Event()
 _cerrojo = threading.Lock()
 _cache_claude: dict[str, tuple[float, dict[str, Any]]] = {}
 
@@ -66,6 +72,22 @@ def _claude(cli: str) -> dict[str, str]:
     with _cerrojo:
         _cache_claude[cli] = (time.monotonic(), nuevo)
     return nuevo
+
+
+def _cuenta(cli: str) -> dict[str, Any] | None:
+    if LIMITE.antiguedad() > VIGENCIA_CUENTA and not _sondeando.is_set():
+        _sondeando.set()
+
+        def sondear() -> None:
+            try:
+                sondear_limite(cli)
+            except (OSError, subprocess.SubprocessError):
+                pass  # sin dato: la cabecera no muestra la cuenta
+            finally:
+                _sondeando.clear()
+
+        threading.Thread(target=sondear, name="limite-cuenta", daemon=True).start()
+    return LIMITE.actual()
 
 
 def _puerto_abierto(url: str) -> bool:
@@ -121,4 +143,4 @@ def estado(request: Request, _: Usuario = Depends(usuario_actual)) -> dict[str, 
         _mineru(c, c.ajustes),
         _claude(c.ajustes.claude_cli),
         _pdftotext(c.ajustes),
-    ]}
+    ], "cuenta": _cuenta(c.ajustes.claude_cli)}

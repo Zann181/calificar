@@ -165,7 +165,18 @@ export type Documento = {
 
 export type EventoRegistro = { id: number; t: string; nivel: string; origen: string; mensaje: string };
 
-export type EstadoServicios = { componentes: { id: string; nombre: string; estado: "ok" | "aviso" | "error"; detalle: string }[] };
+// Uso de la cuenta de Claude en una ventana (5 horas o 7 días): % usado y cuándo se restablece.
+export type VentanaCuenta = { usado: number; restablece: string | null };
+export type CuentaClaude = {
+  cinco_horas: VentanaCuenta | null;
+  siete_dias: VentanaCuenta | null;
+  bloqueada: boolean;
+  actualizado: string;
+};
+export type EstadoServicios = {
+  componentes: { id: string; nombre: string; estado: "ok" | "aviso" | "error"; detalle: string }[];
+  cuenta: CuentaClaude | null;
+};
 
 export type AvanceExtraccion = {
   extraccion_id: string;
@@ -197,4 +208,10 @@ export type PendienteDeExtraccion = {
 
 export type AvanceRespuesta = { extracciones: AvanceExtraccion[]; en_cola: PendienteDeExtraccion[] };
 
-export type ResultadoEncolado = { articulo_id: string; encolado: boolean; posicion?: number; error: string | null };
+export type ResultadoEncolado = {
+  articulo_id: string;
+  encolado: boolean;
+  posicion?: number;
+  error: string | null;
+  sin_datos?: boolean; // retomar: el intento anterior no tiene datos completos
+};

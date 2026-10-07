@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import asdict
 from typing import Any
 
 import pytest
@@ -18,6 +19,7 @@ from app.contextos.extraccion.aplicacion.ejecutor import (
     Pendiente,
 )
 from app.contextos.extraccion.dominio.extraccion import Extraccion
+from app.contextos.extraccion.puertos import PedidoGuardado
 from tests.conftest import FIXTURES
 from tests.integracion.test_api import cliente, entrar  # noqa: F401
 
@@ -110,8 +112,10 @@ class ExtraerFalso:
     def __init__(self, contenedor: Contenedor) -> None:
         self.contenedor = contenedor
         self.vistos: list[str] = []
+        self.opciones: list[Any] = []
 
     def ejecutar(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID, opciones: object) -> Any:
+        self.opciones.append(opciones)
         self.vistos.append(self.contenedor.biblioteca.consultas.articulo(proyecto_id, articulo_id).estado.value)
         return type("R", (), {"estado": "COMPLETADA"})()
 
@@ -177,3 +181,83 @@ def test_si_la_conversion_falla_se_informa(fabrica: Any, ajustes: Any, libro_jso
     with pytest.raises(ErrorDeDominio, match="conversión falló"):
         preparar(PedidoDeExtraccion(pid, aid, "k.pdf", OpcionesDeExtraccion(documento=1)), lambda fase: None)
 
+
+
+def test_al_abrir_se_retoma_lo_que_quedo_pendiente(contenedor: Contenedor, proyecto: uuid.UUID) -> None:
+    """La cola se guarda en la base: lo encolado o a medias al cerrar se vuelve a lanzar al abrir."""
+    import time
+
+    from app.contextos.biblioteca.dominio.articulo import EstadoArticulo
+    from app.contextos.extraccion.adaptadores.repositorio_sql import ColaDeExtraccionesSql
+
+    aid = _articulo_listo(contenedor, proyecto, "kumar_2022")
+    otro = _articulo_listo(contenedor, proyecto, "singh_2023")
+    opciones = OpcionesDeExtraccion(documento=5, estudio_inicial=72, covidence=None, via="Otros métodos: manual")
+    # Primera sesión: una extracción a medias (el proceso murió) y otro artículo esperando en cola.
+    contenedor.biblioteca.extraccion.iniciar(proyecto, aid)
+    libro = contenedor.normas.consultas.libro_activo(proyecto)
+    huerfana = Extraccion.iniciar(proyecto_id=proyecto, articulo_id=aid, version_libro_id=libro.id,
+                                  estudios_reservados=[72])
+    with contenedor.extraccion.extraer._udt() as u:
+        u.extracciones.agregar(huerfana)
+        u.confirmar()
+    cola = ColaDeExtraccionesSql(contenedor.fabrica)
+    cola.guardar(PedidoGuardado(proyecto, aid, "kumar_2022.pdf", asdict(opciones)))
+    cola.guardar(PedidoGuardado(proyecto, otro, "singh_2023.pdf", asdict(OpcionesDeExtraccion(documento=6))))
+
+    # Segunda sesión.
+    falso = ExtraerFalso(contenedor)
+    falso.cerrar_interrumpidas = contenedor.extraccion.extraer.cerrar_interrumpidas  # type: ignore[attr-defined]
+    ejecutor = EjecutorDeExtracciones(falso, 1, None, cola)  # type: ignore[arg-type]
+    assert ejecutor.reanudar(30 * 60) == 2
+    for _ in range(100):
+        if len(falso.vistos) == 2 and not cola.pendientes():
+            break
+        time.sleep(0.1)
+    # La huérfana quedó fallida y el artículo en ERROR, del que la extracción se retoma.
+    assert contenedor.extraccion.consultas.obtener(proyecto, huerfana.id).estado.value == "FALLIDA"
+    assert falso.vistos == [EstadoArticulo.ERROR.value, EstadoArticulo.LISTO.value]
+    assert [o.documento for o in falso.opciones] == [5, 6]
+    assert falso.opciones[0] == opciones
+    assert cola.pendientes() == []  # terminadas, salen de la cola
+    ejecutor.cerrar()
+
+
+def test_una_extraccion_de_la_cli_en_marcha_no_se_toca(contenedor: Contenedor, proyecto: uuid.UUID) -> None:
+    aid = _articulo_listo(contenedor, proyecto, "kumar_2022")
+    contenedor.biblioteca.extraccion.iniciar(proyecto, aid)
+    libro = contenedor.normas.consultas.libro_activo(proyecto)
+    viva = Extraccion.iniciar(proyecto_id=proyecto, articulo_id=aid, version_libro_id=libro.id,
+                              estudios_reservados=[1])
+    with contenedor.extraccion.extraer._udt() as u:
+        u.extracciones.agregar(viva)
+        u.confirmar()
+    assert contenedor.ejecutor.reanudar(30 * 60) == 0
+    assert contenedor.extraccion.consultas.obtener(proyecto, viva.id).estado.value == "EXTRAYENDO"
+    assert contenedor.extraccion.extraer.cerrar_interrumpidas(set(), 0) == 1  # ya sin actividad: se cierra
+    assert contenedor.extraccion.consultas.obtener(proyecto, viva.id).estado.value == "FALLIDA"
+
+
+def test_extraer_sobre_un_error_reutiliza_los_datos_del_intento_anterior(
+        cliente: TestClient, contenedor: Contenedor, proyecto: uuid.UUID) -> None:  # noqa: F811
+    falso = EjecutorFalso()
+    contenedor.ejecutor = falso  # type: ignore[assignment]
+    aid = _articulo_listo(contenedor, proyecto, "kumar_2022")
+    entrar(cliente)
+    url = f"/api/v1/proyectos/{proyecto}/extracciones/retomar"
+    r = cliente.post(url, json={"articulos": [str(aid)]}).json()[0]
+    assert not r["encolado"] and r["sin_datos"]  # sin intento anterior: el diálogo pide los datos
+    libro = contenedor.normas.consultas.libro_activo(proyecto)
+    previo = Extraccion.iniciar(proyecto_id=proyecto, articulo_id=aid, version_libro_id=libro.id,
+                                estudios_reservados=[72], datos_del_equipo={
+                                    "documento": 5, "estudio_inicial": 72, "covidence": 405, "via": "Covidence"})
+    previo.fallar("Interrumpida")
+    with contenedor.extraccion.extraer._udt() as u:
+        u.extracciones.agregar(previo)
+        u.confirmar()
+    from app.contextos.biblioteca.dominio.articulo import EstadoArticulo
+    contenedor.biblioteca.extraccion.fallar(proyecto, aid, EstadoArticulo.EXTRAYENDO, "Interrumpida")
+    r = cliente.post(url, json={"articulos": [str(aid)]}).json()[0]
+    assert r["encolado"] and not r["sin_datos"]
+    assert falso.pedidos[0].opciones == OpcionesDeExtraccion(documento=5, estudio_inicial=72, covidence=405,
+                                                             via="Covidence")

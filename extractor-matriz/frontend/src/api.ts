@@ -119,6 +119,9 @@ export const api = {
       `${p(pid)}/extracciones`,
       json({ articulos, confirmar_reextraccion }),
     ),
+  // «Extraer» sobre un Error: el servidor reutiliza los datos del último intento.
+  retomar: (pid: string, articulos: string[]) =>
+    pedir<ResultadoEncolado[]>(`${p(pid)}/extracciones/retomar`, json({ articulos })),
   registro: (desde: number | null) =>
     pedir<{ eventos: EventoRegistro[]; siguiente: number }>(
       `/registro${desde === null ? "" : `?desde=${desde}`}`,

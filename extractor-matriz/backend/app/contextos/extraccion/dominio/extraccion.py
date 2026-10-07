@@ -119,6 +119,8 @@ class Extraccion(Entidad):
     version_libro_id: uuid.UUID
     estado: EstadoExtraccion = X.EXTRAYENDO
     estudios_reservados: list[int] = field(default_factory=list)
+    # Documento, Estudio inicial, Covidence # y vía con que se lanzó: «Extraer» sobre un Error los reutiliza.
+    datos_del_equipo: dict[str, Any] = field(default_factory=dict)
     salida: list[dict[str, Any]] = field(default_factory=list)
     codificacion_ciega: list[dict[str, Any]] = field(default_factory=list)
     anclas: list[Ancla] = field(default_factory=list)
@@ -138,11 +140,11 @@ class Extraccion(Entidad):
 
     @classmethod
     def iniciar(cls, *, proyecto_id: uuid.UUID, articulo_id: uuid.UUID, version_libro_id: uuid.UUID,
-                estudios_reservados: list[int]) -> Extraccion:
+                estudios_reservados: list[int], datos_del_equipo: dict[str, Any] | None = None) -> Extraccion:
         if not estudios_reservados or any(e < 1 for e in estudios_reservados):
             raise ErrorDeDominio("Una extracción empieza con al menos un número de Estudio reservado")
         return cls(proyecto_id=proyecto_id, articulo_id=articulo_id, version_libro_id=version_libro_id,
-                   estudios_reservados=list(estudios_reservados))
+                   estudios_reservados=list(estudios_reservados), datos_del_equipo=dict(datos_del_equipo or {}))
 
     @property
     def terminada(self) -> bool:

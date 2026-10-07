@@ -22,7 +22,7 @@ import uuid
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import UTC, timedelta
 from typing import Any
 
 from app.compartido.dominio import ErrorDeDominio, ahora
@@ -139,7 +139,9 @@ class ExtraerArticulo:
         libro = self._normas.libro_activo(proyecto_id)
         estudio = opciones.estudio_inicial or self._numeracion.siguiente(proyecto_id)
         ext = Extraccion.iniciar(proyecto_id=proyecto_id, articulo_id=articulo_id, version_libro_id=libro.id,
-                                 estudios_reservados=[estudio])
+                                 estudios_reservados=[estudio],
+                                 datos_del_equipo={"documento": opciones.documento, "estudio_inicial": estudio,
+                                                   "covidence": opciones.covidence, "via": opciones.via})
         self._avance(ext, "preparando")
         log.info("Extracción %s: «%s» · Documento %s · Estudio inicial %s", str(ext.id)[:8],
                  articulo.nombre_archivo, opciones.documento, estudio)
@@ -160,13 +162,33 @@ class ExtraerArticulo:
             ext.completar(acuerdo=comparar(ext.salida, ext.codificacion_ciega).acuerdo)
             self._guardar(ext)
             r = self._resultado(ext)
-            log.info("Extracción %s COMPLETADA: acuerdo con el ciego %s · %d hallazgos pendientes · %s USD "
-                     "equivalentes. Las filas pasan a la matriz como POR_REVISAR", str(ext.id)[:8], r.acuerdo,
-                     r.hallazgos_pendientes, r.costo_usd)
+            log.info("Extracción %s COMPLETADA: acuerdo con el ciego %s · %d hallazgos pendientes. Las filas pasan "
+                     "a la matriz como POR_REVISAR", str(ext.id)[:8], r.acuerdo, r.hallazgos_pendientes)
         except Exception as e:
             log.exception("Extracción %s del artículo %s falló en %s", ext.id, articulo_id, ext.estado)
             self._fallar(ext, f"{type(e).__name__}: {e}")
         return self._resultado(ext)
+
+    def cerrar_interrumpidas(self, retomar: set[uuid.UUID], sin_actividad_s: float) -> int:
+        """Al abrir la aplicación: da por fallidas las extracciones que quedaron a medias al cerrarla.
+
+        Las de un artículo en `retomar` (su pedido sigue en la cola guardada) se cierran siempre; las demás solo
+        si llevan `sin_actividad_s` sin avanzar, porque una lanzada desde la CLI puede seguir viva. El artículo
+        queda en ERROR con el paso que falló, así que se puede volver a extraer. Devuelve cuántas cerró.
+        """
+        with self._udt() as u:
+            en_curso = u.extracciones.en_curso()
+        cerradas = 0
+        for ext in en_curso:
+            desde = ext.paso_desde if ext.paso_desde.tzinfo else ext.paso_desde.replace(tzinfo=UTC)
+            if ext.articulo_id not in retomar and (ahora() - desde).total_seconds() < sin_actividad_s:
+                continue
+            try:
+                self._fallar(ext, "Interrumpida: la aplicación se cerró durante la extracción")
+                cerradas += 1
+            except Exception:
+                log.exception("Extracción %s: no se pudo cerrar como interrumpida", str(ext.id)[:8])
+        return cerradas
 
     # ------------------------------------------------------------------ pasos
     def _preparar(self, libro: dict[str, Any], pdf: bytes, documento: dict[str, Any],
@@ -404,8 +426,10 @@ class ExtraerArticulo:
 
 
 def _registrar_uso(ext: Extraccion, rol: str, uso: dict[str, Any]) -> None:
-    log.info("Extracción %s: rol %s terminó en %s s · %s turnos · %s USD equivalentes", str(ext.id)[:8], rol,
-             uso.get("segundos"), uso.get("turnos"), uso.get("costo_usd"))
+    cuenta = uso.get("cuenta_5h") or {}
+    texto = f" · cuenta: {cuenta['usado']} % usado de las 5 h" if cuenta.get("usado") is not None else ""
+    log.info("Extracción %s: rol %s terminó en %s s · %s turnos%s", str(ext.id)[:8], rol,
+             uso.get("segundos"), uso.get("turnos"), texto)
 
 
 def _entero(valor: Any) -> int | None:

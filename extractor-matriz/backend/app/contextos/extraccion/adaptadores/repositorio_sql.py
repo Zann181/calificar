@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
@@ -10,10 +11,11 @@ from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, selec
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from app.compartido.db import Base
-from app.compartido.dominio import Entidad, NoEncontrado
+from app.compartido.dominio import Entidad, NoEncontrado, ahora
 from app.compartido.unidad_de_trabajo_sql import UnidadDeTrabajoSql
 from app.contextos.extraccion.dominio.anclaje import Ancla
 from app.contextos.extraccion.dominio.extraccion import EstadoExtraccion, Extraccion, Hallazgo
+from app.contextos.extraccion.puertos import PedidoGuardado
 
 
 class RegistroExtraccion(Base):
@@ -25,6 +27,7 @@ class RegistroExtraccion(Base):
     version_libro_id: Mapped[uuid.UUID]
     estado: Mapped[str] = mapped_column(String(20), index=True)
     estudios_reservados: Mapped[list[Any]]
+    datos_del_equipo: Mapped[dict[str, Any]] = mapped_column(server_default="{}")
     salida: Mapped[list[Any]]
     codificacion_ciega: Mapped[list[Any]]
     anclas: Mapped[list[Any]]
@@ -48,7 +51,8 @@ class RegistroExtraccion(Base):
 def _a_dominio(r: RegistroExtraccion) -> Extraccion:
     return Extraccion(
         id=r.id, proyecto_id=r.proyecto_id, articulo_id=r.articulo_id, version_libro_id=r.version_libro_id,
-        estado=EstadoExtraccion(r.estado), estudios_reservados=list(r.estudios_reservados), salida=list(r.salida),
+        estado=EstadoExtraccion(r.estado), estudios_reservados=list(r.estudios_reservados),
+        datos_del_equipo=dict(r.datos_del_equipo or {}), salida=list(r.salida),
         codificacion_ciega=list(r.codificacion_ciega), anclas=[Ancla.desde_dict(a) for a in r.anclas],
         hallazgos=[Hallazgo.desde_dict(h) for h in r.hallazgos], acuerdo_campos_criticos=r.acuerdo_campos_criticos,
         iteraciones_validador=r.iteraciones_validador, errores_validador=list(r.errores_validador),
@@ -62,6 +66,7 @@ def _a_dominio(r: RegistroExtraccion) -> Extraccion:
 def _volcar(e: Extraccion, r: RegistroExtraccion) -> None:
     r.id, r.proyecto_id, r.articulo_id, r.version_libro_id = e.id, e.proyecto_id, e.articulo_id, e.version_libro_id
     r.estado, r.estudios_reservados = e.estado.value, list(e.estudios_reservados)
+    r.datos_del_equipo = dict(e.datos_del_equipo)
     r.salida, r.codificacion_ciega = e.salida, e.codificacion_ciega
     r.anclas, r.hallazgos = [a.a_dict() for a in e.anclas], [h.a_dict() for h in e.hallazgos]
     r.acuerdo_campos_criticos, r.iteraciones_validador = e.acuerdo_campos_criticos, e.iteraciones_validador
@@ -99,10 +104,50 @@ class RepositorioDeExtraccionesSql:
              .order_by(RegistroExtraccion.iniciada_en))
         return [_a_dominio(r) for r in self._s.scalars(q)]
 
+    def en_curso(self) -> list[Extraccion]:
+        q = select(RegistroExtraccion).where(RegistroExtraccion.terminada_en.is_(None)).order_by(RegistroExtraccion.iniciada_en)
+        return [_a_dominio(r) for r in self._s.scalars(q)]
+
     def volcar(self, e: Extraccion) -> None:
         r = self._s.get(RegistroExtraccion, e.id) or RegistroExtraccion()
         _volcar(e, r)
         self._s.add(r)
+
+
+class RegistroPedido(Base):
+    __tablename__ = "extraccion_cola"
+
+    articulo_id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    proyecto_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("proyectos.id"), index=True)
+    nombre: Mapped[str] = mapped_column(Text)
+    opciones: Mapped[dict[str, Any]]
+    encolado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ColaDeExtraccionesSql:
+    def __init__(self, fabrica: Callable[[], Session]) -> None:
+        self._fabrica = fabrica
+
+    def guardar(self, pedido: PedidoGuardado) -> None:
+        with self._fabrica() as s:
+            r = s.get(RegistroPedido, pedido.articulo_id)
+            if r is None:  # uno retomado conserva su lugar en la cola
+                r = RegistroPedido(articulo_id=pedido.articulo_id, encolado_en=ahora())
+            r.proyecto_id, r.nombre, r.opciones = pedido.proyecto_id, pedido.nombre, dict(pedido.opciones)
+            s.add(r)
+            s.commit()
+
+    def quitar(self, articulo_id: uuid.UUID) -> None:
+        with self._fabrica() as s:
+            r = s.get(RegistroPedido, articulo_id)
+            if r is not None:
+                s.delete(r)
+                s.commit()
+
+    def pendientes(self) -> list[PedidoGuardado]:
+        with self._fabrica() as s:
+            q = select(RegistroPedido).order_by(RegistroPedido.encolado_en)
+            return [PedidoGuardado(r.proyecto_id, r.articulo_id, r.nombre, dict(r.opciones)) for r in s.scalars(q)]
 
 
 class UnidadDeTrabajoExtraccionSql(UnidadDeTrabajoSql):

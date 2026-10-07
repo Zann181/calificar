@@ -92,8 +92,31 @@ class RepositorioDeExtracciones(Protocol):
     def obtener(self, proyecto_id: uuid.UUID, extraccion_id: uuid.UUID) -> Extraccion: ...
     def de_articulo(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID) -> list[Extraccion]: ...
     def recientes(self, proyecto_id: uuid.UUID, desde: datetime) -> list[Extraccion]: ...
+    def en_curso(self) -> list[Extraccion]:
+        """Las no terminadas de todos los proyectos."""
+        ...
 
 
 class UnidadDeTrabajoExtraccion(UnidadDeTrabajo, Protocol):
     @property
     def extracciones(self) -> RepositorioDeExtracciones: ...
+
+
+@dataclass(frozen=True)
+class PedidoGuardado:
+    """Pedido de extracción que espera o corre en el ejecutor; `opciones` son las de OpcionesDeExtraccion."""
+
+    proyecto_id: uuid.UUID
+    articulo_id: uuid.UUID
+    nombre: str
+    opciones: dict[str, Any]
+
+
+class ColaDeExtracciones(Protocol):
+    """Cola del ejecutor guardada en la base: lo que quedó al cerrar la aplicación se retoma al abrirla."""
+
+    def guardar(self, pedido: PedidoGuardado) -> None: ...
+    def quitar(self, articulo_id: uuid.UUID) -> None: ...
+    def pendientes(self) -> list[PedidoGuardado]:
+        """En orden de llegada."""
+        ...
