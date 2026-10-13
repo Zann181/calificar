@@ -2,7 +2,16 @@
 import { formatoTiempo, porcentajeVisible } from "../avance";
 import type { AvanceExtraccion, PendienteDeExtraccion } from "../tipos";
 
-type Props = { avance?: AvanceExtraccion; pendiente?: PendienteDeExtraccion; ahora: number };
+type Props = {
+  avance?: AvanceExtraccion;
+  pendiente?: PendienteDeExtraccion;
+  ahora: number;
+  // Si se pasa, un pedido que todavía no empezó a extraer muestra «Cancelar».
+  onCancelar?: () => void;
+};
+
+// Fases en las que el servidor deja cancelar: el modelo todavía no trabaja en el artículo.
+const CANCELABLES = new Set(["en_cola", "convirtiendo", "esperando_mineru"]);
 
 const TEXTO_FASE = {
   en_cola: (p: number) => `En cola · puesto ${p}: empieza cuando termine la anterior`,
@@ -11,7 +20,7 @@ const TEXTO_FASE = {
   pausada: () => "En pausa: se agotó el cupo de uso de Claude; se reanuda sola al volver",
 };
 
-export function BarraAvance({ avance, pendiente, ahora }: Props) {
+export function BarraAvance({ avance, pendiente, ahora, onCancelar }: Props) {
   // Con extracción en marcha manda su porcentaje; antes, la fase del pedido (cola o conversión).
   if (!avance && pendiente) {
     const trabajando = pendiente.fase === "convirtiendo";
@@ -31,6 +40,18 @@ export function BarraAvance({ avance, pendiente, ahora }: Props) {
           </span>
           {trabajando && (
             <span className="avance-tiempo">{formatoTiempo((ahora - Date.parse(pendiente.desde)) / 1000)}</span>
+          )}
+          {onCancelar && CANCELABLES.has(pendiente.fase) && (
+            <button
+              className="avance-cancelar"
+              title="Sacar de la cola: no se extrae ni gasta créditos"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCancelar();
+              }}
+            >
+              Cancelar
+            </button>
           )}
         </div>
       </div>

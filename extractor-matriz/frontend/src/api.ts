@@ -119,6 +119,9 @@ export const api = {
   // «Extraer» sobre un Error: el servidor reutiliza los datos del último intento.
   retomar: (pid: string, articulos: string[]) =>
     pedir<ResultadoEncolado[]>(`${p(pid)}/extracciones/retomar`, json({ articulos })),
+  // Saca de la cola un pedido que todavía no empezó a extraer (en cola, convirtiendo o esperando a MinerU).
+  cancelar: (pid: string, articulo: string) =>
+    pedir<{ cancelado: boolean }>(`${p(pid)}/extracciones/${articulo}/cancelar`, { method: "POST" }),
   // Qué modelo atendió cada rol en la última extracción de cada artículo.
   modelos: (pid: string) =>
     pedir<Record<string, ModelosDeArticulo>>(`${p(pid)}/extracciones/modelos`),

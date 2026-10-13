@@ -164,6 +164,15 @@ export function PanelArticulos({
     },
     onError: (e) => setFallo((e as Error).message),
   });
+  const cancelar = useMutation({
+    mutationFn: (articulo: string) => api.cancelar(pid, articulo),
+    onSuccess: () => {
+      setFallo(null);
+      qc.invalidateQueries({ queryKey: ["avance", pid] });
+      qc.invalidateQueries({ queryKey: ["articulos", pid] });
+    },
+    onError: (e) => setFallo((e as Error).message),
+  });
   const restablecer = useMutation({
     mutationFn: () => api.restablecer(pid, conError.map((a) => a.id)),
     onSuccess: () => {
@@ -587,6 +596,7 @@ export function PanelArticulos({
               avance={porArticulo.get(a.id)}
               pendiente={enCola.get(a.id)}
               ahora={ahora}
+              onCancelar={() => cancelar.mutate(a.id)}
             />
           </li>
         ))}

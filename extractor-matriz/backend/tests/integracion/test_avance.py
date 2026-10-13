@@ -367,3 +367,65 @@ def test_la_cli_reconoce_que_se_acabo_el_cupo() -> None:
     r = _limite_agotado("x", {"status": "rejected", "resetsAt": 1760000000})
     assert r is not None and r.restablece is not None
     assert _limite_agotado("JSON inválido", {"status": "allowed"}) is None
+
+
+def test_cancelar_un_pedido_en_cola(proyecto: uuid.UUID) -> None:
+    """F3: cancelar saca de la cola lo que no empezó; lo que ya extrae no se corta. Uno cancelado no se extrae."""
+    import threading
+    import time
+
+    soltar_modelo = threading.Event()
+    extrayendo = threading.Event()
+    extraidos: list[int] = []
+
+    class Modelo:
+        def ejecutar(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID, opciones: object) -> Any:
+            extraidos.append(opciones.documento)  # type: ignore[attr-defined]
+            extrayendo.set()
+            assert soltar_modelo.wait(5)
+            return type("R", (), {"estado": "COMPLETADA"})()
+
+    ejecutor = EjecutorDeExtracciones(Modelo(), 1)  # type: ignore[arg-type]
+    primero, segundo = uuid.uuid4(), uuid.uuid4()
+    for n, aid in ((1, primero), (2, segundo)):
+        ejecutor.encolar(PedidoDeExtraccion(proyecto, aid, f"a{n}.pdf", OpcionesDeExtraccion(documento=n)))
+    assert extrayendo.wait(5)
+    with pytest.raises(ErrorDeDominio, match="ya empezó"):
+        ejecutor.cancelar(primero)
+    assert ejecutor.cancelar(segundo) == "a2.pdf"
+    assert not ejecutor.activo(segundo)
+    with pytest.raises(ErrorDeDominio, match="no está en la cola"):
+        ejecutor.cancelar(segundo)
+    soltar_modelo.set()
+    for _ in range(30):
+        if not ejecutor.activo(primero):
+            break
+        time.sleep(0.1)
+    time.sleep(0.3)
+    assert extraidos == [1]
+    # el mismo artículo se puede volver a encolar después de cancelarlo
+    ejecutor.encolar(PedidoDeExtraccion(proyecto, segundo, "a2.pdf", OpcionesDeExtraccion(documento=2)))
+    for _ in range(30):
+        if 2 in extraidos:
+            break
+        time.sleep(0.1)
+    assert extraidos == [1, 2]
+    ejecutor.cerrar()
+
+
+def test_cancelar_por_la_api(cliente: TestClient, contenedor: Contenedor, proyecto: uuid.UUID) -> None:  # noqa: F811
+    class EjecutorCancelable(EjecutorFalso):
+        def cancelar(self, articulo_id: uuid.UUID) -> str:
+            if not self.activo(articulo_id):
+                raise ErrorDeDominio("El artículo no está en la cola de extracción")
+            self.pedidos = [p for p in self.pedidos if p.articulo_id != articulo_id]
+            return "kumar_2022.pdf"
+
+    contenedor.ejecutor = EjecutorCancelable()  # type: ignore[assignment]
+    aid = _articulo_listo(contenedor, proyecto, "kumar_2022")
+    base = f"/api/v1/proyectos/{proyecto}/extracciones"
+    assert cliente.post(base, json={"articulos": [{"articulo_id": str(aid), "documento": 1, "covidence": 1}]}).json()[0]["encolado"]
+    r = cliente.post(f"{base}/{aid}/cancelar")
+    assert r.status_code == 200 and r.json()["cancelado"]
+    assert cliente.post(f"{base}/{aid}/cancelar").status_code == 409
+    assert cliente.post(f"{base}/{uuid.uuid4()}/cancelar").status_code == 404

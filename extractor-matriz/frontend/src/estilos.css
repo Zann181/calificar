@@ -1779,6 +1779,24 @@ body.redimensionando .tabla {
 .avance.en-cola .avance-texto {
   white-space: normal;
 }
+.avance-cancelar {
+  flex: none;
+  padding: 1px 8px;
+  font-size: 11px;
+  border: 1px solid var(--separador);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--texto-2);
+  cursor: pointer;
+}
+.avance-cancelar:hover {
+  color: var(--rojo);
+  border-color: var(--rojo);
+}
+.lista li.actual .avance-cancelar {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
 .lista li.actual .avance-texto,
 .lista li.actual .avance-tiempo {
   color: rgba(255, 255, 255, 0.8);

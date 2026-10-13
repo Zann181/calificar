@@ -3,6 +3,7 @@
 POST /extracciones           encola artículos (corren en segundo plano, uno tras otro)
 POST /extracciones/retomar   vuelve a lanzar artículos en Error con los datos de su último intento
 POST /extracciones/continuar termina los artículos detenidos (a medias sin trabajo activo), sin restablecerlos
+POST /extracciones/{id}/cancelar  saca de la cola un artículo que todavía no empezó a extraer
 GET  /extracciones/avance    extracciones en curso o terminadas hace poco, con porcentaje y paso actual,
                              más los artículos que esperan en cola
 GET  /extracciones/modelos   qué modelo atendió cada rol en la última extracción de cada artículo (ADR 0005)
@@ -224,3 +225,13 @@ def _encolar(c: Contenedor, proyecto_id: uuid.UUID, a: ArticuloAExtraer, confirm
     except (ErrorDeDominio, LookupError) as e:
         item["error"] = str(e)
     return item
+
+
+@enrutador.post("/extracciones/{articulo_id}/cancelar")
+def cancelar(articulo_id: uuid.UUID, request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido),
+             _: Usuario = Depends(usuario_actual)) -> dict[str, Any]:
+    """Cancela un pedido en cola, convirtiéndose o esperando a MinerU. Uno que ya extrae no se corta."""
+    c = _contenedor(request)
+    c.biblioteca.consultas.articulo(proyecto_id, articulo_id)  # 404 si no es del proyecto
+    nombre = c.ejecutor.cancelar(articulo_id)  # 409 si no está en cola o ya extrae
+    return {"articulo_id": str(articulo_id), "cancelado": True, "nombre": nombre}

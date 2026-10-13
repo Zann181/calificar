@@ -46,6 +46,7 @@ class Pendiente:
 
 # Fases de un pedido antes de que exista su Extraccion (después, el avance lo da Extraccion.progreso).
 EN_COLA, CONVIRTIENDO, ESPERANDO_MINERU, EXTRAYENDO = "en_cola", "convirtiendo", "esperando_mineru", "extrayendo"
+CANCELABLES = (EN_COLA, CONVIRTIENDO, ESPERANDO_MINERU)
 PAUSADA = "pausada"  # sin cupo de uso del modelo: espera y se reanuda sola
 ESPERA_SIN_FECHA_S = 15 * 60  # si no se sabe cuándo vuelve el cupo, se reintenta cada tanto
 
@@ -85,6 +86,24 @@ class EjecutorDeExtracciones:
         self._pool_preparar.submit(self._preparar_pedido, pedido)
         return posicion
 
+    def cancelar(self, articulo_id: uuid.UUID) -> str:
+        """Saca de la cola un pedido que todavía no empezó a extraer (en cola, convirtiendo o esperando a MinerU).
+        Una conversión en marcha termina igual; solo no se extrae. Devuelve el nombre del artículo."""
+        with self._cerrojo:
+            p = self._pedidos.get(articulo_id)
+            if p is None:
+                raise ErrorDeDominio("El artículo no está en la cola de extracción")
+            if self._fases[articulo_id][0] not in CANCELABLES:
+                raise ErrorDeDominio(f"«{p.nombre}» ya empezó a extraerse: no se puede cancelar")
+        self._soltar(p)
+        log.info("«%s»: extracción cancelada antes de empezar", p.nombre)
+        return p.nombre
+
+    def _vigente(self, p: PedidoDeExtraccion) -> bool:
+        """False si el pedido se canceló (o lo reemplazó otro del mismo artículo)."""
+        with self._cerrojo:
+            return self._pedidos.get(p.articulo_id) is p
+
     def activo(self, articulo_id: uuid.UUID) -> bool:
         """True si el artículo está en cola, convirtiéndose, en pausa o extrayéndose en este proceso."""
         with self._cerrojo:
@@ -108,6 +127,8 @@ class EjecutorDeExtracciones:
         try:
             if self._preparar is not None:
                 self._preparar(p, lambda fase: self._fase(p.articulo_id, fase))
+            if not self._vigente(p):
+                return  # cancelado mientras se convertía
             self._fase(p.articulo_id, EN_COLA)  # ya convertido: espera su turno con el modelo
             self._pool.submit(self._correr, p)
         except Exception:
@@ -117,7 +138,10 @@ class EjecutorDeExtracciones:
     def _correr(self, p: PedidoDeExtraccion) -> None:
         """Etapa 2: la extracción con el modelo (una a la vez con `en_paralelo = 1`)."""
         with self._cerrojo:
+            if self._pedidos.get(p.articulo_id) is not p:
+                return  # cancelado mientras esperaba su turno
             self._corriendo.add(p.articulo_id)
+            self._fases[p.articulo_id] = (EXTRAYENDO, time.time())  # desde aquí ya no se puede cancelar
         try:
             while True:
                 self._fase(p.articulo_id, EXTRAYENDO)
@@ -152,6 +176,8 @@ class EjecutorDeExtracciones:
 
     def _soltar(self, p: PedidoDeExtraccion) -> None:
         with self._cerrojo:
+            if self._pedidos.get(p.articulo_id) is not p:
+                return  # ya se soltó (cancelado): no tocar un pedido nuevo del mismo artículo
             self._reanudan.pop(p.articulo_id, None)
             self._pedidos.pop(p.articulo_id, None)
             self._fases.pop(p.articulo_id, None)
