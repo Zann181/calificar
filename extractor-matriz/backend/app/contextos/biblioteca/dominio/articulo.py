@@ -134,6 +134,24 @@ class Articulo(Entidad):
             raise TransicionInvalida(self.estado, self.error.paso if self.error else E.NUEVO)
         self._pasar(self.error.paso)
 
+    def restablecer(self) -> None:
+        """Reset: ERROR → el estado desde el que se pidió el trabajo, sin volver a lanzarlo (ADR 0006).
+
+        Sin documento estructurado vuelve a NUEVO (hay que convertir). Con documento vuelve al estado previo a la
+        cola (HEREDADO, POR_REVISAR o APROBADO conservan sus filas, porque una extracción fallida no escribe en
+        Matriz) o a LISTO. El detalle del error se borra; el intento fallido queda en el historial de Extracción.
+        """
+        if self.estado != E.ERROR:
+            raise TransicionInvalida(self.estado, E.LISTO)
+        if self.documento_estructurado_id is None:
+            destino = E.NUEVO
+        elif self.estado_anterior in (E.HEREDADO, E.POR_REVISAR, E.APROBADO):
+            destino = self.estado_anterior
+        else:
+            destino = E.LISTO
+        self.error = None
+        self._pasar(destino)
+
     # --- cola de extracción ---
     def encolar(self, *, confirmar_reextraccion: bool = False, motivo: str | None = None) -> None:
         if self.estado not in EXTRAIBLES and self.estado != E.APROBADO:

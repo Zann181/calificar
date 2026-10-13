@@ -78,6 +78,11 @@ class Anclador:
     def documento(self) -> DocumentoDeTrabajo:
         return self._doc
 
+    def texto_completo(self) -> str:
+        """Todo el texto contra el que ancla, bloque por bloque y en orden. V23 compara contra este mismo texto
+        (ADR 0001, H7): una sola fuente de verdad para el validador y el anclaje."""
+        return "\n".join(t for b in self._doc.bloques for t in self._textos[b.id])
+
     def _posicion(self, q: str, b: BloqueDeTrabajo) -> tuple[int, int] | None:
         """Rango de caracteres de q en el primer texto del bloque que la contiene."""
         for t in self._textos[b.id]:

@@ -91,4 +91,48 @@ class ScriptEscritor:
             )
             if proc.returncode != 0 or not (d / "salida.xlsx").exists():
                 raise ErrorDeEscritura(f"escribir_matriz.py falló ({proc.returncode}): {proc.stderr[-2000:]}")
-            return (d / "salida.xlsx").read_bytes()
+            return _agregar_porque((d / "salida.xlsx").read_bytes(), salida, libro)
+
+
+HOJA_MATRIZ = "Extracción completa.csv"
+
+
+def _agregar_porque(datos: bytes, salida: list[dict[str, Any]], libro: dict[str, Any]) -> bytes:
+    """Suma a la nota de cada celda el porqué (inferencia o discrepancia del artículo).
+
+    El script oficial solo escribe la evidencia en las notas; esto lo completa sin modificarlo.
+    """
+    posiciones = {k: c["posicion"] for k, c in libro["columnas"].items()}
+    wb = openpyxl.load_workbook(io.BytesIO(datos))
+    if HOJA_MATRIZ not in wb.sheetnames:
+        return datos
+    ws = wb[HOJA_MATRIZ]
+    filas_por_estudio: dict[str, int] = {}
+    for r in range(2, ws.max_row + 1):
+        v = ws.cell(r, 2).value
+        if v is not None:
+            filas_por_estudio[str(v)] = r
+    for item in salida:
+        fila = filas_por_estudio.get(str(item["fila"].get("Estudio")))
+        if fila is None:
+            continue
+        tz = item["trazabilidad"]
+        porque: dict[str, list[str]] = {}
+        for x in tz.get("inferencias", []):
+            porque.setdefault(x["columna"].split(" (")[0], []).append(
+                f"POR QUÉ (inferido, {x['regla_aplicada']}): {x['razonamiento']}")
+        for x in tz.get("discrepancias_en_el_articulo", []):
+            porque.setdefault(x["columna"], []).append(
+                f"DISCREPANCIA DEL ARTÍCULO: {x['fuente_1']} || {x['fuente_2']} -> adoptado: {x['valor_adoptado']}")
+        for clave, lineas in porque.items():
+            p = posiciones.get(clave)
+            if p is None:
+                continue
+            celda = ws.cell(fila, p)
+            previo = f"{celda.comment.text}\n\n" if celda.comment else ""
+            nota = Comment((previo + "\n".join(lineas))[:3000], "Extractor")
+            nota.width, nota.height = 420, 260
+            celda.comment = nota
+    salida_xlsx = io.BytesIO()
+    wb.save(salida_xlsx)
+    return salida_xlsx.getvalue()

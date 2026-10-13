@@ -76,7 +76,7 @@ class Validador:
     def comprobar(self) -> None:
         pass
 
-    def validar(self, salida: list[dict[str, Any]], libro: dict[str, Any], pdf: bytes | None) -> ResultadoValidacion:
+    def validar(self, salida: list[dict[str, Any]], libro: dict[str, Any], texto: str | None) -> ResultadoValidacion:
         self.validadas.append(salida)
         return ResultadoValidacion(errores=self._errores.pop(0) if self._errores else [], avisos=[])
 

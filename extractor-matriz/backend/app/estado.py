@@ -1,7 +1,6 @@
 """GET /api/v1/estado: qué piezas están activas (barra superior de la interfaz).
 
-Servidor, despachador de eventos, MinerU (conversión de PDF), la CLI de Claude Code (modelo de lenguaje) y
-pdftotext (lo usa el validador).
+Servidor, despachador de eventos, MinerU (conversión de PDF) y la CLI de Claude Code (modelo de lenguaje).
 Cada pieza devuelve `estado` (ok, aviso o error) y un `detalle` legible. La comprobación de Claude ejecuta la
 CLI, por eso se guarda un minuto.
 
@@ -26,7 +25,6 @@ from app.compartido.seguridad import Usuario, usuario_actual
 from app.composicion import Contenedor
 from app.config import Settings
 from app.contextos.extraccion.adaptadores.claude_cli import LIMITE, entorno_cli, sondear_limite
-from app.contextos.extraccion.adaptadores.validador import buscar_pdftotext
 
 enrutador = APIRouter(prefix="/api/v1", tags=["estado"])
 
@@ -126,14 +124,6 @@ def _despachador(c: Contenedor) -> dict[str, str]:
     return _pieza("despachador", "Despachador", "ok", "Activo: convierte PDF nuevos y escribe las filas de cada extracción")
 
 
-def _pdftotext(ajustes: Settings) -> dict[str, str]:
-    ruta = buscar_pdftotext(ajustes.pdftotext)
-    if ruta is None:
-        return _pieza("pdftotext", "pdftotext", "error", "No se encontró: el validador no puede comprobar las citas "
-                      "y toda extracción fallará. Instale Git para Windows o poppler, o defina PDFTOTEXT en .env")
-    return _pieza("pdftotext", "pdftotext", "ok", f"Validador listo · {ruta}")
-
-
 @enrutador.get("/estado")
 def estado(request: Request, _: Usuario = Depends(usuario_actual)) -> dict[str, Any]:
     c: Contenedor = request.app.state.contenedor
@@ -142,5 +132,4 @@ def estado(request: Request, _: Usuario = Depends(usuario_actual)) -> dict[str, 
         _despachador(c),
         _mineru(c, c.ajustes),
         _claude(c.ajustes.claude_cli),
-        _pdftotext(c.ajustes),
     ], "cuenta": _cuenta(c.ajustes.claude_cli)}

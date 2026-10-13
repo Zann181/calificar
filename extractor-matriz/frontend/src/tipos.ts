@@ -1,6 +1,5 @@
 // Tipos de la API (sección 10). Se reemplazarán por los generados con openapi-typescript.
 
-export type Usuario = { id: string; correo: string; nombre: string; rol: string };
 export type Proyecto = { id: string; nombre: string };
 
 export type Columna = {
@@ -202,11 +201,19 @@ export type AvanceExtraccion = {
 export type PendienteDeExtraccion = {
   articulo_id: string;
   posicion: number;
-  fase: "en_cola" | "convirtiendo" | "esperando_mineru";
+  fase: "en_cola" | "convirtiendo" | "esperando_mineru" | "pausada";
   desde: string;
+  reanuda?: string | null; // solo en pausa: cuándo se reintenta
 };
 
-export type AvanceRespuesta = { extracciones: AvanceExtraccion[]; en_cola: PendienteDeExtraccion[] };
+export type AvanceRespuesta = {
+  extracciones: AvanceExtraccion[];
+  en_cola: PendienteDeExtraccion[];
+  detenidos?: string[]; // a medias sin trabajo activo: el botón «Continuar detenidos» los termina
+};
+
+// Resultado de «Continuar detenidos» por artículo: terminar la conversión o volver a encolar la extracción.
+export type ResultadoContinuar = ResultadoEncolado & { accion: "convertir" | "extraer" };
 
 export type ResultadoEncolado = {
   articulo_id: string;
@@ -214,4 +221,14 @@ export type ResultadoEncolado = {
   posicion?: number;
   error: string | null;
   sin_datos?: boolean; // retomar: el intento anterior no tiene datos completos
+};
+
+// Modelos de la última extracción de un artículo (ADR 0005): por rol, {modelo: llamadas}.
+export type RolDelModelo = "extractor" | "auditor" | "ciego" | "conciliador";
+export type ModelosDeArticulo = {
+  extraccion_id: string;
+  estado: string;
+  iniciada_en: string;
+  registrado: boolean; // false: extracción anterior al portero, sin modelo por llamada
+  roles: Record<RolDelModelo, Record<string, number> | null>;
 };

@@ -215,6 +215,9 @@ class Extraccion(Entidad):
             r[k] += int(uso.get(k) or 0)
         r["costo_usd"] = round(r["costo_usd"] + float(uso.get("costo_usd") or 0), 4)
         r["segundos"] = round(r["segundos"] + float(uso.get("segundos") or 0), 1)
+        if uso.get("modelo"):  # qué modelo eligió el portero (ADR 0005)
+            por_modelo = r.setdefault("modelos", {})
+            por_modelo[uso["modelo"]] = por_modelo.get(uso["modelo"], 0) + 1
 
     def completar(self, *, acuerdo: float | None) -> None:
         if self.estado != X.CONCILIANDO:

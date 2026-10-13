@@ -19,7 +19,7 @@ const ORDEN: Record<string, number> = { INFO: 0, WARNING: 1, ERROR: 2, CRITICAL:
 
 function guardado<T>(clave: string, defecto: T): T {
   try {
-    const v = localStorage.getItem(`extractor.registro.${clave}`);
+    const v = sessionStorage.getItem(`extractor.registro.${clave}`);
     return v === null ? defecto : (JSON.parse(v) as T);
   } catch {
     return defecto;
@@ -27,7 +27,7 @@ function guardado<T>(clave: string, defecto: T): T {
 }
 function guardar(clave: string, valor: unknown) {
   try {
-    localStorage.setItem(`extractor.registro.${clave}`, JSON.stringify(valor));
+    sessionStorage.setItem(`extractor.registro.${clave}`, JSON.stringify(valor));
   } catch {
     /* sin almacenamiento: la preferencia vale solo esta sesión */
   }

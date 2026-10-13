@@ -8,11 +8,12 @@ import type {
   EstadoServicios,
   EventoRegistro,
   Fila,
+  ModelosDeArticulo,
   Protocolo,
   Proyecto,
   ResultadoCarga,
+  ResultadoContinuar,
   ResultadoEncolado,
-  Usuario,
 } from "./tipos";
 
 export class ErrorApi extends Error {
@@ -53,10 +54,6 @@ const json = (cuerpo: unknown): RequestInit => ({
 const p = (pid: string) => `/proyectos/${pid}`;
 
 export const api = {
-  quien: () => pedir<Usuario>("/sesion"),
-  entrar: (correo: string, clave: string) =>
-    pedir<Usuario>("/sesion", json({ correo, clave })),
-  salir: () => pedir<{ ok: boolean }>("/sesion", { method: "DELETE" }),
   proyectos: () => pedir<Proyecto[]>("/proyectos"),
   columnas: (pid: string) => pedir<Columna[]>(`${p(pid)}/normas/columnas`),
   protocolo: (pid: string) => pedir<Protocolo>(`${p(pid)}/normas/protocolo`),
@@ -122,12 +119,27 @@ export const api = {
   // «Extraer» sobre un Error: el servidor reutiliza los datos del último intento.
   retomar: (pid: string, articulos: string[]) =>
     pedir<ResultadoEncolado[]>(`${p(pid)}/extracciones/retomar`, json({ articulos })),
+  // Qué modelo atendió cada rol en la última extracción de cada artículo.
+  modelos: (pid: string) =>
+    pedir<Record<string, ModelosDeArticulo>>(`${p(pid)}/extracciones/modelos`),
+  // Termina lo que quedó a medias sin trabajo activo, sin restablecerlo (conversión o extracción cortadas).
+  continuar: (pid: string, articulos: string[] | null = null) =>
+    pedir<ResultadoContinuar[]>(`${p(pid)}/extracciones/continuar`, json({ articulos })),
+  // Reset de los artículos en Error: vuelven a su estado previo; no lanza extracciones ni gasta créditos.
+  restablecer: (pid: string, articulos: string[] | null = null) =>
+    pedir<Articulo[]>(`${p(pid)}/articulos/restablecer`, json({ articulos })),
   registro: (desde: number | null) =>
     pedir<{ eventos: EventoRegistro[]; siguiente: number }>(
       `/registro${desde === null ? "" : `?desde=${desde}`}`,
     ),
   documento: (pid: string, articuloId: string) =>
     pedir<Documento>(`${p(pid)}/articulos/${articuloId}/documento`),
+  // Genera el Excel de la matriz completa (heredadas y extraídas) y devuelve la ruta de descarga.
+  exportar: (pid: string) =>
+    pedir<{ id: string; filas_heredadas: number; filas_extraidas: number; descarga: string }>(
+      `${p(pid)}/exportaciones`,
+      { method: "POST" },
+    ),
   urlPdf: (pid: string, articuloId: string) =>
     `/api/v1${p(pid)}/articulos/${articuloId}/pdf`,
 };

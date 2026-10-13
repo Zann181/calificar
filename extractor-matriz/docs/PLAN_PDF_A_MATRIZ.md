@@ -53,7 +53,7 @@ guía de la columna del libro; confianza, discrepancias y advertencias de la fil
    razonamiento. Hoy el resaltado es el rectángulo del bloque, no las palabras exactas (H2 del ADR 0004).
 7. **Sin progreso ni errores visibles:** un fallo (CLI sin sesión, validador con errores, MinerU caído) solo aparece en logs.
 8. Pendientes de decisión del responsable del dominio: licencia AGPL de PyMuPDF si se publica en red; cambio del
-   validador (H7); filas que el conciliador no puede abrir ni cerrar (queda hallazgo PENDIENTE).
+   validador (H7, resuelto el 2026-10-12); filas que el conciliador no puede abrir ni cerrar (queda hallazgo PENDIENTE).
 
 ## 4. Plan de implementación
 

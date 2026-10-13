@@ -8,6 +8,7 @@ const TEXTO_FASE = {
   en_cola: (p: number) => `En cola · puesto ${p}: empieza cuando termine la anterior`,
   convirtiendo: () => "Convirtiendo el PDF con MinerU (unos 10 a 20 s por página); la extracción sigue sola",
   esperando_mineru: () => "Esperando a MinerU (no responde): la extracción empieza cuando esté activo",
+  pausada: () => "En pausa: se agotó el cupo de uso de Claude; se reanuda sola al volver",
 };
 
 export function BarraAvance({ avance, pendiente, ahora }: Props) {
@@ -22,7 +23,12 @@ export function BarraAvance({ avance, pendiente, ahora }: Props) {
           </div>
         )}
         <div className="avance-linea">
-          <span className="avance-texto">{TEXTO_FASE[pendiente.fase](pendiente.posicion)}</span>
+          <span className="avance-texto">
+            {TEXTO_FASE[pendiente.fase](pendiente.posicion)}
+            {pendiente.fase === "pausada" && pendiente.reanuda
+              ? ` (reintento ~${new Date(pendiente.reanuda).toLocaleTimeString("es", { hour: "numeric", minute: "2-digit" })})`
+              : ""}
+          </span>
           {trabajando && (
             <span className="avance-tiempo">{formatoTiempo((ahora - Date.parse(pendiente.desde)) / 1000)}</span>
           )}

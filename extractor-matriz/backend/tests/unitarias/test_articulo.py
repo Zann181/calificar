@@ -123,3 +123,34 @@ def test_no_se_excluye_durante_la_conversion() -> None:
     a.iniciar_conversion()
     with pytest.raises(TransicionInvalida):
         a.excluir("no")
+
+
+def test_restablecer_error_de_extraccion_vuelve_a_listo_sin_lanzar_nada() -> None:
+    a = listo()
+    a.encolar()
+    a.transicionar(E.EXTRAYENDO)
+    a.fallar(E.EXTRAYENDO, "CLI sin sesión")
+    a.restablecer()
+    assert a.estado == E.LISTO and a.error is None
+
+
+def test_restablecer_conserva_heredado_y_por_revisar() -> None:
+    for previo in (E.HEREDADO, E.POR_REVISAR):
+        a = listo()
+        a.estado_anterior = previo
+        a.fallar(E.EXTRAYENDO, "x")
+        a.restablecer()
+        assert a.estado == previo
+
+
+def test_restablecer_error_de_conversion_vuelve_a_nuevo() -> None:
+    a = nuevo()
+    a.iniciar_conversion()
+    a.fallar(E.CONVIRTIENDO, "MinerU no respondió")
+    a.restablecer()
+    assert a.estado == E.NUEVO and a.error is None
+
+
+def test_restablecer_sin_error() -> None:
+    with pytest.raises(TransicionInvalida):
+        listo().restablecer()

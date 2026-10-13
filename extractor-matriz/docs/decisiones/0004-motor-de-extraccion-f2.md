@@ -58,5 +58,7 @@ Se usan las respuestas Opus de F0 como grabación, porque `ejemplo_verificado.sa
   requiere corridas reales: unos 2,6 USD equivalentes y 4 minutos por artículo.
 - H2: el rango resaltado sigue siendo el rectángulo del bloque. Usar las líneas de `middle.json` queda para F4,
   cuando el visor lo necesite.
-- H7: el validador sigue comparando contra `pdftotext`. Cambiarlo requiere aprobar una modificación a
-  `validar_extraccion.py`.
+- H7: **decidido el 2026-10-12 por el responsable del dominio.** `validar_extraccion.py` acepta un `.txt` en lugar
+  del PDF, y el programa le pasa el mismo texto contra el que ancla (`Anclador.texto_completo()`). V23 y el anclaje
+  comparan contra una sola fuente. Con un PDF, el script sigue usando `pdftotext` como antes. El programa ya no
+  necesita `pdftotext`.

@@ -35,6 +35,7 @@ from app.contextos.biblioteca.aplicacion.casos_de_uso import (
     ExcluirArticulo,
     ReactivarArticulo,
     ReintentarArticulo,
+    RestablecerArticulos,
 )
 from app.contextos.biblioteca.dominio.articulo import EstadoArticulo
 from app.contextos.biblioteca.puertos import AlmacenDeArchivos, ConversorPDF
@@ -213,6 +214,8 @@ class Contenedor:
     ejecutor: EjecutorDeExtracciones
     mineru: Callable[[], dict[str, Any] | None]
     convertir_nuevos: Callable[[], int]
+    # Termina en segundo plano la conversión de un artículo detenido en CONVIRTIENDO (botón «Continuar»).
+    terminar_conversion: Callable[[uuid.UUID, uuid.UUID], None]
 
 
 def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None,
@@ -230,8 +233,7 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
     if conversor is None:
         conversor = MineruHttp(ajustes.mineru_url, ajustes.mineru_tiempo_max)
     if modelo is None:
-        modelo = ClaudeCli({"extractor": ajustes.modelo_extractor, "auditor": ajustes.modelo_auditor,
-                            "ciego": ajustes.modelo_ciego, "conciliador": ajustes.modelo_conciliador},
+        modelo = ClaudeCli({"especializado": ajustes.modelo_especializado, "ligero": ajustes.modelo_ligero},
                            ajustes.claude_cli)
 
     def udt_bib() -> UnidadDeTrabajoBibliotecaSql:
@@ -249,7 +251,7 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
     biblioteca = CasosDeBiblioteca(
         cargar=CargarPDF(udt_bib, almacen), convertir=ConvertirArticulo(udt_bib, almacen, conversor),
         excluir=ExcluirArticulo(udt_bib), reactivar=ReactivarArticulo(udt_bib),
-        reintentar=ReintentarArticulo(udt_bib), consultas=ConsultasDeBiblioteca(udt_bib), almacen=almacen,
+        reintentar=ReintentarArticulo(udt_bib), restablecer=RestablecerArticulos(udt_bib), consultas=ConsultasDeBiblioteca(udt_bib), almacen=almacen,
         extraccion=AvanzarExtraccion(udt_bib),
     )
     consultas_normas = ConsultasDeNormas(udt_nor)
@@ -266,10 +268,11 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
         extraer=ExtraerArticulo(
             udt_ext, ArticulosDesdeBiblioteca(biblioteca), NormasParaExtraccion(consultas_normas),
             NumeracionDesdeMatriz(consultas_matriz), modelo,
-            ScriptValidador(ajustes.recursos_dir / "validar_extraccion.py", pdftotext=ajustes.pdftotext), LectorPyMuPdf(),
+            ScriptValidador(ajustes.recursos_dir / "validar_extraccion.py"), LectorPyMuPdf(),
             ParametrosDelMotor(max_iteraciones_validador=ajustes.max_iteraciones_validador,
                                umbral_similitud=ajustes.umbral_similitud,
-                               concurrencia=ajustes.concurrencia_extraccion)),
+                               concurrencia=ajustes.concurrencia_extraccion,
+                               umbral_acuerdo=ajustes.umbral_acuerdo)),
         consultas=ConsultasDeExtraccion(udt_ext),
     )
     exportar = ExportarMatriz(
@@ -336,6 +339,18 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
                     hechos += 1
         return hechos
 
+    def terminar_conversion(pid: uuid.UUID, aid: uuid.UUID) -> None:
+        def correr() -> None:
+            try:
+                with candado_conversion:
+                    if biblioteca.consultas.articulo(pid, aid).estado == EstadoArticulo.CONVIRTIENDO:
+                        estado = biblioteca.convertir.ejecutar(pid, aid)
+                        log.info("Artículo %s: conversión terminada: %s", str(aid)[:8], estado)
+            except Exception:
+                log.exception("Artículo %s: no se pudo terminar la conversión", str(aid)[:8])
+
+        threading.Thread(target=correr, name=f"conversion-{str(aid)[:8]}", daemon=True).start()
+
     def al_cargar_articulo(datos: dict[str, Any]) -> None:
         # F1: la conversión corre en el despachador. En F3 la toma Orquestación (Trabajo + Dramatiq).
         pid, aid = uuid.UUID(datos["proyecto_id"]), uuid.UUID(datos["articulo_id"])
@@ -370,4 +385,4 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
     return Contenedor(ajustes=ajustes, fabrica=fabrica, almacen=almacen, biblioteca=biblioteca, normas=normas,
                       matriz=matriz, extraccion=extraccion, exportar=exportar,
                       despachador=despachador, ejecutor=ejecutor, mineru=mineru,
-                      convertir_nuevos=convertir_nuevos)
+                      convertir_nuevos=convertir_nuevos, terminar_conversion=terminar_conversion)

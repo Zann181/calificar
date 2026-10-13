@@ -26,6 +26,10 @@ class Motivo(BaseModel):
     motivo: str
 
 
+class ParaRestablecer(BaseModel):
+    articulos: list[uuid.UUID] | None = None  # None: todos los que están en Error
+
+
 @enrutador.post("/articulos")
 async def cargar(archivos: list[UploadFile] = File(...), proyecto_id: uuid.UUID = Depends(proyecto_valido),
                  c: CasosDeBiblioteca = Depends(casos)) -> list[dict[str, Any]]:
@@ -62,6 +66,13 @@ def excluir(articulo_id: uuid.UUID, datos: Motivo, proyecto_id: uuid.UUID = Depe
 def reactivar(articulo_id: uuid.UUID, proyecto_id: uuid.UUID = Depends(proyecto_valido),
               c: CasosDeBiblioteca = Depends(casos)) -> dict[str, Any]:
     return a_json(c.reactivar.ejecutar(proyecto_id, articulo_id))
+
+
+@enrutador.post("/articulos/restablecer")
+def restablecer(datos: ParaRestablecer, proyecto_id: uuid.UUID = Depends(proyecto_valido),
+                c: CasosDeBiblioteca = Depends(casos)) -> list[dict[str, Any]]:
+    """Reset de los artículos en Error: vuelven a su estado previo y no se lanza ninguna extracción."""
+    return [a_json(a) for a in c.restablecer.ejecutar(proyecto_id, datos.articulos)]
 
 
 @enrutador.get("/articulos/{articulo_id}/pdf")

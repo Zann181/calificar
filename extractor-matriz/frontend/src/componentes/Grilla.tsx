@@ -51,7 +51,7 @@ export function Grilla({ pid, columnas, filas, articulosMarcados }: Props) {
   const oscuro = useOscuro();
   const [zoom, setZoomCrudo] = useState(() => {
     try {
-      const v = Number(localStorage.getItem("extractor.zoom.tabla"));
+      const v = Number(sessionStorage.getItem("extractor.zoom.tabla"));
       return v >= 0.6 && v <= 2 ? v : 1;
     } catch {
       return 1;
@@ -61,7 +61,7 @@ export function Grilla({ pid, columnas, filas, articulosMarcados }: Props) {
     setZoomCrudo((z) => {
       const n = Math.round(Math.min(2, Math.max(0.6, f(z))) * 100) / 100;
       try {
-        localStorage.setItem("extractor.zoom.tabla", String(n));
+        sessionStorage.setItem("extractor.zoom.tabla", String(n));
       } catch {
         /* solo esta sesión */
       }

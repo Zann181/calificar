@@ -33,6 +33,7 @@ class ModeloGrabado:
         self._por_rol = {rol: list(v) if isinstance(v, list) else [v] for rol, v in (por_rol or {}).items()}
         self._cerrojo = threading.Lock()
         self.llamadas: list[tuple[str, str]] = []  # (rol, mensaje), para las pruebas
+        self.niveles: list[tuple[str, str]] = []  # (rol, nivel del portero)
 
     @classmethod
     def desde_carpeta(cls, carpeta: Path) -> ModeloGrabado:
@@ -49,10 +50,11 @@ class ModeloGrabado:
                 por_rol[ruta.stem] = texto
         return cls(por_huella, por_rol)
 
-    def completar(self, *, rol: str, sistema: str, mensaje: str,
-                  imagenes: dict[str, bytes] | None = None) -> RespuestaModelo:
+    def completar(self, *, rol: str, sistema: str, mensaje: str, imagenes: dict[str, bytes] | None = None,
+                  nivel: str = "especializado") -> RespuestaModelo:
         with self._cerrojo:
             self.llamadas.append((rol, mensaje))
+            self.niveles.append((rol, nivel))
             h = huella(rol, sistema, mensaje)
             if h in self._por_huella:
                 return RespuestaModelo(texto=self._por_huella[h], uso={"modelo": "grabado"})
@@ -68,8 +70,8 @@ class Grabadora:
         self._modelo, self._carpeta = modelo, carpeta
         carpeta.mkdir(parents=True, exist_ok=True)
 
-    def completar(self, *, rol: str, sistema: str, mensaje: str,
-                  imagenes: dict[str, bytes] | None = None) -> RespuestaModelo:
-        r = self._modelo.completar(rol=rol, sistema=sistema, mensaje=mensaje, imagenes=imagenes)
+    def completar(self, *, rol: str, sistema: str, mensaje: str, imagenes: dict[str, bytes] | None = None,
+                  nivel: str = "especializado") -> RespuestaModelo:
+        r = self._modelo.completar(rol=rol, sistema=sistema, mensaje=mensaje, imagenes=imagenes, nivel=nivel)
         (self._carpeta / f"{huella(rol, sistema, mensaje)}.txt").write_text(r.texto, encoding="utf-8")
         return r

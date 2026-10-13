@@ -141,6 +141,30 @@ class ReintentarArticulo:
         return articulo
 
 
+class RestablecerArticulos:
+    """Botón «Restablecer errores»: cada artículo en ERROR vuelve a su estado previo, sin gastar créditos."""
+
+    def __init__(self, udt: FabricaUdT) -> None:
+        self._udt = udt
+
+    def ejecutar(self, proyecto_id: uuid.UUID, articulo_ids: list[uuid.UUID] | None = None) -> list[Articulo]:
+        """Sin `articulo_ids`, restablece todos los artículos del proyecto que están en ERROR."""
+        hechos: list[Articulo] = []
+        with self._udt() as u:
+            if articulo_ids is None:
+                articulos = u.articulos.listar(proyecto_id, EstadoArticulo.ERROR)
+            else:
+                articulos = [u.articulos.obtener(proyecto_id, i) for i in articulo_ids]
+            for articulo in articulos:
+                if articulo.estado != EstadoArticulo.ERROR:
+                    continue
+                articulo.restablecer()
+                u.articulos.agregar(articulo)
+                hechos.append(articulo)
+            u.confirmar()
+        return hechos
+
+
 class AvanzarExtraccion:
     """Estados del artículo durante una extracción (sección 5.1):
     EN_COLA → EXTRAYENDO → AUDITANDO → POR_REVISAR, o ERROR con el paso que falló.
@@ -226,6 +250,7 @@ class CasosDeBiblioteca:
     excluir: ExcluirArticulo
     reactivar: ReactivarArticulo
     reintentar: ReintentarArticulo
+    restablecer: RestablecerArticulos
     consultas: ConsultasDeBiblioteca
     almacen: AlmacenDeArchivos
     extraccion: AvanzarExtraccion

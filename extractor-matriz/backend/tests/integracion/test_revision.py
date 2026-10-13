@@ -8,7 +8,6 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from app.compartido.seguridad import crear_usuario
 from app.composicion import Contenedor
 from app.config import Settings
 from app.contextos.matriz.dominio.fila import (
@@ -21,8 +20,6 @@ from app.contextos.matriz.dominio.fila import (
 )
 from app.main import crear_app
 from tests.conftest import MATRIZ
-
-CORREO, CLAVE = "revisor@local.test", "clave-de-prueba-123"
 
 
 def evidencia(nivel: str) -> Evidencia:
@@ -68,10 +65,7 @@ def test_extraida_reemplaza_la_heredada(contenedor: Contenedor, con_extraida: uu
 
 @pytest.fixture
 def cliente(contenedor: Contenedor, ajustes: Settings, con_extraida: uuid.UUID) -> Iterator[TestClient]:
-    with contenedor.fabrica() as s:
-        crear_usuario(s, correo=CORREO, nombre="Revisor", rol="revisor", clave=CLAVE)
     with TestClient(crear_app(ajustes, contenedor)) as c:
-        assert c.post("/api/v1/sesion", json={"correo": CORREO, "clave": CLAVE}).status_code == 200
         yield c
 
 
@@ -91,7 +85,7 @@ def test_aprobar_registra_al_usuario_de_la_sesion(cliente: TestClient, con_extra
     r = cliente.post(ruta(con_extraida, "Correlación Feli 1 - JP", "aprobar"), json={})
     assert r.status_code == 200 and r.json()["estado_revision"] == "APROBADA"
     historial = cliente.get(ruta(con_extraida, "Correlación Feli 1 - JP")).json()["historial"]
-    assert historial[-1]["autor"] == CORREO
+    assert historial[-1]["autor"] == "admin@local.test"
 
 
 def test_aprobar_no_verificable_exige_motivo(cliente: TestClient, con_extraida: uuid.UUID) -> None:
@@ -106,3 +100,8 @@ def test_corregir_y_rechazar(cliente: TestClient, con_extraida: uuid.UUID) -> No
     assert r.json()["valor"] == 390 and r.json()["estado_revision"] == "CORREGIDA"
     r = cliente.post(ruta(con_extraida, "Pais", "rechazar"), json={"motivo": "El país no aparece"})
     assert r.json()["estado_revision"] == "RECHAZADA"
+
+
+def test_rechazar_exige_motivo(cliente: TestClient, con_extraida: uuid.UUID) -> None:
+    assert cliente.post(ruta(con_extraida, "Pais", "rechazar"), json={}).status_code == 409
+

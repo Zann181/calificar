@@ -10,7 +10,7 @@ Especificación en `docs/CONSTRUIR_extractor_matriz.md`. Decisiones se registran
 - `extractor-matriz-master/` es una copia anterior: no se edita ni se usa para arrancar la app.
 - El acceso directo `calificar/Extractor de matriz.lnk` (y `calificar/Extractor.vbs`) arranca esta carpeta y la actualiza
   sola al abrir (`Extractor.ps1`: git pull con autostash, dependencias, migraciones, recompilar interfaz).
-- Uso local sin login por defecto (`SIN_LOGIN=true`); para un servidor en red, `SIN_LOGIN=false`.
+- Sin login ni contraseñas: la API entra sola como el usuario local (`ADMIN_CORREO`), que firma las revisiones. Escucha solo en 127.0.0.1.
 
 ## Datos: principal y de test
 
@@ -56,3 +56,5 @@ Correr todos antes de terminar cambio. Cada tabla nueva necesita migración Alem
 - F0 y F1 terminadas. F1 construida sin Docker.
 - F2 (extracción y anclaje) construida; pruebas doradas pasan. Para aceptación faltan corridas reales sobre 5 artículos piloto elegidos por responsable del dominio. ADR 0004 propuesto.
 - Extracción real cuesta ~2,6 USD equivalentes y 4 min por artículo. Preguntar antes de correr una.
+- Sin Opus (ADR 0005, propuesto): portero en `extraccion/dominio/portero.py` elige Sonnet o Haiku por llamada; la interfaz muestra los modelos de cada PDF.
+- Botón «Restablecer errores» (ADR 0006, propuesto): ERROR vuelve al estado previo sin lanzar extracciones.

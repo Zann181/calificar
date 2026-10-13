@@ -86,5 +86,6 @@ export function useAvance(pid: string) {
 
   const porArticulo = new Map((datos?.extracciones ?? []).map((e) => [e.articulo_id, e]));
   const enCola = new Map((datos?.en_cola ?? []).map((c) => [c.articulo_id, c]));
-  return { porArticulo, enCola, ahora, activo, error: consulta.error as Error | null };
+  const detenidos = new Set(datos?.detenidos ?? []);
+  return { porArticulo, enCola, detenidos, ahora, activo, error: consulta.error as Error | null };
 }

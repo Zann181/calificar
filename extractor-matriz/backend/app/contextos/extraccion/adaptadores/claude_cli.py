@@ -21,11 +21,23 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.contextos.extraccion.puertos import RespuestaModelo
+from app.contextos.extraccion.puertos import LimiteDeUsoAgotado, RespuestaModelo
 
 
 class ErrorDelModelo(RuntimeError):
     pass
+
+
+# Regla fija de estilo (no la skill /caveman): ahorra tokens de salida en el texto libre sin tocar los datos.
+REGLA_DE_ESTILO = """
+# Regla de estilo de la respuesta (obligatoria, ahorra costo)
+Escribe todo texto libre en español telegráfico: respuesta primero, sin saludos, sin relleno, sin recapitular, sin
+frases de cortesía, sin repetir lo que ya dice el dato. Frases cortas, artículos opcionales si se entiende igual,
+sin adverbios de relleno (solo, realmente, básicamente). Nunca omitas una negación (no, nunca, ni, sin, excepto),
+números ni unidades. Aplica a razonamientos, justificaciones, hallazgos, observaciones, resúmenes e informes.
+NO aplica a lo que es dato: valores de columnas, vocabularios del libro de códigos, claves JSON, identificadores,
+páginas y citas textuales (la cita sigue literal y contigua, palabra por palabra). El formato JSON pedido no cambia.
+"""
 
 
 def entorno_cli() -> dict[str, str]:
@@ -90,6 +102,23 @@ def leer_flujo(stdout: str) -> tuple[dict[str, Any] | None, dict[str, Any] | Non
     return resultado, limite
 
 
+_MARCAS_DE_LIMITE = ("usage limit", "limit reached", "hit your limit", "rate limit", "credit balance",
+                     "out of credits", "out of extra usage", "insufficient credits", "quota", "límite de uso")
+
+
+def _limite_agotado(texto: str, limite: dict[str, Any] | None) -> LimiteDeUsoAgotado | None:
+    """Reconoce que la CLI se quedó sin cupo (créditos o ventana de uso), por el evento de límite o por su mensaje."""
+    rechazado = bool(limite) and limite.get("status") == "rejected"  # type: ignore[union-attr]
+    if not rechazado and not any(m in texto.lower() for m in _MARCAS_DE_LIMITE):
+        return None
+    reinicio = (limite or {}).get("resetsAt")
+    if reinicio is None:
+        ventanas = (limite or {}).get("unifiedWindows") or {}
+        reinicio = max((v.get("resetsAt") or 0 for v in ventanas.values() if v.get("utilization", 0) >= 1), default=None)
+    restablece = datetime.fromtimestamp(reinicio, UTC) if reinicio else None
+    return LimiteDeUsoAgotado(f"Se agotó el cupo de uso de Claude: {texto[:300]}".strip(), restablece)
+
+
 def sondear_limite(cli: str, modelo: str = "claude-haiku-4-5-20251001") -> None:
     """Llamada mínima (una palabra con Haiku) solo para conocer el uso de la cuenta. Actualiza LIMITE."""
     with tempfile.TemporaryDirectory(prefix="extraccion-limite-") as tmp:
@@ -106,15 +135,19 @@ def sondear_limite(cli: str, modelo: str = "claude-haiku-4-5-20251001") -> None:
 class ClaudeCli:
     def __init__(self, modelos: dict[str, str], cli: str = "claude", *, max_turnos: int = 30,
                  tiempo_max: float = 3600) -> None:
+        """`modelos`: nivel del portero ("especializado", "ligero") → identificador del modelo (ADR 0005)."""
+        prohibidos = [m for m in modelos.values() if "opus" in m.lower()]
+        if prohibidos:
+            raise ValueError(f"Opus no se usa en el extractor (ADR 0005): {', '.join(prohibidos)}")
         self._modelos, self._cli, self._turnos, self._tiempo = modelos, cli, max_turnos, tiempo_max
 
-    def completar(self, *, rol: str, sistema: str, mensaje: str,
-                  imagenes: dict[str, bytes] | None = None) -> RespuestaModelo:
-        modelo = self._modelos[rol]
+    def completar(self, *, rol: str, sistema: str, mensaje: str, imagenes: dict[str, bytes] | None = None,
+                  nivel: str = "especializado") -> RespuestaModelo:
+        modelo = self._modelos[nivel]
         with tempfile.TemporaryDirectory(prefix=f"extraccion-{rol}-") as tmp:
             trabajo = Path(tmp)
             archivo_sistema = trabajo / "sistema.txt"
-            archivo_sistema.write_text(sistema, encoding="utf-8")
+            archivo_sistema.write_text(sistema.rstrip() + "\n" + REGLA_DE_ESTILO, encoding="utf-8")
             for nombre, png in (imagenes or {}).items():
                 (trabajo / nombre).write_bytes(png)
             cmd = [self._cli, "-p", "--output-format", "stream-json", "--verbose", "--model", modelo,
@@ -133,11 +166,17 @@ class ClaudeCli:
         if limite:
             LIMITE.registrar(limite)
         if datos is None:
+            agotado = _limite_agotado(f"{r.stdout[-300:]} {r.stderr[:300]}", limite)
+            if agotado:
+                raise agotado
             raise ErrorDelModelo(f"{rol}: la CLI no devolvió resultado: {r.stdout[-300:]} {r.stderr[:300]}")
         if datos.get("is_error"):
+            agotado = _limite_agotado(str(datos.get("result") or ""), limite)
+            if agotado:
+                raise agotado
             raise ErrorDelModelo(f"{rol}: {datos.get('result')}")
         u = datos.get("usage") or {}
-        uso = {"modelo": modelo, "segundos": segundos, "turnos": datos.get("num_turns"),
+        uso = {"modelo": modelo, "nivel": nivel, "segundos": segundos, "turnos": datos.get("num_turns"),
                "entrada": u.get("input_tokens", 0), "cache_escritura": u.get("cache_creation_input_tokens", 0),
                "cache_lectura": u.get("cache_read_input_tokens", 0), "salida": u.get("output_tokens", 0),
                "costo_usd": datos.get("total_cost_usd", 0),

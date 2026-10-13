@@ -11,15 +11,14 @@ Especificación: `docs/CONSTRUIR_extractor_matriz.md`. Decisiones: `docs/decisio
 
 ## Puesta en marcha sin Docker (ADR 0003)
 
-Requisitos: Python 3.12 y `pdftotext` (para `validar_extraccion.py`).
+Requisito: Python 3.12.
 
 ```bash
 cd backend
 python -m venv .venv && .venv/Scripts/pip install -e ".[dev]"
 ```
 
-En `.env` (copiado de `.env.example`) defina `DATABASE_URL=sqlite:///.../datos/extractor.db`, `ALMACEN_DIR=.../datos/almacen`,
-`SESION_SECRETO` y `ADMIN_CLAVE` (mínimo 10 caracteres). Luego, desde `backend/`:
+En `.env` (copiado de `.env.example`) defina `DATABASE_URL=sqlite:///.../datos/extractor.db`, `ALMACEN_DIR=.../datos/almacen`. No hay login ni contraseñas. Luego, desde `backend/`:
 
 ```bash
 .venv/Scripts/alembic upgrade head

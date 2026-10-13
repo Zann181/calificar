@@ -1,12 +1,12 @@
 // Divisor arrastrable entre paneles: ratón, tacto y teclado. Doble clic alterna entre el ancho
-// por defecto y el panel plegado. El ancho se recuerda entre sesiones.
+// por defecto y el panel plegado. El ancho dura mientras la ventana está abierta; al cerrarla se restablece.
 import { useCallback, useEffect, useState } from "react";
 
 export function useAnchoPanel(clave: string, defecto: number, min: number, max: () => number) {
   const leer = () => {
     try {
-      const v = Number(localStorage.getItem(`extractor.ancho.${clave}`));
-      return Number.isFinite(v) && v >= 0 && localStorage.getItem(`extractor.ancho.${clave}`) !== null ? v : defecto;
+      const v = Number(sessionStorage.getItem(`extractor.ancho.${clave}`));
+      return Number.isFinite(v) && v >= 0 && sessionStorage.getItem(`extractor.ancho.${clave}`) !== null ? v : defecto;
     } catch {
       return defecto;
     }
@@ -18,7 +18,7 @@ export function useAnchoPanel(clave: string, defecto: number, min: number, max: 
       const limitado = v < min / 2 ? 0 : Math.min(Math.max(v, min), max());
       setAnchoCrudo(limitado);
       try {
-        localStorage.setItem(`extractor.ancho.${clave}`, String(Math.round(limitado)));
+        sessionStorage.setItem(`extractor.ancho.${clave}`, String(Math.round(limitado)));
       } catch {
         /* sin almacenamiento: el ancho vale solo esta sesión */
       }

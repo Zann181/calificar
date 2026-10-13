@@ -13,6 +13,17 @@ from app.contextos.extraccion.dominio.extraccion import Extraccion
 ROLES = ("extractor", "auditor", "ciego", "conciliador")
 
 
+class LimiteDeUsoAgotado(RuntimeError):
+    """El modelo rechazó la llamada porque se acabó el cupo de la cuenta (créditos o ventana de uso).
+
+    No es un fallo de la extracción: se pausa y se reanuda sola. `restablece` es cuándo vuelve el cupo, si se sabe.
+    """
+
+    def __init__(self, mensaje: str, restablece: datetime | None = None) -> None:
+        super().__init__(mensaje)
+        self.restablece = restablece
+
+
 @dataclass(frozen=True)
 class RespuestaModelo:
     texto: str
@@ -24,11 +35,12 @@ class ModeloDeLenguaje(Protocol):
     """ADR 0002: un mensaje de sistema (el libro) y un mensaje de usuario por llamada.
 
     `imagenes` son las páginas renderizadas (nombre de archivo → PNG); el modelo las abre con la
-    herramienta Read. El modelo de cada rol lo fija el adaptador con la configuración (sección 11).
+    herramienta Read. `nivel` lo decide el portero (ADR 0005): "especializado" o "ligero"; el adaptador
+    lo traduce al modelo configurado.
     """
 
-    def completar(self, *, rol: str, sistema: str, mensaje: str,
-                  imagenes: dict[str, bytes] | None = None) -> RespuestaModelo: ...
+    def completar(self, *, rol: str, sistema: str, mensaje: str, imagenes: dict[str, bytes] | None = None,
+                  nivel: str = "especializado") -> RespuestaModelo: ...
 
 
 @dataclass(frozen=True)
@@ -42,7 +54,10 @@ class ValidadorDeExtraccion(Protocol):
         """Lanza una excepción si al validador le falta algo para correr. Se llama antes de pagar al modelo."""
         ...
 
-    def validar(self, salida: list[dict[str, Any]], libro: dict[str, Any], pdf: bytes | None) -> ResultadoValidacion: ...
+    def validar(self, salida: list[dict[str, Any]], libro: dict[str, Any], texto: str | None) -> ResultadoValidacion:
+        """`texto`: el texto del artículo contra el que V23 busca cada cita (el mismo del anclaje, H7).
+        None: sin V23."""
+        ...
 
 
 class LectorPdf(Protocol):

@@ -18,13 +18,12 @@ from app.contextos.biblioteca.puertos import Conversion
 from app.main import crear_app
 from tests.conftest import FIXTURES
 from tests.integracion.conftest import nuevo_proyecto
-from tests.integracion.test_api import CLAVE, CORREO, cliente, entrar  # noqa: F401
+from tests.integracion.test_api import cliente  # noqa: F401
 
 
 def test_estado_lista_las_cinco_piezas(cliente: TestClient) -> None:  # noqa: F811
-    entrar(cliente)
     piezas = {p["id"]: p for p in cliente.get("/api/v1/estado").json()["componentes"]}
-    assert set(piezas) == {"servidor", "despachador", "mineru", "claude", "pdftotext"}
+    assert set(piezas) == {"servidor", "despachador", "mineru", "claude"}
     assert piezas["servidor"]["estado"] == "ok"
     assert piezas["despachador"]["estado"] == "error"  # en las pruebas el servidor no lo arranca
     assert piezas["mineru"]["estado"] == "ok"  # el conversor de prueba no tiene servicio: siempre disponible

@@ -11,7 +11,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.sessions import SessionMiddleware
 
 from app import api_extracciones, estado
 from app.compartido import registro, seguridad
@@ -52,10 +51,6 @@ def crear_app(ajustes: Settings | None = None, contenedor: Any = None) -> FastAP
     app = FastAPI(title="Extractor de matriz felicidad y desempeño", version="0.1.0", lifespan=ciclo)
     app.state.contenedor = contenedor
     app.state.registro_ruta = ajustes.registro_ruta
-    # Uso local sin login: la API entra sola como este usuario (None = login normal).
-    app.state.usuario_sin_login = ajustes.admin_correo.lower() if ajustes.sin_login else None
-    app.add_middleware(SessionMiddleware, secret_key=ajustes.sesion_secreto, session_cookie="sesion_extractor",
-                       https_only=ajustes.sesion_segura, same_site="lax", max_age=60 * 60 * 12)
     app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in ajustes.cors_origenes.split(",") if o.strip()],
                        allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 

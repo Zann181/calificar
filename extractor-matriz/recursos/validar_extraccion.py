@@ -2,10 +2,11 @@
 """Valida una salida de extracción contra el Libro de códigos v2.
 
 Uso:
-    python3 validar_extraccion.py salida.json Libro_de_codigos_extraccion_v2.json [articulo.pdf]
+    python3 validar_extraccion.py salida.json Libro_de_codigos_extraccion_v2.json [articulo.pdf | articulo.txt]
 
-Si se entrega el PDF (requiere pdftotext), comprueba además que cada cita_textual
-fuera de tablas y figuras aparezca literal en el texto del artículo (V23).
+Si se entrega el artículo, comprueba además que cada cita_textual fuera de tablas y figuras
+aparezca literal en su texto (V23). Con un .pdf, el texto sale de pdftotext. Con un .txt (UTF-8),
+se usa ese texto tal cual: el programa le pasa el mismo texto contra el que ancla las citas (H7).
 Salida: lista de errores y advertencias con su código V; código de salida 1 si hay errores.
 """
 import json, re, sys, subprocess, unicodedata
@@ -67,7 +68,10 @@ def main():
     libro = json.load(open(sys.argv[2], encoding="utf-8"))
     texto_pdf = None
     if len(sys.argv) > 3:
-        texto_pdf = norm(subprocess.run(["pdftotext", sys.argv[3], "-"], capture_output=True, text=True).stdout)
+        if sys.argv[3].lower().endswith(".txt"):
+            texto_pdf = norm(open(sys.argv[3], encoding="utf-8").read())
+        else:
+            texto_pdf = norm(subprocess.run(["pdftotext", sys.argv[3], "-"], capture_output=True, text=True).stdout)
 
     E, A = [], []
     err = lambda v, i, m: E.append(f"[{v}] fila {i}: {m}")

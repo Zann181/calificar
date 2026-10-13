@@ -1,7 +1,8 @@
 // Monitor de la cabecera: servicios (servidor, despachador, MinerU, Claude), uso de la cuenta de Claude en la
 // ventana de 5 horas (y cuándo se restablece) y avance de la extracción.
-// Dos modos que se recuerdan: «barra» (los cuatro indicadores y la dona) o «icono» (solo la dona). En ambos, un
-// clic en la dona despliega el detalle: en qué paso va cada extracción y el estado de cada servicio.
+// Dos modos que se recuerdan: «barra» (consumo, servicios que fallan y la dona) o «icono» (consumo y la dona). La
+// barra de consumo se ve siempre; los servicios en orden solo aparecen en el detalle. En ambos modos, un clic en
+// la dona despliega el detalle: en qué paso va cada extracción y el estado de cada servicio.
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
@@ -15,7 +16,6 @@ const ETIQUETA: Record<string, string> = {
   despachador: "Despachador",
   mineru: "MinerU",
   claude: "Claude",
-  pdftotext: "pdftotext",
 };
 const ORDEN_SALUD = { ok: 0, aviso: 1, error: 2 } as const;
 type Salud = keyof typeof ORDEN_SALUD;
@@ -23,7 +23,7 @@ type Modo = "barra" | "icono";
 
 function modoGuardado(): Modo {
   try {
-    return localStorage.getItem("extractor.monitor.modo") === "icono" ? "icono" : "barra";
+    return sessionStorage.getItem("extractor.monitor.modo") === "icono" ? "icono" : "barra";
   } catch {
     return "barra";
   }
@@ -94,7 +94,9 @@ function Pendiente({ p, nombre, ahora }: { p: PendienteDeExtraccion; nombre: str
       ? `Convirtiendo con MinerU · ${formatoTiempo((ahora - Date.parse(p.desde)) / 1000)}`
       : p.fase === "esperando_mineru"
         ? "Esperando a MinerU (no responde)"
-        : `En cola · puesto ${p.posicion}`;
+        : p.fase === "pausada"
+          ? `En pausa: sin cupo de Claude · reintenta ${p.reanuda ? hora(p.reanuda) : "más tarde"}`
+          : `En cola · puesto ${p.posicion}`;
   return (
     <div className="proceso">
       <b className="recortar" title={nombre}>
@@ -115,7 +117,7 @@ export function EstadoServicios({ pid }: { pid: string }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem("extractor.monitor.modo", modo);
+      sessionStorage.setItem("extractor.monitor.modo", modo);
     } catch {
       /* solo esta sesión */
     }
@@ -166,9 +168,10 @@ export function EstadoServicios({ pid }: { pid: string }) {
 
   return (
     <div className="monitor" ref={caja}>
-      {modo === "barra" && (
-        <div className="servicios" role="status" aria-label="Estado de los servicios">
-          {sinConexion ? (
+      <div className="servicios" role="status" aria-label="Estado de los servicios">
+        {estado.data?.cuenta && <PildoraCuenta cuenta={estado.data.cuenta} ahora={ahora} />}
+        {modo === "barra" &&
+          (sinConexion ? (
             <span
               className="servicio error"
               title={`No se pudo consultar el estado: ${(estado.error as Error).message}`}
@@ -177,22 +180,17 @@ export function EstadoServicios({ pid }: { pid: string }) {
               Sin conexión con el servidor
             </span>
           ) : (
-            <>
-            {estado.data?.cuenta && <PildoraCuenta cuenta={estado.data.cuenta} ahora={ahora} />}
-            {servicios.map((c) => (
-              <span key={c.id} className={`servicio ${c.estado}`} title={c.detalle}>
-                <i className="punto-servicio" />
-                {ETIQUETA[c.id] ?? c.nombre}
-                <span className="sr-solo">
-                  {" "}
-                  {c.estado === "ok" ? "activo" : c.estado === "aviso" ? "con aviso" : "con error"}
+            servicios
+              .filter((c) => c.estado !== "ok")
+              .map((c) => (
+                <span key={c.id} className={`servicio ${c.estado}`} title={c.detalle}>
+                  <i className="punto-servicio" />
+                  {ETIQUETA[c.id] ?? c.nombre}
+                  <span className="sr-solo"> {c.estado === "aviso" ? "con aviso" : "con error"}</span>
                 </span>
-              </span>
-            ))}
-            </>
-          )}
-        </div>
-      )}
+              ))
+          ))}
+      </div>
       <button
         className={`monitor-dona ${abierto ? "abierto" : ""}`}
         onClick={() => setAbierto((a) => !a)}
@@ -288,7 +286,7 @@ export function EstadoServicios({ pid }: { pid: string }) {
           </ul>
           <footer>
             <button onClick={() => setModo(modo === "barra" ? "icono" : "barra")}>
-              {modo === "barra" ? "Mostrar solo el ícono" : "Mostrar la barra de servicios"}
+              {modo === "barra" ? "Ocultar los servicios con falla" : "Mostrar los servicios con falla"}
             </button>
           </footer>
         </div>

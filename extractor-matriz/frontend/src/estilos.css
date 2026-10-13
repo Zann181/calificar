@@ -189,22 +189,17 @@ kbd {
   white-space: nowrap;
   min-width: 0;
 }
-.segmentado,
-.segmento {
+.segmentado {
   display: inline-flex;
   background: var(--relleno);
   border-radius: 8px;
   padding: 2px;
   gap: 2px;
 }
-.segmentado button,
-.segmento button {
+.segmentado button {
   background: transparent;
   padding: 3px 12px;
   border-radius: 6px;
-}
-.segmento button {
-  padding: 3px 8px;
 }
 .segmentado button.activo {
   background: var(--fondo-2);
@@ -261,7 +256,7 @@ kbd {
   border-radius: 6px;
 }
 
-/* ---------- migas y menú ---------- */
+/* ---------- migas ---------- */
 .migas {
   display: flex;
   align-items: center;
@@ -283,30 +278,6 @@ kbd {
   color: var(--azul);
   font-weight: 500;
 }
-.menu {
-  position: absolute;
-  top: 34px;
-  left: 0;
-  z-index: 30;
-  list-style: none;
-  margin: 0;
-  padding: 5px;
-  min-width: 280px;
-  background: var(--fondo-2);
-  border-radius: 10px;
-  box-shadow: var(--sombra);
-}
-.menu button {
-  width: 100%;
-  justify-content: flex-start;
-  background: none;
-  border-radius: 6px;
-}
-.menu button:hover {
-  background: var(--azul);
-  color: #fff;
-}
-
 /* ---------- escritorio: barra lateral · tabla · inspector ---------- */
 .escritorio {
   flex: 1;
@@ -323,9 +294,6 @@ kbd {
   min-height: 0;
   overflow: hidden;
 }
-.panel-lateral[hidden] {
-  display: none;
-}
 .panel-lateral > .articulos {
   flex: 1;
   min-width: 0;
@@ -339,6 +307,19 @@ kbd {
 }
 .desplegar-visor span {
   writing-mode: vertical-rl;
+}
+.desplegar-lateral {
+  border-left: 0;
+  border-right: 0.5px solid var(--separador);
+}
+.ocultar-lateral {
+  order: 9;
+  font-size: 18px;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
 }
 
 /* barra lateral (artículos) */
@@ -417,6 +398,12 @@ kbd {
   background: none;
   color: var(--azul);
   padding: 4px 0;
+}
+.acciones button.restablecer {
+  color: var(--rojo);
+}
+.lista .nombre .modelos {
+  font-size: 11px;
 }
 .aviso-carga {
   margin: 8px 12px 0;
@@ -932,32 +919,13 @@ details {
   color: var(--azul);
 }
 .tableta .cuerpo {
+  --w-lateral-tableta: clamp(220px, 26vw, 290px);
   flex: 1;
   min-height: 0;
   display: grid;
 }
-.tableta .cuerpo.dos {
-  grid-template-columns: minmax(0, 1fr) 0 var(--w-visor, 45%);
-}
-.cajon {
-  position: absolute;
-  inset: 10px auto 10px 10px;
-  width: min(330px, 88vw);
-  display: flex;
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: var(--sombra);
-  animation: entrar-izq 0.22s ease-out;
-}
-.cajon .articulos {
-  flex: 1;
-  background: color-mix(in srgb, var(--fondo-2) 94%, transparent);
-}
-@keyframes entrar-izq {
-  from {
-    transform: translateX(-24px);
-    opacity: 0;
-  }
+.subbarra button.activo {
+  background: var(--relleno);
 }
 
 /* ---------- diálogos (hoja centrada en PC, hoja inferior en teléfono) ---------- */
@@ -1001,49 +969,6 @@ details {
   margin-top: 8px;
 }
 
-/* ---------- entrada ---------- */
-.entrar {
-  min-height: 100vh;
-  min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-.entrar form {
-  width: min(360px, 100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  text-align: center;
-}
-.entrar h1 {
-  margin: 8px 0 0;
-  font-size: 26px;
-  letter-spacing: -0.5px;
-}
-.entrar .grupo {
-  width: 100%;
-  margin-top: 14px;
-  background: var(--fondo-2);
-  border-radius: 12px;
-  overflow: hidden;
-}
-.entrar .grupo input {
-  background: none;
-  border-radius: 0;
-  padding: 13px 16px;
-  font-size: 16px;
-}
-.entrar .grupo input + input {
-  border-top: 0.5px solid var(--separador);
-}
-.entrar button {
-  width: 100%;
-  margin-top: 6px;
-}
-
 /* =========================================================
    Teléfono · iOS
    ========================================================= */
@@ -1083,19 +1008,6 @@ details {
 }
 .ios-nav.enrollado .ios-titulo-pequeno {
   opacity: 1;
-}
-.ios-atras,
-.ios-texto {
-  justify-self: start;
-  background: none;
-  color: var(--azul);
-  font-size: 17px;
-  font-weight: 400;
-  padding: 6px 4px;
-  gap: 0;
-}
-.ios-texto {
-  justify-self: end;
 }
 .ios-contenido {
   flex: 1;
@@ -1137,10 +1049,6 @@ details {
 .ios-pestanas button.activo {
   color: var(--azul);
 }
-.ios-cuenta {
-  display: none;
-}
-
 /* artículos en el teléfono: lista agrupada con inserto */
 .ios .articulos {
   background: none;

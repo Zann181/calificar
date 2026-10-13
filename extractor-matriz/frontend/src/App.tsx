@@ -1,10 +1,10 @@
-// Disposición responsiva (sección 9.1), sesión, migas y navegación con retorno (sección 9.5).
+// Disposición responsiva (sección 9.1) y migas de la vista actual (sección 9.5).
 // Teléfono: patrones de iOS (barra de navegación con título grande y barra de pestañas).
 // PC: herramienta de tabla (barra de herramientas, barra lateral, tabla e inspector).
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { api, ErrorApi } from "./api";
+import { api } from "./api";
 import { BarraGlobal } from "./componentes/BarraGlobal";
 import { Divisor, useAnchoPanel } from "./componentes/Divisor";
 import { EstadoServicios } from "./componentes/EstadoServicios";
@@ -15,7 +15,7 @@ import { PanelRazonamiento } from "./componentes/PanelRazonamiento";
 import { PanelRegistro } from "./componentes/PanelRegistro";
 import { Tarjetas } from "./componentes/Tarjetas";
 import { VisorPdf } from "./componentes/VisorPdf";
-import { describir, useNavegacion } from "./navegacion";
+import { useNavegacion } from "./navegacion";
 import { DialogoRevision } from "./revision";
 
 function useAncho() {
@@ -28,101 +28,10 @@ function useAncho() {
   return ancho;
 }
 
-function Entrar() {
-  const qc = useQueryClient();
-  const [correo, setCorreo] = useState("admin@local.test");
-  const [clave, setClave] = useState("");
-  const entrar = useMutation({
-    mutationFn: () => api.entrar(correo, clave),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sesion"] }),
-  });
-  return (
-    <main className="entrar">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          entrar.mutate();
-        }}
-      >
-        <div className="marca">
-          <Icono nombre="tabla" tam={30} />
-        </div>
-        <h1>Extractor de matriz</h1>
-        <p className="tenue">Felicidad en el trabajo y desempeño laboral</p>
-        <div className="grupo">
-          <input
-            value={correo}
-            onChange={(e) => setCorreo(e.target.value)}
-            autoComplete="username"
-            placeholder="Correo"
-            aria-label="Correo"
-          />
-          <input
-            type="password"
-            value={clave}
-            onChange={(e) => setClave(e.target.value)}
-            autoComplete="current-password"
-            placeholder="Contraseña"
-            aria-label="Contraseña"
-          />
-        </div>
-        {entrar.error && (
-          <p className="error">{(entrar.error as Error).message}</p>
-        )}
-        <button
-          className="primario grande"
-          disabled={entrar.isPending || !clave}
-        >
-          Entrar
-        </button>
-      </form>
-    </main>
-  );
-}
-
 function Migas() {
-  const { pila, actual, volver, irA, ir } = useNavegacion();
-  const [lista, setLista] = useState(false);
-  const ultimas = pila
-    .map((v, i) => ({ v, i }))
-    .slice(-10)
-    .reverse();
+  const { actual, ir } = useNavegacion();
   return (
     <nav className="migas">
-      <div className="segmento">
-        <button
-          disabled={!pila.length}
-          onClick={volver}
-          title="Volver (Alt + ←)"
-          aria-label="Volver"
-        >
-          <Icono nombre="atras" tam={16} />
-        </button>
-        <button
-          disabled={!pila.length}
-          onClick={() => setLista(!lista)}
-          aria-label="Historial de navegación"
-          title="Historial"
-        >
-          <Icono nombre="reloj" tam={16} />
-        </button>
-      </div>
-      {lista && (
-        <ul className="menu" onMouseLeave={() => setLista(false)}>
-          {ultimas.map(({ v, i }) => (
-            <li key={i}>
-              <button
-                onClick={() => {
-                  setLista(false);
-                  irA(i);
-                }}
-              >
-                {describir(v)}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
       <span className="ruta">
         <button onClick={() => ir({})}>Matriz</button>
         {actual.estudio && (
@@ -156,6 +65,39 @@ function Migas() {
   );
 }
 
+// Exporta toda la matriz a una hoja de cálculo (.xlsx): el servidor la genera y el navegador la descarga.
+function BotonExportar({ pid }: { pid: string }) {
+  const exportar = useMutation({
+    mutationFn: () => api.exportar(pid),
+    onSuccess: (r) => {
+      const a = document.createElement("a");
+      a.href = r.descarga;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    },
+  });
+  return (
+    <button
+      className="sin-borde"
+      onClick={() => exportar.mutate()}
+      disabled={exportar.isPending}
+      title={
+        exportar.error
+          ? `No se pudo exportar: ${(exportar.error as Error).message}`
+          : exportar.isPending
+            ? "Generando la hoja de cálculo…"
+            : "Exportar la matriz a Excel (.xlsx)"
+      }
+      aria-label="Exportar la matriz a Excel"
+    >
+      <Icono nombre="bajar" tam={18} />
+      {exportar.isPending ? "Exportando…" : exportar.error ? "Reintentar exportar" : "Exportar"}
+    </button>
+  );
+}
+
 type Pestana = "articulos" | "revision" | "visor";
 const TITULOS: Record<Pestana, string> = {
   articulos: "Artículos",
@@ -163,20 +105,14 @@ const TITULOS: Record<Pestana, string> = {
   visor: "Visor",
 };
 
-function Espacio({
-  pid,
-  correo,
-  onSalir,
-}: {
-  pid: string;
-  correo: string;
-  onSalir: () => void;
-}) {
+function Espacio({ pid }: { pid: string }) {
   const ancho = useAncho();
-  const { actual, pila, volver } = useNavegacion();
-  const [visorAbierto, setVisorAbierto] = useState(true);
+  const { actual } = useNavegacion();
+  // El visor empieza plegado: vacío solo le quitaría ancho a la tabla. Se abre al elegir una celda o un PDF.
+  const [visorAbierto, setVisorAbierto] = useState(false);
   const [marcados, setMarcados] = useState<Set<string>>(new Set()); // artículos con chulito
-  const [cajon, setCajon] = useState(false);
+  // Tableta: la barra lateral va acoplada (no flotante) y se muestra u oculta.
+  const [lateralTableta, setLateralTableta] = useState(true);
   const [pestana, setPestana] = useState<Pestana>("revision");
   const [pestanaTableta, setPestanaTableta] = useState<"matriz" | "visor">(
     "matriz",
@@ -241,6 +177,10 @@ function Espacio({
     setVisorAbierto(true);
     setPestanaTableta("visor");
   }, [actual.visor]);
+  // Elegir una celda sin PDF también abre el visor: ahí está «Por qué este valor».
+  useEffect(() => {
+    if (actual.estudio !== undefined && actual.columna) setVisorAbierto(true);
+  }, [actual.estudio, actual.columna]);
 
   if (columnas.error || filas.error || articulos.error) {
     return (
@@ -263,6 +203,13 @@ function Espacio({
       onAbrir={() => setPestana("visor")}
       marcados={marcados}
       setMarcados={setMarcados}
+      onOcultar={
+        ancho < 768
+          ? undefined
+          : ancho < 1280
+            ? () => setLateralTableta(false)
+            : () => lateral.fijar(0)
+      }
     />
   );
   const grilla = (
@@ -301,22 +248,9 @@ function Espacio({
     return (
       <div className="ios">
         <header className={`ios-nav ${enrollado ? "enrollado" : ""}`}>
-          {pila.length > 0 ? (
-            <button className="ios-atras" onClick={volver}>
-              <Icono nombre="atras" tam={22} grosor={2.2} />
-              Atrás
-            </button>
-          ) : (
-            <span />
-          )}
+          <span />
           <span className="ios-titulo-pequeno">{TITULOS[pestana]}</span>
-          {pestana === "articulos" ? (
-            <button className="ios-texto" onClick={onSalir}>
-              Salir
-            </button>
-          ) : (
-            <span />
-          )}
+          <span />
         </header>
         <div
           className="ios-contenido"
@@ -354,18 +288,29 @@ function Espacio({
             </button>
           ))}
         </nav>
-        <p className="ios-cuenta tenue">{correo}</p>
       </div>
     );
   }
 
-  // Tableta: barra lateral como cajón; tabla e inspector lado a lado desde 1024 px, si no, alternados.
+  // Tableta: barra lateral acoplada que se oculta; tabla e inspector lado a lado desde 1024 px, si no, alternados.
   if (ancho < 1280) {
     const lado = ancho >= 1024;
+    const columnasCuerpo = [
+      lateralTableta ? "var(--w-lateral-tableta)" : "",
+      "minmax(0, 1fr)",
+      lado && visorAbierto ? "0 var(--w-visor, 45%)" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
     return (
       <div className="tableta">
         <div className="subbarra">
-          <button onClick={() => setCajon(true)}>
+          <button
+            className={lateralTableta ? "activo" : ""}
+            onClick={() => setLateralTableta((v) => !v)}
+            aria-pressed={lateralTableta}
+            title={lateralTableta ? "Ocultar artículos" : "Mostrar artículos"}
+          >
             <Icono nombre="barra" tam={18} /> Artículos
           </button>
           {!lado && (
@@ -391,11 +336,15 @@ function Espacio({
           )}
         </div>
         <div
-          className={`cuerpo ${lado && visorAbierto ? "dos" : "uno"}`}
+          className="cuerpo"
           style={
-            { "--w-visor": `${panelVisor.ancho}px` } as React.CSSProperties
+            {
+              "--w-visor": `${panelVisor.ancho}px`,
+              gridTemplateColumns: columnasCuerpo,
+            } as React.CSSProperties
           }
         >
+          {lateralTableta && <div className="panel-lateral">{panel}</div>}
           {(lado || pestanaTableta === "matriz") && grilla}
           {lado && visorAbierto && (
             <Divisor
@@ -409,28 +358,14 @@ function Espacio({
           {((lado && visorAbierto) || (!lado && pestanaTableta === "visor")) &&
             visor}
         </div>
-        {cajon && (
-          <div
-            className="velo"
-            onMouseDown={(e) => e.target === e.currentTarget && setCajon(false)}
-          >
-            <div
-              className="cajon"
-              onClick={(e) =>
-                (e.target as HTMLElement).closest(".nombre") && setCajon(false)
-              }
-            >
-              {panel}
-            </div>
-          </div>
-        )}
       </div>
     );
   }
 
   // Escritorio: barra lateral, tabla e inspector; los tres anchos se ajustan arrastrando los divisores.
+  // Plegado, el panel deja una pestaña de 44 px para volver a mostrarlo; la grilla conserva sus cinco columnas.
   const estilo = {
-    "--w-lateral": `${lateral.ancho}px`,
+    "--w-lateral": lateral.ancho > 0 ? `${lateral.ancho}px` : "44px",
     "--w-visor":
       visorAbierto && panelVisor.ancho > 0 ? `${panelVisor.ancho}px` : "44px",
   } as React.CSSProperties;
@@ -439,9 +374,18 @@ function Espacio({
       className={`escritorio ${visorAbierto ? "con-visor" : "sin-visor"}`}
       style={estilo}
     >
-      <div className="panel-lateral" hidden={lateral.ancho === 0}>
-        {panel}
-      </div>
+      {lateral.ancho > 0 ? (
+        <div className="panel-lateral">{panel}</div>
+      ) : (
+        <button
+          className="desplegar-visor desplegar-lateral"
+          onClick={lateral.restablecer}
+          title="Mostrar artículos"
+        >
+          <Icono nombre="documentos" tam={18} />
+          <span>Artículos</span>
+        </button>
+      )}
       <Divisor
         etiqueta="Ancho de artículos"
         ancho={lateral.ancho}
@@ -487,26 +431,14 @@ function Espacio({
 }
 
 export function App() {
-  const qc = useQueryClient();
   const ancho = useAncho();
-  const sesion = useQuery({
-    queryKey: ["sesion"],
-    queryFn: api.quien,
-    retry: (n, e) => !(e instanceof ErrorApi && e.estado === 401) && n < 2,
-  });
   const proyectos = useQuery({
     queryKey: ["proyectos"],
     queryFn: api.proyectos,
-    enabled: !!sesion.data,
   });
-  const salir = useMutation({
-    mutationFn: api.salir,
-    onSuccess: () => qc.clear(),
-  });
-
-  if (sesion.isLoading) return <p className="centro tenue">Cargando…</p>;
-  if (!sesion.data) return <Entrar />;
   const proyecto = proyectos.data?.[0];
+
+  if (proyectos.isLoading) return <p className="centro tenue">Cargando…</p>;
 
   return (
     <div className="app">
@@ -523,23 +455,12 @@ export function App() {
           <Migas />
           <EstadoServicios pid={proyecto?.id ?? ""} />
           <div className="cuenta">
-            <span className="tenue">{sesion.data.correo}</span>
-            <button
-              className="sin-borde"
-              onClick={() => salir.mutate()}
-              title="Cerrar sesión"
-            >
-              <Icono nombre="salir" tam={18} />
-            </button>
+            {proyecto && <BotonExportar pid={proyecto.id} />}
           </div>
         </header>
       )}
       {proyecto ? (
-        <Espacio
-          pid={proyecto.id}
-          correo={sesion.data.correo}
-          onSalir={() => salir.mutate()}
-        />
+        <Espacio pid={proyecto.id} />
       ) : (
         <p className="centro tenue">Sin proyectos. Ejecute la semilla.</p>
       )}

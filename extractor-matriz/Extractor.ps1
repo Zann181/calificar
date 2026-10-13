@@ -175,7 +175,6 @@ try {
         $python = Join-Path $backend ".venv\Scripts\python.exe"
         if (-not (Test-Path $python)) { throw "Falta el entorno de Python en $backend\.venv (ver README.md)." }
         $env:PYTHONIOENCODING = "utf-8"
-        if (-not $env:SIN_LOGIN) { $env:SIN_LOGIN = "true" }  # escritorio: solo escucha en 127.0.0.1
         $servidor = Start-Process -FilePath $python -WorkingDirectory $backend -WindowStyle Hidden -PassThru `
             -ArgumentList "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "$puerto" `
             -RedirectStandardOutput $registro -RedirectStandardError "$registro.err"

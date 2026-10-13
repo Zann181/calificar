@@ -8,13 +8,11 @@
                       [--reextraer [--motivo <texto>]]   cuatro roles con Claude Code CLI (ADR 0002)
     python -m app.cli despachar                  corre el despachador de la outbox
     python -m app.cli exportar <salida.xlsx>
-    python -m app.cli crear-usuario <correo> <nombre> <rol>   (pide la contraseña)
 """
 
 from __future__ import annotations
 
 import argparse
-import getpass
 import json
 import logging
 import sys
@@ -47,11 +45,8 @@ def _proyecto(c: Contenedor, crear: bool = False) -> uuid.UUID:
 
 def semilla(c: Contenedor, _: argparse.Namespace) -> None:
     pid = _proyecto(c, crear=True)
-    if not c.ajustes.admin_clave:
-        sys.exit("Defina ADMIN_CLAVE en .env (mínimo 10 caracteres) antes de la semilla")
     with c.fabrica() as s:
-        u = crear_usuario(s, correo=c.ajustes.admin_correo, nombre=c.ajustes.admin_nombre, rol="administrador",
-                          clave=c.ajustes.admin_clave)
+        u = crear_usuario(s, correo=c.ajustes.admin_correo, nombre=c.ajustes.admin_nombre, rol="administrador")
     libro = json.loads(c.ajustes.libro_de_codigos.read_text(encoding="utf-8"))
     v = c.normas.publicar.ejecutar(pid, libro)
     c.despachador.despachar_pendientes()
@@ -121,13 +116,6 @@ def exportar(c: Contenedor, a: argparse.Namespace) -> None:
     print(f"{e.filas_heredadas} filas heredadas y {e.filas_extraidas} extraídas en {a.salida}")
 
 
-def usuario(c: Contenedor, a: argparse.Namespace) -> None:
-    clave = getpass.getpass("Contraseña: ")
-    with c.fabrica() as s:
-        u = crear_usuario(s, correo=a.correo, nombre=a.nombre, rol=a.rol, clave=clave)
-    print(f"Usuario {u.correo} ({u.rol})")
-
-
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     p = argparse.ArgumentParser(prog="python -m app.cli")
@@ -156,11 +144,6 @@ def main(argv: list[str] | None = None) -> None:
     x = sub.add_parser("exportar")
     x.add_argument("salida")
     x.set_defaults(f=exportar)
-    x = sub.add_parser("crear-usuario")
-    x.add_argument("correo")
-    x.add_argument("nombre")
-    x.add_argument("rol", choices=["extractor", "revisor", "administrador"])
-    x.set_defaults(f=usuario)
     a = p.parse_args(argv)
     registro.instalar(settings().registro_ruta)
     a.f(construir(settings()), a)

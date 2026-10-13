@@ -30,14 +30,11 @@ class Settings(BaseSettings):
     # Entorno de Python de servicio-mineru; el lanzador lo arranca si existe.
     mineru_python: Path = RAIZ_REPO / "servicio-mineru" / ".venv" / "Scripts" / "python.exe"
 
-    # Modelo de lenguaje: Claude Code CLI (ADR 0002). Los modelos se confirman en F0.
+    # Modelo de lenguaje: Claude Code CLI (ADR 0002). El portero elige el nivel de cada llamada (ADR 0005);
+    # Opus no se admite.
     claude_cli: str = "claude"
-    # pdftotext para el validador (V23). Vacío: se busca en PATH y en la instalación de Git para Windows.
-    pdftotext: str = ""
-    modelo_extractor: str = "claude-opus-5-5"
-    modelo_auditor: str = "claude-opus-5-5"
-    modelo_ciego: str = "claude-sonnet-5-5"
-    modelo_conciliador: str = "claude-opus-5-5"
+    modelo_especializado: str = "claude-sonnet-5-5"
+    modelo_ligero: str = "claude-haiku-5-5"
 
     concurrencia_extraccion: int = 2
     # Extracciones simultáneas lanzadas desde la interfaz (cada una cuesta ~7 USD y ~11 min); las demás esperan.
@@ -49,13 +46,8 @@ class Settings(BaseSettings):
     umbral_acuerdo: float = 0.80
     tope_tokens_mensual: int | None = None
 
-    sesion_secreto: str = "cambiar-en-.env"
-    sesion_segura: bool = False  # True detrás de HTTPS (etapa 2)
-    # Uso de escritorio: sin pantalla de login (el servidor escucha en 127.0.0.1). Para un servidor en red,
-    # poner SIN_LOGIN=false en .env.
-    sin_login: bool = True
+    # Usuario local: la API entra sola como este usuario (firma las revisiones). No hay login.
     admin_correo: str = "admin@local.test"
-    admin_clave: str = ""
     admin_nombre: str = "Administrador"
     proyecto_nombre: str = "Felicidad y desempeño"
 

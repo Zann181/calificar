@@ -21,7 +21,7 @@ from app.contextos.extraccion.aplicacion.ejecutor import (
 from app.contextos.extraccion.dominio.extraccion import Extraccion
 from app.contextos.extraccion.puertos import PedidoGuardado
 from tests.conftest import FIXTURES
-from tests.integracion.test_api import cliente, entrar  # noqa: F401
+from tests.integracion.test_api import cliente  # noqa: F401
 
 
 class EjecutorFalso:
@@ -33,6 +33,9 @@ class EjecutorFalso:
     def encolar(self, pedido: PedidoDeExtraccion) -> int:
         self.pedidos.append(pedido)
         return len(self.pedidos) - 1
+
+    def activo(self, articulo_id: uuid.UUID) -> bool:
+        return any(p.articulo_id == articulo_id for p in self.pedidos)
 
     def pendientes(self, proyecto_id: uuid.UUID) -> list[Pendiente]:
         return [Pendiente(p.articulo_id, i + 1, "en_cola", 0.0) for i, p in enumerate(self.pedidos[1:])]
@@ -57,7 +60,6 @@ def test_lanzar_encola_y_valida(cliente: TestClient, contenedor: Contenedor, pro
     excluido = contenedor.biblioteca.cargar.ejecutar(proyecto, "y.pdf", b"%PDF-1.4 otro").articulo_id
     assert excluido is not None
     contenedor.biblioteca.excluir.ejecutar(proyecto, excluido, "fuera del alcance")
-    entrar(cliente)
     r = cliente.post(f"/api/v1/proyectos/{proyecto}/extracciones", json={"articulos": [
         {"articulo_id": str(listo), "documento": 1, "covidence": 671},
         {"articulo_id": str(nuevo), "documento": 2, "via": "Otros métodos: búsqueda manual"},
@@ -79,7 +81,6 @@ def test_sin_covidence_ni_otra_via_no_se_encola(cliente: TestClient, contenedor:
     falso = EjecutorFalso()
     contenedor.ejecutor = falso  # type: ignore[assignment]
     listo = _articulo_listo(contenedor, proyecto, "kumar_2022")
-    entrar(cliente)
     r = cliente.post(f"/api/v1/proyectos/{proyecto}/extracciones",
                      json={"articulos": [{"articulo_id": str(listo), "documento": 1}]})
     assert not r.json()[0]["encolado"] and "Covidence #" in r.json()[0]["error"]
@@ -98,12 +99,36 @@ def test_avance_lista_extracciones_en_curso(cliente: TestClient, contenedor: Con
         with UnidadDeTrabajoExtraccionSql(lambda: s) as u:  # type: ignore[arg-type]
             u.extracciones.agregar(ext)
             u.confirmar()
-    entrar(cliente)
     datos: dict[str, Any] = cliente.get(f"/api/v1/proyectos/{proyecto}/extracciones/avance").json()
     (e,) = datos["extracciones"]
     assert e["articulo_id"] == str(aid) and e["estado"] == "EXTRAYENDO"
     assert e["progreso"] == 8 and e["paso"] == "extrayendo" and e["hasta"] == 45 and e["segundos_tipicos"] == 300
     assert not e["fallida"] and not e["inactiva"] and e["terminada_en"] is None
+
+
+def test_tope_mensual_de_tokens_rechaza_el_lote(cliente: TestClient, contenedor: Contenedor,  # noqa: F811
+                                                proyecto: uuid.UUID, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sección 11: con TOPE_TOKENS_MENSUAL, un lote que lo superaría no se encola (ni en parte)."""
+    falso = EjecutorFalso()
+    contenedor.ejecutor = falso  # type: ignore[assignment]
+    monkeypatch.setattr(contenedor.ajustes, "tope_tokens_mensual", 1_000_000)
+    kumar, singh = _articulo_listo(contenedor, proyecto, "kumar_2022"), _articulo_listo(contenedor, proyecto, "singh_2023")
+    ext = Extraccion.iniciar(proyecto_id=proyecto, articulo_id=uuid.uuid4(), version_libro_id=uuid.uuid4(),
+                             estudios_reservados=[7])
+    ext.registrar_uso("extractor", {"entrada": 300_000, "salida": 100_000})
+    with contenedor.fabrica() as s:
+        from app.contextos.extraccion.adaptadores.repositorio_sql import UnidadDeTrabajoExtraccionSql
+
+        with UnidadDeTrabajoExtraccionSql(lambda: s) as u:  # type: ignore[arg-type]
+            u.extracciones.agregar(ext)
+            u.confirmar()
+    assert contenedor.extraccion.consultas.tokens_del_mes(proyecto) == 400_000
+    url = f"/api/v1/proyectos/{proyecto}/extracciones"
+    dos = [{"articulo_id": str(a), "documento": i + 1, "covidence": 1} for i, a in enumerate((kumar, singh))]
+    r = cliente.post(url, json={"articulos": dos})
+    assert r.status_code == 409 and "tope mensual" in r.json()["detail"]
+    assert falso.pedidos == []
+    assert cliente.post(url, json={"articulos": dos[:1]}).json()[0]["encolado"]  # 400.000 + ~588.000 cabe
 
 
 class ExtraerFalso:
@@ -243,7 +268,6 @@ def test_extraer_sobre_un_error_reutiliza_los_datos_del_intento_anterior(
     falso = EjecutorFalso()
     contenedor.ejecutor = falso  # type: ignore[assignment]
     aid = _articulo_listo(contenedor, proyecto, "kumar_2022")
-    entrar(cliente)
     url = f"/api/v1/proyectos/{proyecto}/extracciones/retomar"
     r = cliente.post(url, json={"articulos": [str(aid)]}).json()[0]
     assert not r["encolado"] and r["sin_datos"]  # sin intento anterior: el diálogo pide los datos
@@ -261,3 +285,85 @@ def test_extraer_sobre_un_error_reutiliza_los_datos_del_intento_anterior(
     assert r["encolado"] and not r["sin_datos"]
     assert falso.pedidos[0].opciones == OpcionesDeExtraccion(documento=5, estudio_inicial=72, covidence=405,
                                                              via="Covidence")
+
+
+def test_mientras_el_modelo_extrae_se_convierte_el_siguiente(proyecto: uuid.UUID) -> None:
+    """La conversión (MinerU) del segundo pedido corre mientras el primero ocupa al modelo."""
+    import threading
+    import time
+
+    modelo_libre = threading.Event()
+    segundo_preparado = threading.Event()
+    orden: list[str] = []
+
+    class Modelo:
+        def ejecutar(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID, opciones: object) -> Any:
+            orden.append(f"extrae {opciones.documento}")  # type: ignore[attr-defined]
+            if opciones.documento == 1:  # type: ignore[attr-defined]
+                assert segundo_preparado.wait(5), "el segundo no se preparó mientras el primero usaba el modelo"
+            modelo_libre.set()
+            return type("R", (), {"estado": "COMPLETADA"})()
+
+    def preparar(pedido: PedidoDeExtraccion, informar: Any) -> None:
+        orden.append(f"prepara {pedido.opciones.documento}")
+        if pedido.opciones.documento == 2:
+            segundo_preparado.set()
+
+    ejecutor = EjecutorDeExtracciones(Modelo(), 1, preparar)  # type: ignore[arg-type]
+    for n in (1, 2):
+        ejecutor.encolar(PedidoDeExtraccion(proyecto, uuid.uuid4(), f"a{n}.pdf", OpcionesDeExtraccion(documento=n)))
+    assert modelo_libre.wait(5)
+    for _ in range(50):
+        if "extrae 2" in orden:
+            break
+        time.sleep(0.1)
+    assert orden.index("prepara 2") < orden.index("extrae 2")
+    assert orden.index("extrae 1") < orden.index("extrae 2")
+    ejecutor.cerrar()
+
+
+def test_sin_cupo_el_pedido_se_pausa_y_se_reanuda_solo(proyecto: uuid.UUID, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Un límite de uso agotado no marca error: el pedido queda `pausada` y se reintenta al volver el cupo."""
+    import threading
+    import time
+
+    from app.contextos.extraccion.aplicacion import ejecutor as modulo
+    from app.contextos.extraccion.puertos import LimiteDeUsoAgotado
+
+    monkeypatch.setattr(modulo.time, "sleep", time.sleep)
+    intentos: list[int] = []
+    hecho = threading.Event()
+
+    class Modelo:
+        def ejecutar(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID, opciones: object) -> Any:
+            intentos.append(1)
+            if len(intentos) == 1:
+                raise LimiteDeUsoAgotado("límite", None)
+            hecho.set()
+            return type("R", (), {"estado": "COMPLETADA"})()
+
+    ejecutor = EjecutorDeExtracciones(Modelo(), 1, None)  # type: ignore[arg-type]
+    monkeypatch.setattr(modulo, "ESPERA_SIN_FECHA_S", 0.01)
+    aid = uuid.uuid4()
+    ejecutor.encolar(PedidoDeExtraccion(proyecto, aid, "a.pdf", OpcionesDeExtraccion(documento=1)))
+    for _ in range(50):
+        pausadas = [p for p in ejecutor.pendientes(proyecto) if p.fase == "pausada"]
+        if pausadas or hecho.is_set():
+            break
+        time.sleep(0.02)
+    assert pausadas and pausadas[0].reanuda is not None
+    # `_pausar` impone un mínimo de 60 s si se sabe la fecha; sin fecha usa ESPERA_SIN_FECHA_S (aquí, casi nada).
+    assert hecho.wait(15)
+    assert len(intentos) == 2
+    ejecutor.cerrar()
+
+
+def test_la_cli_reconoce_que_se_acabo_el_cupo() -> None:
+    from app.contextos.extraccion.adaptadores.claude_cli import _limite_agotado
+
+    assert _limite_agotado("Claude AI usage limit reached|1760000000", None) is not None
+    assert _limite_agotado("Credit balance is too low", None) is not None
+    assert _limite_agotado("todo bien", {"status": "rejected", "resetsAt": 1760000000}) is not None
+    r = _limite_agotado("x", {"status": "rejected", "resetsAt": 1760000000})
+    assert r is not None and r.restablece is not None
+    assert _limite_agotado("JSON inválido", {"status": "allowed"}) is None

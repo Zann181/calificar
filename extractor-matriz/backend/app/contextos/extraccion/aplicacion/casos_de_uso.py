@@ -6,6 +6,10 @@
    la extracción queda FALLIDA y no se escribe nada en Matriz.
 4. Anclaje de cada evidencia.
 5. Auditor y codificador ciego en paralelo.
+   El portero (ADR 0005) elige el nivel del modelo de cada llamada: extractor y auditor siempre
+   especializado; ciego y conciliador ligero salvo señales de complejidad o campo crítico. Una respuesta
+   ligera sin el JSON pedido, o un ciego ligero con acuerdo menor que UMBRAL_ACUERDO, se repite con el
+   especializado.
 6. Comparación salida contra ciega en los campos críticos.
 7. Conciliador para cada diferencia y cada hallazgo REFUTADO; su decisión también se ancla. Si cambia
    un valor, la salida se vuelve a validar.
@@ -22,7 +26,7 @@ import uuid
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from datetime import UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.compartido.dominio import ErrorDeDominio, ahora
@@ -45,10 +49,18 @@ from app.contextos.extraccion.dominio.extraccion import (
     veredicto_de,
 )
 from app.contextos.extraccion.dominio.libro import DatosDelEquipo, libro_para_sistema, regla_para_campo
+from app.contextos.extraccion.dominio.portero import (
+    Decision,
+    Nivel,
+    decidir_ciego,
+    decidir_conciliador,
+    decidir_rol,
+)
 from app.contextos.extraccion.puertos import (
     FuenteDeArticulos,
     FuenteDeNormas,
     LectorPdf,
+    LimiteDeUsoAgotado,
     ModeloDeLenguaje,
     NumeracionDeEstudios,
     RespuestaModelo,
@@ -82,6 +94,7 @@ class ParametrosDelMotor:
     max_iteraciones_validador: int = 3
     umbral_similitud: float = 95
     concurrencia: int = 2
+    umbral_acuerdo: float = 0.80  # por debajo, el ciego ligero se repite con el especializado (ADR 0005)
 
 
 @dataclass
@@ -164,6 +177,14 @@ class ExtraerArticulo:
             r = self._resultado(ext)
             log.info("Extracción %s COMPLETADA: acuerdo con el ciego %s · %d hallazgos pendientes. Las filas pasan "
                      "a la matriz como POR_REVISAR", str(ext.id)[:8], r.acuerdo, r.hallazgos_pendientes)
+        except LimiteDeUsoAgotado as e:
+            # Sin cupo: no es un error del artículo. Se cierra este intento y el artículo se queda donde estaba;
+            # el ejecutor pausa el pedido y lo vuelve a lanzar cuando el cupo regrese.
+            log.warning("Extracción %s en pausa: %s", str(ext.id)[:8], e)
+            if not ext.terminada:
+                ext.fallar(f"Pausada por límite de uso: {e}")
+            self._guardar(ext)
+            raise
         except Exception as e:
             log.exception("Extracción %s del artículo %s falló en %s", ext.id, articulo_id, ext.estado)
             self._fallar(ext, f"{type(e).__name__}: {e}")
@@ -205,10 +226,27 @@ class ExtraerArticulo:
                 con_imagenes: bool = True) -> RespuestaModelo:
         log.info("Extracción %s: llamando al rol %s…", str(ext.id)[:8], rol)
         r = self._modelo.completar(rol=rol, sistema=sistema, mensaje=mensaje,
-                                   imagenes=ctx.imagenes if con_imagenes else None)
+                                   imagenes=ctx.imagenes if con_imagenes else None, nivel=decidir_rol(rol).nivel)
         ext.registrar_uso(rol, r.uso)
         _registrar_uso(ext, rol, r.uso)
         return r
+
+    def _con_portero(self, decision: Decision, rol: str, sistema: str, mensaje: str,
+                     imagenes: dict[str, bytes] | None, leer: Callable[[str], Any]) -> tuple[Any, list[dict[str, Any]]]:
+        """Llama con el nivel del portero; si la respuesta ligera no se puede leer, repite con el especializado."""
+        usos: list[dict[str, Any]] = []
+        r = self._modelo.completar(rol=rol, sistema=sistema, mensaje=mensaje, imagenes=imagenes, nivel=decision.nivel)
+        usos.append({**r.uso, "motivo_portero": decision.motivo})
+        try:
+            return leer(r.texto), usos
+        except roles.RespuestaInvalida:
+            if decision.nivel != Nivel.LIGERO:
+                raise
+            log.warning("Portero: respuesta ligera ilegible del rol %s; se repite con el especializado", rol)
+        r = self._modelo.completar(rol=rol, sistema=sistema, mensaje=mensaje, imagenes=imagenes,
+                                   nivel=Nivel.ESPECIALIZADO)
+        usos.append({**r.uso, "motivo_portero": "escalado: la respuesta ligera no trajo el JSON pedido"})
+        return leer(r.texto), usos
 
     def _extraer(self, ext: Extraccion, ctx: _Contexto) -> bool:
         """Pasos 2 y 3. Devuelve False si la salida no pasó el validador."""
@@ -217,7 +255,7 @@ class ExtraerArticulo:
         salida = roles.lista_de(self._llamar(ext, "extractor", sistema, mensaje, ctx).texto)
         for iteracion in range(1, self._p.max_iteraciones_validador + 1):
             ext.registrar_salida(salida)
-            r = self._validador.validar(salida, ctx.libro, ctx.pdf)
+            r = self._validador.validar(salida, ctx.libro, self._anclador(ctx).texto_completo())
             ext.registrar_validacion(r.errores, r.avisos)
             self._guardar(ext)
             log.info("Extracción %s: validador, iteración %d: %d errores · %d avisos", str(ext.id)[:8], iteracion,
@@ -254,22 +292,34 @@ class ExtraerArticulo:
         s_aud, m_aud = roles.auditor(ctx.libro_sistema, ext.salida, [a.a_dict() for a in ext.anclas],
                                      ctx.etiquetado.texto, imagenes)
         s_cie, m_cie = roles.ciego(ctx.libro_sistema, ctx.datos, ctx.etiquetado.texto, imagenes)
+        d_cie = decidir_ciego(ctx.documento, ctx.etiquetado.texto)
         with ThreadPoolExecutor(max_workers=2) as ex:
-            f_aud = ex.submit(self._modelo.completar, rol="auditor", sistema=s_aud, mensaje=m_aud, imagenes=ctx.imagenes)
-            f_cie = ex.submit(self._modelo.completar, rol="ciego", sistema=s_cie, mensaje=m_cie, imagenes=ctx.imagenes)
-            r_aud, r_cie = f_aud.result(), f_cie.result()
+            f_aud = ex.submit(self._modelo.completar, rol="auditor", sistema=s_aud, mensaje=m_aud, imagenes=ctx.imagenes,
+                              nivel=decidir_rol("auditor").nivel)
+            f_cie = ex.submit(self._con_portero, d_cie, "ciego", s_cie, m_cie, ctx.imagenes, roles.lista_de)
+            r_aud, (ciega, usos_cie) = f_aud.result(), f_cie.result()
         ext.registrar_uso("auditor", r_aud.uso)
-        ext.registrar_uso("ciego", r_cie.uso)
         _registrar_uso(ext, "auditor", r_aud.uso)
-        _registrar_uso(ext, "ciego", r_cie.uso)
+        for uso in usos_cie:
+            ext.registrar_uso("ciego", uso)
+            _registrar_uso(ext, "ciego", uso)
         auditoria = roles.lista_de(r_aud.texto) if r_aud.texto.strip() not in ("", "[]") else []
-        ciega = roles.lista_de(r_cie.texto)
         hallazgos = [Hallazgo(estudio=_entero(h.get("estudio")), columna=str(h.get("columna") or "Estudio"),
                               auditor=Auditor.AUDITOR_EVIDENCIA, veredicto=veredicto_de(h.get("veredicto")),
                               detalle=str(h.get("hallazgo") or ""), evidencia_propuesta=h.get("evidencia"))
                      for h in auditoria]
         hallazgos = [h for h in hallazgos if h.veredicto != Veredicto.CONFIRMADO]
         comparacion = comparar(ext.salida, ciega)
+        if d_cie.nivel == Nivel.LIGERO and comparacion.acuerdo < self._p.umbral_acuerdo:
+            # Un acuerdo bajo con el ciego ligero puede ser error de Haiku y no del extractor: se confirma con Sonnet.
+            log.warning("Portero: acuerdo %.2f con el ciego ligero; se repite con el especializado", comparacion.acuerdo)
+            r = self._modelo.completar(rol="ciego", sistema=s_cie, mensaje=m_cie, imagenes=ctx.imagenes,
+                                       nivel=Nivel.ESPECIALIZADO)
+            uso = {**r.uso, "motivo_portero": f"escalado: acuerdo {comparacion.acuerdo:.2f} con el ciego ligero"}
+            ext.registrar_uso("ciego", uso)
+            _registrar_uso(ext, "ciego", uso)
+            ciega = roles.lista_de(r.texto)
+            comparacion = comparar(ext.salida, ciega)
         for d in comparacion.diferencias:
             evidencia = None
             if d.fila is not None and d.fila < len(ciega):
@@ -306,19 +356,20 @@ class ExtraerArticulo:
                                                            salida[fila] if fila is not None else salida)))
         return puntos
 
-    def _decidir(self, ctx: _Contexto, p: _Punto) -> tuple[dict[str, Any], dict[str, Any]]:
+    def _decidir(self, ctx: _Contexto, p: _Punto) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         mensaje = roles.conciliador(estudio=p.estudio, campo=p.campo, valor_extractor=p.valor_extractor,
                                     valor_alternativo=p.valor_alternativo, origen=p.origen, detalle=p.detalle,
                                     regla=regla_para_campo(ctx.libro, p.campo), bloques=p.bloques)
         try:
-            r = self._modelo.completar(rol="conciliador", sistema=roles.SISTEMA_CONCILIADOR, mensaje=mensaje)
-        except Exception as e:  # una conciliación que falla queda PENDIENTE; no tumba la extracción
-            return {"decision": "PENDIENTE", "razonamiento": f"Error al llamar al conciliador: {e}"}, {}
-        try:
-            decision = roles.json_de(r.texto)
+            decision, usos = self._con_portero(decidir_conciliador(p.campo), "conciliador", roles.SISTEMA_CONCILIADOR,
+                                               mensaje, None, roles.json_de)
+        except LimiteDeUsoAgotado:
+            raise  # sin cupo no es una conciliación fallida: la extracción se pausa
         except roles.RespuestaInvalida as e:
-            decision = {"decision": "PENDIENTE", "razonamiento": str(e)}
-        return (decision if isinstance(decision, dict) else {"decision": "PENDIENTE"}), r.uso
+            return {"decision": "PENDIENTE", "razonamiento": str(e)}, []
+        except Exception as e:  # una conciliación que falla queda PENDIENTE; no tumba la extracción
+            return {"decision": "PENDIENTE", "razonamiento": f"Error al llamar al conciliador: {e}"}, []
+        return (decision if isinstance(decision, dict) else {"decision": "PENDIENTE"}), usos
 
     def _conciliar(self, ext: Extraccion, ctx: _Contexto, comparacion: Comparacion) -> None:
         ext.pasar(EstadoExtraccion.CONCILIANDO)
@@ -335,8 +386,8 @@ class ExtraerArticulo:
         con_cambio = list(ext.hallazgos)  # si se aplican los cambios
         sin_cambio = list(ext.hallazgos)  # si el validador los rechaza
         cambios = 0
-        for p, (d, uso) in zip(puntos, decisiones, strict=True):
-            if uso:
+        for p, (d, usos) in zip(puntos, decisiones, strict=True):
+            for uso in usos:
                 ext.registrar_uso("conciliador", uso)
             h = ext.hallazgos[p.indice_hallazgo]
             tipo = str(d.get("decision") or "PENDIENTE").upper()
@@ -360,7 +411,7 @@ class ExtraerArticulo:
             con_cambio.append(nota)
             sin_cambio.append(nota)
         if cambios:
-            r = self._validador.validar(nueva, ctx.libro, ctx.pdf)
+            r = self._validador.validar(nueva, ctx.libro, anclador.texto_completo())
             aplicada = ext.aplicar_conciliacion(salida=nueva, anclas=anclador.anclar_salida(nueva), hallazgos=con_cambio,
                                                 errores=r.errores, avisos=r.avisos)
             if not aplicada:
@@ -456,6 +507,16 @@ def _pendiente(p: _Punto, detalle: str) -> Hallazgo:
                     veredicto=Veredicto.NO_VERIFICABLE, detalle=detalle)
 
 
+# Kumar con los cuatro roles en F0 (docs/decisiones/f0/extraccion/kumar_2022__claude-opus-5-5/uso.csv):
+# entrada + escritura y lectura de caché + salida.
+TOKENS_POR_ARTICULO_F0 = 587_719
+
+
+def tokens_usados(e: Extraccion) -> int:
+    return sum(int(r.get(k) or 0) for r in e.uso_tokens.values()
+               for k in ("entrada", "cache_escritura", "cache_lectura", "salida"))
+
+
 class ConsultasDeExtraccion:
     def __init__(self, udt: FabricaUdT) -> None:
         self._udt = udt
@@ -472,6 +533,25 @@ class ConsultasDeExtraccion:
         """Extracciones en curso y las terminadas hace menos de `minutos` (para el avance de la interfaz)."""
         with self._udt() as u:
             return u.extracciones.recientes(proyecto_id, ahora() - timedelta(minutes=minutos))
+
+    def ultimas_por_articulo(self, proyecto_id: uuid.UUID) -> dict[uuid.UUID, Extraccion]:
+        """La extracción más reciente de cada artículo, cualquiera sea su estado."""
+        with self._udt() as u:
+            todas = u.extracciones.recientes(proyecto_id, datetime(1970, 1, 1, tzinfo=UTC))
+        return {e.articulo_id: e for e in sorted(todas, key=lambda e: e.iniciada_en)}
+
+    def tokens_del_mes(self, proyecto_id: uuid.UUID, hoy: datetime | None = None) -> int:
+        """Tokens de las extracciones en curso o terminadas este mes (calendario UTC), para TOPE_TOKENS_MENSUAL."""
+        hoy = hoy or ahora()
+        inicio = hoy.astimezone(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        with self._udt() as u:
+            return sum(tokens_usados(e) for e in u.extracciones.recientes(proyecto_id, inicio))
+
+    def tokens_por_articulo(self, proyecto_id: uuid.UUID) -> int:
+        """Estimación para un artículo: promedio de las extracciones completadas; sin ninguna, lo medido en F0."""
+        medidas = [t for e in self.ultimas_por_articulo(proyecto_id).values()
+                   if e.estado == EstadoExtraccion.COMPLETADA and (t := tokens_usados(e)) > 0]
+        return round(sum(medidas) / len(medidas)) if medidas else TOKENS_POR_ARTICULO_F0
 
     def ultima_completada(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID) -> Extraccion:
         completadas = [e for e in self.de_articulo(proyecto_id, articulo_id) if e.estado == EstadoExtraccion.COMPLETADA]

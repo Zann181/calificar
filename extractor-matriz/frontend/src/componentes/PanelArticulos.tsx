@@ -1,5 +1,5 @@
 // Panel de artículos (sección 9.2): lista con casillas, estados, contadores, filtros, carga y extracción.
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type Dispatch,
   type SetStateAction,
@@ -22,6 +22,7 @@ import { Icono } from "./Icono";
 import type {
   Articulo,
   EstadoArticulo,
+  ModelosDeArticulo,
   ResultadoCarga,
   ResultadoEncolado,
 } from "../tipos";
@@ -51,6 +52,46 @@ const VIAS_SIN_COVIDENCE = [
 ];
 const ENTERO = /^[1-9]\d*$/;
 
+// «claude-sonnet-5-5» → «Sonnet 5.5».
+const nombreModelo = (id: string): string => {
+  const m = /^claude-([a-z]+)-(\d+)(?:-(\d+))?/.exec(id);
+  if (!m) return id;
+  return `${m[1][0].toUpperCase()}${m[1].slice(1)} ${m[2]}${m[3] ? `.${m[3]}` : ""}`;
+};
+const NOMBRE_ROL = {
+  extractor: "Extractor",
+  auditor: "Auditor",
+  ciego: "Codificador ciego",
+  conciliador: "Conciliador",
+} as const;
+
+/** Texto corto y detalle por rol de los modelos de la última extracción (portero, ADR 0005). */
+const describirModelos = (
+  m: ModelosDeArticulo,
+): { corto: string; detalle: string } => {
+  if (!m.registrado)
+    return {
+      corto: "modelos sin registro",
+      detalle:
+        "Extracción anterior al portero de modelos (ADR 0005): no guardó el modelo de cada llamada. " +
+        "La configuración de entonces era Opus 5.5 en extractor, auditor y conciliador, y Sonnet 5.5 en el codificador ciego.",
+    };
+  const usados = new Set<string>();
+  const lineas = (Object.keys(NOMBRE_ROL) as (keyof typeof NOMBRE_ROL)[]).map(
+    (rol) => {
+      const porModelo = Object.entries(m.roles[rol] ?? {});
+      porModelo.forEach(([id]) => usados.add(nombreModelo(id)));
+      const texto = porModelo.length
+        ? porModelo
+            .map(([id, n]) => `${nombreModelo(id)}${n > 1 ? ` ×${n}` : ""}`)
+            .join(", ")
+        : "sin llamadas";
+      return `${NOMBRE_ROL[rol]}: ${texto}`;
+    },
+  );
+  return { corto: [...usados].join(" · "), detalle: lineas.join("\n") };
+};
+
 const NOMBRE_ESTADO: Record<EstadoArticulo, string> = {
   HEREDADO: "Heredado",
   NUEVO: "Nuevo",
@@ -76,6 +117,8 @@ type Props = {
   // Artículos con el chulito: se extraen al pulsar «Extraer» y sus filas se marcan en la tabla.
   marcados: Set<string>;
   setMarcados: Dispatch<SetStateAction<Set<string>>>;
+  // Si se da, la barra muestra un botón para ocultar el panel (barra lateral de PC y tableta).
+  onOcultar?: () => void;
 };
 
 export function PanelArticulos({
@@ -88,6 +131,7 @@ export function PanelArticulos({
   onAbrir,
   marcados,
   setMarcados,
+  onOcultar,
 }: Props) {
   const qc = useQueryClient();
   const { actual, ir } = useNavegacion();
@@ -99,7 +143,35 @@ export function PanelArticulos({
   const [covidences, setCovidences] = useState<Record<string, string>>({});
   const [vias, setVias] = useState<Record<string, string>>({});
   const [rechazos, setRechazos] = useState<ResultadoEncolado[]>([]);
-  const { porArticulo, enCola, ahora } = useAvance(pid);
+  const [fallo, setFallo] = useState<string | null>(null);
+  const { porArticulo, enCola, detenidos, ahora } = useAvance(pid);
+  const modelos = useQuery({
+    queryKey: ["modelos", pid],
+    queryFn: () => api.modelos(pid),
+    refetchInterval: 20_000, // una extracción que termina aparece sin recargar
+  });
+  const conError = articulos.filter((a) => a.estado === "ERROR");
+  // A medias sin trabajo activo (p. ej. la aplicación se cerró): «Continuar» los termina sin restablecerlos.
+  const parados = articulos.filter((a) => detenidos.has(a.id));
+  const continuar = useMutation({
+    mutationFn: () => api.continuar(pid, parados.map((a) => a.id)),
+    onSuccess: (r) => {
+      setFallo(r.filter((x) => !x.encolado).map((x) => x.error).join(" · ") || null);
+      qc.invalidateQueries({ queryKey: ["articulos", pid] });
+      qc.invalidateQueries({ queryKey: ["avance", pid] });
+      acelerarAvance();
+      window.dispatchEvent(new Event("extractor:abrir-monitor"));
+    },
+    onError: (e) => setFallo((e as Error).message),
+  });
+  const restablecer = useMutation({
+    mutationFn: () => api.restablecer(pid, conError.map((a) => a.id)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["articulos", pid] });
+      qc.invalidateQueries({ queryKey: ["avance", pid] });
+    },
+    onError: (e) => setFallo((e as Error).message),
+  });
   const archivo = useRef<HTMLInputElement>(null);
 
   const visibles = useMemo(
@@ -130,7 +202,6 @@ export function PanelArticulos({
   // convertir, el servidor lo convierte primero con MinerU y sigue solo; el avance sale en la cabecera y en el artículo.
   // Un artículo en Error se retoma con los datos de su último intento. Si faltan el Documento o el Covidence #
   // (ni el intento anterior ni la matriz los tienen), abre el diálogo de extracción para indicarlos.
-  const [fallo, setFallo] = useState<string | null>(null);
   const extraerUno = useMutation({
     mutationFn: async (a: Articulo) => {
       if (a.estado === "ERROR") {
@@ -187,15 +258,25 @@ export function PanelArticulos({
           ? "Conv. ⟳"
           : pe.fase === "esperando_mineru"
             ? "Espera"
-            : `Cola ${pe.posicion}`;
+            : pe.fase === "pausada"
+              ? "Pausa"
+              : `Cola ${pe.posicion}`;
       const titulo =
         pe.fase === "convirtiendo"
           ? "Convirtiendo el PDF con MinerU; la extracción sigue sola"
           : pe.fase === "esperando_mineru"
             ? "Esperando a MinerU (no responde)"
-            : "En cola: empieza cuando termine la anterior";
+            : pe.fase === "pausada"
+              ? "En pausa: se agotó el cupo de uso de Claude; se reanuda sola"
+              : "En cola: empieza cuando termine la anterior";
       return { texto, clase: "estado-progreso", titulo };
     }
+    if (detenidos.has(a.id))
+      return {
+        texto: `${NOMBRE_ESTADO[a.estado]} · detenido`,
+        clase: `estado-${a.estado}`,
+        titulo: "Quedó a medias sin trabajo activo: use «Continuar detenidos»",
+      };
     return {
       texto: NOMBRE_ESTADO[a.estado],
       clase: `estado-${a.estado}`,
@@ -301,6 +382,16 @@ export function PanelArticulos({
       <div className="barra">
         <strong className="titulo-seccion">Artículos</strong>
         <span className="tenue">{articulos.length}</span>
+        {onOcultar && (
+          <button
+            className="sin-borde ocultar-lateral"
+            onClick={onOcultar}
+            title="Ocultar artículos"
+            aria-label="Ocultar el panel de artículos"
+          >
+            ‹
+          </button>
+        )}
         <button
           className="primario"
           onClick={() => archivo.current?.click()}
@@ -388,6 +479,50 @@ export function PanelArticulos({
           />
           Seleccionar todo
         </label>
+        {parados.length > 0 && (
+          <button
+            className="continuar"
+            disabled={continuar.isPending}
+            title="Termina lo que quedó a medias: una conversión cortada se termina con MinerU; una extracción cortada se vuelve a lanzar con los datos de su último intento. No restablece nada."
+            onClick={() => {
+              const extraer = parados.filter((a) => a.estado !== "CONVIRTIENDO").length;
+              const convertir = parados.length - extraer;
+              if (
+                window.confirm(
+                  `Continuar ${parados.length} artículo(s) detenido(s):\n\n` +
+                    (convertir ? `· ${convertir} terminan su conversión con MinerU (no gasta créditos).\n` : "") +
+                    (extraer
+                      ? `· ${extraer} vuelven a extraerse desde el principio con los datos de su último intento: la llamada al modelo no se puede retomar a medias. Gasta créditos de Claude (unos ${extraer * MINUTOS_POR_ARTICULO} min).\n`
+                      : ""),
+                )
+              )
+                continuar.mutate();
+            }}
+          >
+            {continuar.isPending
+              ? "Continuando…"
+              : `Continuar detenidos (${parados.length})`}
+          </button>
+        )}
+        {conError.length > 0 && (
+          <button
+            className="restablecer"
+            disabled={restablecer.isPending}
+            title="Reset: los artículos en Error vuelven a su estado anterior (Convertido, Heredado, Por revisar o Nuevo). No lanza extracciones ni gasta créditos."
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Restablecer ${conError.length} artículo(s) en Error.\n\nVuelven a su estado anterior y se borra el mensaje de error; el intento fallido queda en el historial. No se lanza ninguna extracción.`,
+                )
+              )
+                restablecer.mutate();
+            }}
+          >
+            {restablecer.isPending
+              ? "Restableciendo…"
+              : `Restablecer errores (${conError.length})`}
+          </button>
+        )}
         <button
           disabled={extraibles.length === 0}
           onClick={() => abrirDialogo(extraibles)}
@@ -418,6 +553,14 @@ export function PanelArticulos({
                 {a.paginas ? ` · ${a.paginas} p.` : ""}
                 {conFilas.has(a.id) ? " · con filas extraídas" : ""}
               </span>
+              {modelos.data?.[a.id] && (
+                <span
+                  className="tenue modelos"
+                  title={describirModelos(modelos.data[a.id]).detalle}
+                >
+                  {describirModelos(modelos.data[a.id]).corto}
+                </span>
+              )}
             </button>
             {DIRECTAS.includes(a.estado) &&
             !enCola.has(a.id) &&
