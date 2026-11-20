@@ -294,7 +294,9 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
                         and articulo.error.paso == EstadoArticulo.CONVIRTIENDO):
                     biblioteca.reintentar.ejecutar(pedido.proyecto_id, pedido.articulo_id)
                     reintentada, estado = True, EstadoArticulo.NUEVO
-                if estado == EstadoArticulo.NUEVO and mineru() is not None:
+                # Con el candado tomado nadie más convierte: un artículo en CONVIRTIENDO quedó a medias porque la
+                # aplicación se cerró, y se retoma aquí (ConvertirArticulo no repite la transición si ya está en ese estado).
+                if estado in (EstadoArticulo.NUEVO, EstadoArticulo.CONVIRTIENDO) and mineru() is not None:
                     informar(CONVIRTIENDO)
                     estado = biblioteca.convertir.ejecutar(pedido.proyecto_id, pedido.articulo_id)
             if estado == EstadoArticulo.ERROR:

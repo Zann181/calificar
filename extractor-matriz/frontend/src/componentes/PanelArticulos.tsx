@@ -51,6 +51,8 @@ const VIAS_SIN_COVIDENCE = [
   "Otros métodos: experto",
 ];
 const ENTERO = /^[1-9]\d*$/;
+const VIA_EXPERTO = "Otros métodos: experto";
+type Pedido = Parameters<typeof api.extraer>[1][number];
 
 // «claude-sonnet-5-5» → «Sonnet 5.5».
 const nombreModelo = (id: string): string => {
@@ -144,6 +146,16 @@ export function PanelArticulos({
   const [vias, setVias] = useState<Record<string, string>>({});
   const [rechazos, setRechazos] = useState<ResultadoEncolado[]>([]);
   const [fallo, setFallo] = useState<string | null>(null);
+  // Casilla «Sin Covidence → experto» (puesta por defecto): los artículos sin Covidence # se extraen con la vía
+  // «experto» sin abrir la ventana.
+  const [todoExperto, setTodoExperto] = useState(true);
+  // Pregunta «estos ya están extraídos, ¿volver a extraerlos?»: los pedidos listos para lanzar y, de ellos, los ya
+  // extraídos con los que el usuario marcó para repetir.
+  const [repetir, setRepetir] = useState<{
+    pedidos: Pedido[];
+    ya: Articulo[];
+    elegidos: Set<string>;
+  } | null>(null);
   const { porArticulo, enCola, detenidos, ahora } = useAvance(pid);
   const modelos = useQuery({
     queryKey: ["modelos", pid],
@@ -219,7 +231,7 @@ export function PanelArticulos({
       }
       const documento = documentoDeArticulo(a);
       const covidence = covidenceDe.get(Number(documento));
-      if (!ENTERO.test(documento) || covidence === undefined) {
+      if (!ENTERO.test(documento) || (covidence === undefined && !todoExperto)) {
         setMarcados((m) => new Set([...m, a.id]));
         abrirDialogo([...extraibles.filter((x) => x.id !== a.id), a]);
         return null;
@@ -230,8 +242,8 @@ export function PanelArticulos({
           {
             articulo_id: a.id,
             documento: Number(documento),
-            covidence,
-            via: "Covidence",
+            covidence: covidence ?? null,
+            via: covidence === undefined ? VIA_EXPERTO : "Covidence",
           },
         ],
         false,
@@ -294,21 +306,9 @@ export function PanelArticulos({
   };
 
   const lanzar = useMutation({
-    mutationFn: () =>
-      api.extraer(
-        pid,
-        extraibles.map((a) => {
-          const covidence = (covidences[a.id] ?? "").trim();
-          return {
-            articulo_id: a.id,
-            documento: Number(documentos[a.id]),
-            covidence: covidence ? Number(covidence) : null,
-            via: covidence ? "Covidence" : (vias[a.id] ?? ""),
-          };
-        }),
-        reextraer.length > 0,
-      ),
-    onSuccess: (r) => {
+    mutationFn: (p: { pedidos: Pedido[]; reemplazar: boolean; aviso?: string }) =>
+      api.extraer(pid, p.pedidos, p.reemplazar),
+    onSuccess: (r, p) => {
       const malos = r.filter((x) => !x.encolado);
       setRechazos(malos);
       const bien = new Set(
@@ -316,10 +316,19 @@ export function PanelArticulos({
       );
       setMarcados((m) => new Set([...m].filter((id) => !bien.has(id))));
       if (malos.length === 0) setDialogo(false);
+      // Lanzado sin ventana: los rechazos y lo que se dejó sin extraer salen en el aviso de arriba.
+      if (!dialogo)
+        setFallo(
+          [p.aviso, ...malos.map((x) => x.error)].filter(Boolean).join(" · ") ||
+            null,
+        );
       acelerarAvance();
       window.dispatchEvent(new Event("extractor:abrir-monitor"));
       qc.invalidateQueries({ queryKey: ["avance", pid] });
       qc.invalidateQueries({ queryKey: ["articulos", pid] });
+    },
+    onError: (e) => {
+      if (!dialogo) setFallo((e as Error).message);
     },
   });
 
@@ -340,9 +349,11 @@ export function PanelArticulos({
     const c = (covidences[a.id] ?? "").trim();
     return c ? ENTERO.test(c) : VIAS_SIN_COVIDENCE.includes(vias[a.id] ?? "");
   };
-  const documentosValidos = extraibles.every(
-    (a) => ENTERO.test(documentos[a.id] ?? "") && identificacionValida(a),
+  // Los que impiden extraer: se muestran primero en la ventana y se nombran bajo la lista.
+  const incompletos = extraibles.filter(
+    (a) => !ENTERO.test(documentos[a.id] ?? "") || !identificacionValida(a),
   );
+  const documentosValidos = incompletos.length === 0;
   const todosVisiblesMarcados =
     visibles.length > 0 && visibles.every((a) => marcados.has(a.id));
 
@@ -354,8 +365,66 @@ export function PanelArticulos({
     setCovidences(
       Object.fromEntries(lista.map((a) => [a.id, covidenceDeArticulo(a)])),
     );
-    setVias({});
+    setVias(
+      todoExperto
+        ? Object.fromEntries(lista.map((a) => [a.id, VIA_EXPERTO]))
+        : {},
+    );
     setDialogo(true);
+  };
+
+  // «Extraer seleccionados»: lanza ya los que tienen Documento (sin Covidence # van como «experto» si la casilla está
+  // puesta). Los incompletos se saltan y quedan marcados; si solo quedan incompletos, se abre la ventana para escribir
+  // sus datos. Si alguno ya tiene filas extraídas, antes se pregunta si volver a extraerlo.
+  const extraerSeleccionados = () => {
+    const pedidos: Pedido[] = [];
+    const faltan: Articulo[] = [];
+    for (const a of extraibles) {
+      const documento = documentoDeArticulo(a);
+      const covidence = covidenceDe.get(Number(documento));
+      if (!ENTERO.test(documento) || (covidence === undefined && !todoExperto)) {
+        faltan.push(a);
+        continue;
+      }
+      pedidos.push({
+        articulo_id: a.id,
+        documento: Number(documento),
+        covidence: covidence ?? null,
+        via: covidence === undefined ? VIA_EXPERTO : "Covidence",
+      });
+    }
+    if (pedidos.length === 0) return abrirDialogo(extraibles);
+    setRechazos([]);
+    const enviados = new Set(pedidos.map((x) => x.articulo_id));
+    const ya = reextraer.filter((a) => enviados.has(a.id));
+    if (ya.length > 0)
+      return setRepetir({ pedidos, ya, elegidos: new Set(ya.map((a) => a.id)) });
+    enviar(pedidos, false, faltan);
+  };
+
+  const avisoFaltan = (faltan: Articulo[]): string | undefined =>
+    faltan.length
+      ? `${faltan.length} sin número de Documento quedaron sin extraer y siguen marcados (${faltan
+          .map((a) => a.nombre_archivo)
+          .join(", ")}): pulse otra vez «Extraer seleccionados» para escribirlo.`
+      : undefined;
+
+  const enviar = (pedidos: Pedido[], reemplazar: boolean, faltan: Articulo[]) =>
+    lanzar.mutate({ pedidos, reemplazar, aviso: avisoFaltan(faltan) });
+
+  // Respuesta a «¿volver a extraer?»: los no elegidos salen de la selección y no se tocan.
+  const confirmarRepetir = (elegidos: Set<string>) => {
+    if (!repetir) return;
+    const saltar = new Set(
+      repetir.ya.filter((a) => !elegidos.has(a.id)).map((a) => a.id),
+    );
+    setMarcados((m) => new Set([...m].filter((id) => !saltar.has(id))));
+    const pedidos = repetir.pedidos.filter((x) => !saltar.has(x.articulo_id));
+    const enviados = new Set(repetir.pedidos.map((x) => x.articulo_id));
+    const faltan = extraibles.filter((a) => !enviados.has(a.id));
+    setRepetir(null);
+    if (pedidos.length > 0) enviar(pedidos, elegidos.size > 0, faltan);
+    else setFallo(avisoFaltan(faltan) ?? null);
   };
 
   const alternar = (id: string) =>
@@ -532,9 +601,17 @@ export function PanelArticulos({
               : `Restablecer errores (${conError.length})`}
           </button>
         )}
+        <label title="Los artículos sin Covidence # se extraen con la vía «Otros métodos: experto», sin preguntar">
+          <input
+            type="checkbox"
+            checked={todoExperto}
+            onChange={(e) => setTodoExperto(e.target.checked)}
+          />
+          Sin Covidence → experto
+        </label>
         <button
-          disabled={extraibles.length === 0}
-          onClick={() => abrirDialogo(extraibles)}
+          disabled={extraibles.length === 0 || lanzar.isPending}
+          onClick={extraerSeleccionados}
         >
           Extraer seleccionados{" "}
           {extraibles.length ? `(${extraibles.length})` : ""}
@@ -632,8 +709,39 @@ export function PanelArticulos({
                   s por página) y después se extraen, sin pasos manuales.
                 </p>
               )}
+              {extraibles.some((a) => !(covidences[a.id] ?? "").trim()) && (
+                <label className="documento-fila">
+                  <span>Vía para todos los que no tienen Covidence #</span>
+                  <select
+                    className="documento-via"
+                    value=""
+                    onChange={(e) => {
+                      const via = e.target.value;
+                      if (!via) return;
+                      setVias((v) => ({
+                        ...v,
+                        ...Object.fromEntries(
+                          extraibles
+                            .filter((a) => !(covidences[a.id] ?? "").trim())
+                            .map((a) => [a.id, via]),
+                        ),
+                      }));
+                    }}
+                  >
+                    <option value="">Elegir para todos…</option>
+                    {VIAS_SIN_COVIDENCE.map((v) => (
+                      <option key={v} value={v}>
+                        {v.replace("Otros métodos: ", "")}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <div className="dialogo-lista">
-                {extraibles.map((a) => (
+                {[
+                  ...incompletos,
+                  ...extraibles.filter((a) => !incompletos.includes(a)),
+                ].map((a) => (
                   <label key={a.id} className="documento-fila">
                     <span className="recortar" title={a.nombre_archivo}>
                       {a.nombre_archivo}
@@ -644,6 +752,9 @@ export function PanelArticulos({
                         type="number"
                         min={1}
                         inputMode="numeric"
+                        className={
+                          ENTERO.test(documentos[a.id] ?? "") ? "" : "invalido"
+                        }
                         value={documentos[a.id] ?? ""}
                         onChange={(e) =>
                           setDocumentos((d) => ({
@@ -697,6 +808,12 @@ export function PanelArticulos({
                 el artículo pasó por Covidence; si no, elija la vía por la que
                 se identificó.
               </p>
+              {incompletos.length > 0 && (
+                <p className="error">
+                  Para seguir falta el número de Documento o la vía en:{" "}
+                  {incompletos.map((a) => a.nombre_archivo).join(", ")}.
+                </p>
+              )}
               {reextraer.length > 0 && (
                 <p className="aviso">
                   {reextraer.length} ya tienen filas por revisar: se
@@ -726,11 +843,89 @@ export function PanelArticulos({
                     !documentosValidos ||
                     extraibles.length === 0
                   }
-                  onClick={() => lanzar.mutate()}
+                  onClick={() =>
+                    lanzar.mutate({
+                      pedidos: extraibles.map((a) => {
+                        const covidence = (covidences[a.id] ?? "").trim();
+                        return {
+                          articulo_id: a.id,
+                          documento: Number(documentos[a.id]),
+                          covidence: covidence ? Number(covidence) : null,
+                          via: covidence ? "Covidence" : (vias[a.id] ?? ""),
+                        };
+                      }),
+                      reemplazar: reextraer.length > 0,
+                    })
+                  }
                 >
                   {lanzar.isPending
                     ? "Enviando…"
                     : `Extraer ${extraibles.length} artículo(s)`}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+      {repetir &&
+        createPortal(
+          <div
+            className="velo"
+            onMouseDown={(e) =>
+              e.target === e.currentTarget && setRepetir(null)
+            }
+          >
+            <div className="dialogo">
+              <h3>Estos ya están extraídos</h3>
+              <p>
+                {repetir.ya.length} de los seleccionados ya tienen filas por
+                revisar. ¿Desea volver a extraerlos? Las filas actuales se
+                reemplazarán. Los que desmarque salen de la lista y no se tocan;
+                los demás seleccionados se extraen igual.
+              </p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={repetir.elegidos.size === repetir.ya.length}
+                  onChange={(e) =>
+                    setRepetir({
+                      ...repetir,
+                      elegidos: e.target.checked
+                        ? new Set(repetir.ya.map((a) => a.id))
+                        : new Set(),
+                    })
+                  }
+                />{" "}
+                Todos
+              </label>
+              <div className="dialogo-lista">
+                {repetir.ya.map((a) => (
+                  <label key={a.id}>
+                    <input
+                      type="checkbox"
+                      checked={repetir.elegidos.has(a.id)}
+                      onChange={() => {
+                        const n = new Set(repetir.elegidos);
+                        if (n.has(a.id)) n.delete(a.id);
+                        else n.add(a.id);
+                        setRepetir({ ...repetir, elegidos: n });
+                      }}
+                    />{" "}
+                    {a.nombre_archivo}
+                  </label>
+                ))}
+              </div>
+              <div className="botones">
+                <button onClick={() => setRepetir(null)}>Cancelar</button>
+                <button onClick={() => confirmarRepetir(new Set())}>
+                  No, sacarlos de la lista
+                </button>
+                <button
+                  className="primario"
+                  disabled={repetir.elegidos.size === 0}
+                  onClick={() => confirmarRepetir(repetir.elegidos)}
+                >
+                  Volver a extraer {repetir.elegidos.size}
                 </button>
               </div>
             </div>
