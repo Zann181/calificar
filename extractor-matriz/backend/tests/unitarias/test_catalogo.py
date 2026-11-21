@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import openpyxl
@@ -15,12 +16,12 @@ from app.contextos.normas.dominio.catalogo import (
     derivar_protocolo,
 )
 from app.contextos.normas.dominio.modelos import VersionDelLibro
-from tests.conftest import MATRIZ
+from tests.conftest import LIBRO_V22, MATRIZ
 
 
-def test_54_columnas_en_orden_de_posicion(columnas: list[DefinicionDeColumna]) -> None:
-    assert len(columnas) == 54
-    assert [c.posicion for c in columnas] == list(range(1, 55))
+def test_59_columnas_en_orden_de_posicion(columnas: list[DefinicionDeColumna]) -> None:
+    assert len(columnas) == 59
+    assert [c.posicion for c in columnas] == list(range(1, 60))
     assert columnas[0].clave == "Documento"
     assert columnas[0].letra == "A"
 
@@ -50,19 +51,27 @@ def test_cambiar_una_columna_en_el_libro_se_refleja_en_el_catalogo(libro: dict[s
 
 
 def test_agregar_una_columna_en_el_libro_la_agrega_al_catalogo(libro: dict[str, Any]) -> None:
-    nueva = dict(libro["columnas"]["Conclusion"], posicion=55, letra_excel="BC", encabezado_original="Nueva")
+    nueva = dict(libro["columnas"]["Conclusion"], posicion=60, letra_excel="BH", encabezado_original="Nueva")
     libro["columnas"]["Columna nueva"] = nueva
     claves = CatalogoDeColumnas(libro).claves()
-    assert len(claves) == 55
+    assert len(claves) == 60
     assert claves[-1] == "Columna nueva"
 
 
-def test_las_54_notas_de_encabezado_coinciden_con_el_excel(columnas: list[DefinicionDeColumna]) -> None:
+def test_las_notas_de_encabezado_coinciden_con_el_excel(columnas: list[DefinicionDeColumna], libro: dict[str, Any]) -> None:
+    """Las 54 notas del Excel salen del libro. Las de columnas cuya instrucción cambió en la v2.3 (refuerzos del
+    manual) y las 5 columnas nuevas ya no coinciden con el Excel viejo, por diseño."""
+    anterior = json.loads(LIBRO_V22.read_text(encoding="utf-8"))["columnas"]
     ws = openpyxl.load_workbook(MATRIZ)["Extracción completa.csv"]
+    comparadas = 0
     for c in columnas:
+        if c.agregada_en_version or libro["columnas"][c.clave]["instruccion_operativa"] != anterior[c.clave]["instruccion_operativa"]:
+            continue
+        comparadas += 1
         comentario = ws.cell(1, c.posicion).comment
         assert comentario is not None, c.clave
         assert comentario.text == c.nota_encabezado, c.clave
+    assert comparadas >= 35
 
 
 def test_libro_sin_seccion_obligatoria(libro: dict[str, Any]) -> None:
@@ -87,11 +96,11 @@ def test_version_del_libro(libro: dict[str, Any]) -> None:
     import uuid
 
     v = VersionDelLibro.publicar(proyecto_id=uuid.uuid4(), contenido=libro)
-    assert v.version == "2.2"
+    assert v.version == "2.3"
     assert v.activa
     otra = VersionDelLibro.publicar(proyecto_id=v.proyecto_id, contenido=libro)
     assert otra.hash == v.hash
-    assert len(v.catalogo().columnas) == 54
+    assert len(v.catalogo().columnas) == 59
 
 
 def test_la_guia_de_cada_columna_sale_del_libro(libro: dict[str, Any], por_clave: dict[str, DefinicionDeColumna]) -> None:

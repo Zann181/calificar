@@ -61,6 +61,13 @@ def importar_matriz(c: Contenedor, a: argparse.Namespace) -> None:
           f"{len(r.fuera_de_vocabulario)} celdas fuera del vocabulario del libro · {r.reemplazadas} reemplazadas")
 
 
+def migrar_libro(c: Contenedor, _: argparse.Namespace) -> None:
+    """Agrega a las filas guardadas las columnas del libro activo que no tienen (libro v2.3). No usa el modelo."""
+    pid = _proyecto(c)
+    r = c.matriz.agregar_columnas.ejecutar(pid)
+    print(f"{r.filas} filas actualizadas · {r.celdas_agregadas} celdas agregadas · {r.calculadas} calculadas sin leer PDF")
+
+
 def cargar_carpeta(c: Contenedor, a: argparse.Namespace) -> None:
     pid = _proyecto(c)
     nuevos = duplicados = errores = 0
@@ -125,6 +132,7 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("xlsx")
     x.add_argument("--reemplazar", action="store_true")
     x.set_defaults(f=importar_matriz)
+    sub.add_parser("migrar-libro").set_defaults(f=migrar_libro)
     x = sub.add_parser("cargar-carpeta")
     x.add_argument("carpeta")
     x.set_defaults(f=cargar_carpeta)

@@ -42,6 +42,9 @@ class EscritorHeredadasOpenpyxl:
         wb = openpyxl.load_workbook(io.BytesIO(base.datos))
         ws = wb[base.hoja]
         posiciones = {c.clave: c.posicion for c in columnas}
+        for c in columnas:  # columnas que un libro nuevo agregó a un Excel anterior: se les pone encabezado
+            if c.agregada_en_version and ws.cell(1, c.posicion).value is None:
+                ws.cell(1, c.posicion).value = c.encabezado_excel
         for r in range(2, ws.max_row + 1):
             for p in posiciones.values():
                 celda = ws.cell(r, p)

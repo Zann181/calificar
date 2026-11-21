@@ -195,6 +195,8 @@ def derivar_columnas(contenido: dict[str, Any]) -> list[DefinicionDeColumna]:
                 nivel_de_registro=str(io["nivel_de_registro"]),
                 nota_encabezado=_nota(clave, col, ejemplo),
                 guia=_guia(col, campos),
+                derivada=io.get("derivada") if isinstance(io.get("derivada"), dict) else None,
+                agregada_en_version=col.get("agregada_en_version"),
             )
         )
     columnas.sort(key=lambda c: c.posicion)

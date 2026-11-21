@@ -78,23 +78,32 @@ La matriz pasa de **54 a 59 columnas**.
 - **Regla:** se calcula con una tabla país → IDV guardada en el libro de códigos (no se pregunta al modelo). El país es el de la recolección de datos (col. I), no el de los autores.
   `Multinacional` o país fuera de la tabla → `No indica` y se avisa para revisión humana.
 - **Evidencia:** no (se hereda de `Pais`).
-- **Cobertura hoy:** ver sección 6. 6 filas caen fuera de la tabla del manual.
+- **Cobertura hoy:** ver sección 6. Con solo la tabla del manual quedan 15 filas sin IDV (Australia 7, Emiratos 2, Malasia 2, Irán, Portugal, Francia, Taiwán). Una fila dice «Gran Bretaña» y se normaliza a «Reino Unido» (regla de la col. I) antes de buscar el IDV.
+- **IDV a agregar (Hofstede, pendientes de confirmar por el responsable):** Australia 90, Emiratos Árabes Unidos 25, Malasia 26, Irán 41, Portugal 27, Francia 71, Taiwán 17.
 
 ### 2.5 `Conjunto MA` (col. 59)
 
 - **Tipo / nivel:** categoría · Efecto · obligatoria · **derivada, sin IA**.
 - **Valores:** `Principal_Hedonico` · `Principal_Eudaimonico` · `Principal_Mixto` · `Sensibilidad` · `Excluir`.
-- **Regla (calculada, no leída):**
-  1. `Incluir en meta análisi` ≠ `SI` → `Excluir` (si es `SEM latente` → `Sensibilidad`).
-  2. `Incluir` = `SI` y `Método obtención r` = `Pearson observado` → según col. S: Hedónica → `Principal_Hedonico`; Eudaimónica → `Principal_Eudaimonico`; Hedónica y eudaimónica → `Principal_Mixto`.
-  3. `Incluir` = `SI` por r imputada desde beta (condición 7) → `Sensibilidad`.
-  4. `Método obtención r` = `Correlación entre variables latentes CB-SEM` → `Sensibilidad`.
-  5. `Correlación entre compuestos PLS` → `Excluir`.
-- **Conflicto abierto:** el libro v2.2 usa `Principal / Sensibilidad / Narrativo`; el manual usa 5 valores. Ver C4.
+- **Regla (calculada, no leída), según el número de condición del árbol de `Incluir` (motivo_decision_inclusion, 11 condiciones):**
+
+  | Condición | Resultado de `Incluir` | `Conjunto MA` |
+  |---|---|---|
+  | 6 (r Pearson observado o `r_derivado`) | SI | según col. S: Hedónica → `Principal_Hedonico`; Eudaimónica → `Principal_Eudaimonico`; Hedónica y eudaimónica → `Principal_Mixto` |
+  | 7 (r imputada desde beta) | SI | `Sensibilidad` |
+  | 9 (solo CB-SEM latente) | SEM latente | `Sensibilidad` |
+  | 5 (multinivel) | Multinivel | `Excluir` (decidido: difiere del libro) |
+  | 8 (solo PLS) | PLS | `Excluir` (decidido: difiere del libro) |
+  | 10 (no significativo sin valor) | No | `Excluir` (**por confirmar**: el libro dice Sensibilidad) |
+  | 1, 2, 3, 4, 11 | No / Organizacional / Experimental | `Excluir` |
+
+  Se usa la condición y no `Método obtención r`, porque la condición 6 también admite `r_derivado` (de t, F o d) sin que el método sea «Pearson observado».
+- **Decisión del responsable (C4 ampliada):** se adoptan los 5 valores del manual; Narrativo → `Excluir`, y además PLS (cond. 8) y Multinivel (cond. 5) pasan de `Sensibilidad` a `Excluir`. Esto **cambia la V27** (hoy 5, 8, 9 y 10 → Sensibilidad): hay que proponerlo (sección 8).
+- **Fuente de verdad:** `trazabilidad.conjunto_sugerido` (3 valores, V27) se conserva sin cambios; la col. 59 se deriva aparte del número de condición, con la tabla de arriba. Por eso la V27 no se toca.
 
 ## 3. Instrucciones para la IA (extractor)
 
-Las columnas 55, 56 y 57 las llena el extractor, con las reglas de arriba y el protocolo vigente (P1–P9: nada sin página y cita literal; nada con conocimiento externo; lo dudoso baja la confianza).
+**Como quedó construido:** el extractor solo llena la col. 57 (`Constructo desempeño`). Las 55 y 56 las refleja el programa desde `trazabilidad.id_muestra` y `trazabilidad.metodo_obtencion_r` (una sola fuente de verdad), y las 58 y 59 se calculan. Texto original del plan: las columnas 55, 56 y 57 las llena el extractor, con las reglas de arriba y el protocolo vigente (P1–P9: nada sin página y cita literal; nada con conocimiento externo; lo dudoso baja la confianza).
 Las columnas 58 y 59 se calculan en código después de la extracción y las valida `validar_extraccion.py`. Instrucciones que se agregan a `prompt_para_el_extractor`:
 
 1. «Antes de leer cualquier tabla, decide si el artículo reporta una tabla bivariada de puntajes de escala. Si existe, esa es tu fuente de r aunque el modelo final sea SEM.»
@@ -132,7 +141,7 @@ Las columnas 58 y 59 se calculan en código después de la extracción y las val
 
 ## 6. Porcentaje que falta hoy (conjunto de test, 71 filas)
 
-Medido sobre `datos/test/extractor.db`.
+Medido sobre `datos/test/extractor.db`. **Ojo:** «llena» cuenta como llena una celda con «No indica» (294) o «No aplica» (31); solo `null` cuenta como vacía. Contando solo datos reales, hoy son 46,6 de 54 (86 %).
 
 | Medida | Hoy (54 col.) | Con las 5 nuevas (59 col.) |
 |---|---|---|
@@ -147,13 +156,13 @@ Qué se puede completar **sin leer los PDF**:
 
 | Columna nueva | Filas completables sin IA | Pendientes |
 |---|---|---|
-| `Cultura Hofstede` | **65 de 71** (91,5 %) | 6: Malasia (2), Irán, Portugal, Francia, Taiwán. Australia (7) y Emiratos Árabes (2) están en la lista de «países típicos» del manual pero sin puntaje IDV. Hace falta que confirmes los valores IDV. |
+| `Cultura Hofstede` | **56 de 71** (78,9 %) con la tabla del manual; **71 de 71** al agregar los 7 IDV de la sección 2.4 | 15 filas: Australia (7), Emiratos Árabes (2), Malasia (2), Irán, Portugal, Francia, Taiwán. Hace falta que confirmes los valores IDV. Una fila «Gran Bretaña» se normaliza a «Reino Unido». |
 | `ID muestra` | 71 de 71 de forma provisional (`D<doc>-M1`) | Revisar documentos con varias muestras o muestra repetida (28, 30, 31 y los que salgan de la lectura). |
 | `Método obtención r` | 0 de 71 | Hay que leer el PDF (53 artículos). |
 | `Constructo desempeño` | 0 de 71 seguras | Se puede proponer desde la col. M, pero requiere revisión humana o lectura del PDF. |
 | `Conjunto MA` | 0 de 71 hasta tener `Método obtención r` | Depende de la col. 56. |
 
-Con solo lo derivable, cada fila llegaría a **~91 %** (53,6 de 59 en promedio). Con la pasada de IA sobre los 53 PDF, a **100 %** de las columnas aplicables.
+Con solo lo derivable (y los 7 IDV agregados), cada fila llegaría a **~91 %** (53,1 de 59 en promedio, contando «No indica» como llena; la cuenta anterior de 53,6 estaba mal). Con la pasada de IA sobre los 53 PDF, a **100 %** de las columnas aplicables.
 
 ## 7. Conflictos entre el manual y el libro v2.2 (decide el responsable del dominio)
 
@@ -162,17 +171,19 @@ Con solo lo derivable, cada fila llegaría a **~91 %** (53,6 de 59 en promedio).
 | C1 | Work Engagement (UWES) | Hedónico por defecto si no es claro | «Hedónica y eudaimónica» | Mantener el libro; el manual da la excepción (si el autor lo enmarca como hedónico, Hedónica). |
 | C2 | Desempeño «Objetivo» | Categoría propia (ventas, productividad) | Ventas y productividad son In-rol; la fuente se registra en AC | Mantener el libro: «Objetivo» es una fuente, no un tipo. Queda cubierto con `Constructo desempeño` = Sales / Productivity. |
 | C3 | Redondeo de r | Redondear a 2 decimales (0,287 → 0,29) | P6: no redondear, transcribir con la precisión del artículo | Mantener P6. Redondear distorsiona el metaanálisis. |
-| C4 | Valores de `Conjunto MA` | 5 valores | Principal / Sensibilidad / Narrativo | Adoptar los 5 del manual y mapear Narrativo → `Excluir`. |
+| C4 | Valores de `Conjunto MA` | 5 valores | Principal / Sensibilidad / Narrativo | Adoptar los 5 del manual y mapear Narrativo → `Excluir`. **Decidido:** además PLS (cond. 8) y Multinivel (cond. 5) → `Excluir` (el libro los tenía en Sensibilidad). Cond. 10 por confirmar. |
 | C5 | Tipo de felicidad vs. `Constructo_felicidad` | 12 constructos | 19 valores | Mantener los 19 (son más finos). Mapa de equivalencias en un anexo. |
 | C6 | Puntajes IDV | 12 países | No existe | Completar para Australia, EAU, Malasia, Irán, Portugal, Francia y Taiwán. |
 
-## 8. Qué se hace al aprobar (orden de trabajo)
+## 8. Qué se hace al aprobar (orden de trabajo) · estado al 2026-11-21
 
-1. Editar el libro de códigos a v2.3: 5 columnas con su `instruccion_operativa`, vocabularios, tabla IDV y el refuerzo de la sección 4.
-2. Ajustar `escribir_matriz.py` y `validar_extraccion.py` **solo vía propuesta al responsable** (regla de la sección 0; no se reescriben).
-3. Migración de la base y cálculo de `Cultura Hofstede` e `ID muestra` para las 71 filas.
-4. ADR 0008 que registre el cambio.
-5. Prueba con Kumar y Singh antes de cualquier pasada sobre los 53 PDF. Una extracción real cuesta dinero: se pregunta antes de lanzarla.
+Aprobado por el responsable el 2026-11-21 (C1–C6; PLS y Multinivel → `Excluir`; condición 10 → `Excluir` y los 7 IDV por confirmar).
+
+1. **Hecho.** Libro de códigos v2.3 (`recursos/Libro_de_codigos_extraccion_v2.json`; la v2.2 queda en `Libro_de_codigos_extraccion_v2.2_original.json`): 5 columnas con su `instruccion_operativa`, vocabularios, tabla IDV, validaciones V30–V32 propuestas y refuerzos de la sección 4.
+2. **Propuesto, no aplicado** (regla de la sección 0: los scripts no se reescriben). Detalle en el ADR 0008. `escribir_matriz.py` no necesitó cambios (lee las columnas del libro; la aplicación completa `fila`). `validar_extraccion.py` sigue válido; las V30–V32 quedan por implementar.
+3. **Hecho** en `datos/test` y `datos/extractor.db` (con copia `*.antes-libro-v2.3.db`): `python -m app.cli migrar-libro`. En la base de test, 71 filas con `ID muestra` provisional y `Cultura Hofstede` (71 de 71). `Método obtención r`, `Constructo desempeño` y `Conjunto MA` quedan pendientes hasta leer los PDF.
+4. **Hecho.** ADR 0008.
+5. **Pendiente.** Prueba con Kumar y Singh antes de cualquier pasada sobre los 53 PDF. Una extracción real cuesta dinero: se pregunta antes de lanzarla.
 
 ## 9. Extracciones en curso
 

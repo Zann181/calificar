@@ -11,8 +11,10 @@ from typing import Any
 from app.compartido.columnas import DefinicionDeColumna
 from app.compartido.dominio import ErrorDeDominio
 from app.compartido.normalizacion import norm
+from app.contextos.matriz.dominio import derivadas
 from app.contextos.matriz.dominio.fila import (
     Celda,
+    EstadoRevision,
     Evidencia,
     FilaDeEfecto,
     Inferencia,
@@ -93,6 +95,11 @@ class ImportarMatriz:
                 fila = FilaDeEfecto.importar_heredada(
                     proyecto_id=proyecto_id, estudio=estudio, documento=documento, valores=valores,
                     version_libro_id=version_id, notas_heredadas=notas_fila, fila_excel=f.fila_excel)
+                for col in columnas:  # las que calcula el programa (libro v2.3): provisionales en filas heredadas
+                    if col.es_derivada:
+                        fila.celdas[col.clave] = _celda_derivada(col, valores, {}, documento=documento,
+                                                                 provisional=True)
+                        valores[col.clave] = fila.celdas[col.clave].valor
                 fuera_fila = [c.clave for c in columnas if not valor_permitido(c, valores[c.clave])]
                 if fuera_fila:
                     fila.trazabilidad["fuera_de_vocabulario"] = fuera_fila
@@ -214,6 +221,62 @@ def _sin_anclas(item: dict[str, Any]) -> dict[str, Any]:
     return {**item, "trazabilidad": traz}
 
 
+def _celda_derivada(col: DefinicionDeColumna, valores: dict[str, Any], trazabilidad: dict[str, Any], *,
+                    documento: int | None, provisional: bool = False) -> Celda:
+    """Celda de una columna que calcula el programa (libro v2.3): inferida, con el porqué; sin valor, pendiente."""
+    d = derivadas.calcular(col, valores, trazabilidad, documento=documento, provisional=provisional)
+    if d.valor is None:
+        return Celda.extraida(clave=col.clave, valor=None, estado_dato=None, tipo_valor=TipoValor.FALTANTE, evidencias=[])
+    return Celda.extraida(clave=col.clave, valor=d.valor, estado_dato=None, tipo_valor=TipoValor.INFERIDO,
+                          evidencias=[], inferencia=Inferencia(regla="Columna derivada (libro v2.3)",
+                                                               razonamiento=d.razon))
+
+
+@dataclass(frozen=True)
+class ResultadoDeMigracion:
+    filas: int
+    celdas_agregadas: int
+    calculadas: int
+
+
+class AgregarColumnasDelLibro:
+    """Agrega a las filas ya guardadas las columnas que el libro activo trae y la fila no tiene (libro v2.3).
+
+    Las derivables se calculan (ID muestra provisional, Cultura Hofstede, y las que salgan de la trazabilidad);
+    el resto queda pendiente. No lee PDF ni llama al modelo. Es idempotente.
+    """
+
+    def __init__(self, udt: FabricaUdT, columnas: ConsultaDeColumnas) -> None:
+        self._udt, self._columnas = udt, columnas
+
+    def ejecutar(self, proyecto_id: uuid.UUID) -> ResultadoDeMigracion:
+        columnas = self._columnas.columnas(proyecto_id)
+        version_id = self._columnas.version_activa_id(proyecto_id)
+        agregadas = calculadas = filas_tocadas = 0
+        with self._udt() as u:
+            for f in u.filas.todas(proyecto_id):
+                faltan = [c for c in columnas if c.clave not in f.celdas]
+                if not faltan:
+                    continue
+                filas_tocadas += 1
+                traz = ((f.trazabilidad.get("salida") or {}).get("trazabilidad") or {})                     if f.origen.value == "EXTRAIDA" else {}
+                valores = f.valores()
+                for col in faltan:
+                    if col.es_derivada:
+                        celda = _celda_derivada(col, valores, traz, documento=f.documento,
+                                                provisional=f.origen.value == "HEREDADA")
+                        calculadas += celda.valor is not None
+                    else:
+                        celda = Celda(clave=col.clave, valor=None, tipo_valor=TipoValor.FALTANTE,
+                                      estado_revision=EstadoRevision.SIN_EVIDENCIA)
+                    f.celdas[col.clave] = celda
+                    agregadas += 1
+                f.version_libro_id = version_id
+                u.filas.agregar(f)
+            u.confirmar()
+        return ResultadoDeMigracion(filas=filas_tocadas, celdas_agregadas=agregadas, calculadas=calculadas)
+
+
 class EscribirFilasDeExtraccion:
     """Arma las filas EXTRAIDAS de una extracción y las escribe (sección 8.3, paso 9).
 
@@ -234,6 +297,8 @@ class EscribirFilasDeExtraccion:
             estados = traz.get("estado_del_dato") or {}
             celdas: dict[str, Celda] = {}
             for col in columnas:
+                if col.es_derivada:  # las calcula el programa al final, con las demás celdas
+                    continue
                 valor = fila.get(col.clave)
                 crudas = [e for e in (traz.get("evidencia") or {}).get(col.clave) or [] if isinstance(e, dict)]
                 evidencias = [Evidencia(pagina_pdf=int(e.get("pagina_pdf") or 0), ubicacion=str(e.get("ubicacion") or ""),
@@ -249,6 +314,9 @@ class EscribirFilasDeExtraccion:
                     inferencia=Inferencia(regla=str(inf.get("regla_aplicada") or inf.get("regla") or ""),
                                           razonamiento=str(inf.get("razonamiento") or ""))
                     if inf else None)
+            for col in columnas:
+                if col.es_derivada:
+                    celdas[col.clave] = _celda_derivada(col, fila, traz, documento=_entero_de_salida(fila, CLAVE_DOCUMENTO))
             auditoria = []
             for h in datos.auditoria:
                 if h.get("estudio") not in (estudio, None):
@@ -314,6 +382,7 @@ class CasosDeMatriz:
     importar: ImportarMatriz
     consultas: ConsultasDeMatriz
     marcar_version: MarcarVersionDeFilas
+    agregar_columnas: AgregarColumnasDelLibro
     escribir_extraidas: EscribirFilasExtraidas
     revisar: RevisarCelda
     escribir_extraccion: EscribirFilasDeExtraccion

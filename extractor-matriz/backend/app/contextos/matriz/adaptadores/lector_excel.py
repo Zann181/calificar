@@ -38,15 +38,20 @@ class EncabezadosNoCoinciden(ErrorDeDominio):
     pass
 
 
+def _encabezado_admitido(c: DefinicionDeColumna, valor: Any) -> bool:
+    """Un Excel anterior a la versión del libro que agregó la columna puede traer su encabezado vacío."""
+    return valor == c.encabezado_excel or (c.agregada_en_version is not None and valor is None)
+
+
 def encontrar_hoja(wb: Any, columnas: list[DefinicionDeColumna]) -> Any:
     for ws in wb.worksheets:
-        if all(ws.cell(1, c.posicion).value == c.encabezado_excel for c in columnas):
+        if all(_encabezado_admitido(c, ws.cell(1, c.posicion).value) for c in columnas):
             return ws
     diferencias = []
     ws = wb.worksheets[0]
     for c in columnas:
         v = ws.cell(1, c.posicion).value
-        if v != c.encabezado_excel:
+        if not _encabezado_admitido(c, v):
             diferencias.append(f"{c.letra}: se esperaba {c.encabezado_excel!r} y hay {v!r}")
     raise EncabezadosNoCoinciden("Ninguna hoja tiene los encabezados del libro de códigos. "
                                  + "; ".join(diferencias[:8]))

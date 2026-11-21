@@ -27,7 +27,7 @@ def test_no_hay_login_ni_sesion(cliente: TestClient, proyecto: uuid.UUID) -> Non
 
 def test_columnas_vienen_del_catalogo(cliente: TestClient, proyecto: uuid.UUID) -> None:
     columnas = cliente.get(f"/api/v1/proyectos/{proyecto}/normas/columnas").json()
-    assert len(columnas) == 54
+    assert len(columnas) == 59
     assert columnas[0]["clave"] == "Documento"
     incluir = next(c for c in columnas if c["clave"] == "Incluir en meta análisi")
     assert "SEM latente" in incluir["valores_permitidos"]

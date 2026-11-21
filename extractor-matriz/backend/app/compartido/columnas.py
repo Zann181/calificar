@@ -31,6 +31,14 @@ class DefinicionDeColumna:
     nota_encabezado: str
     # Guía de lectura de la columna, derivada del libro (para qué sirve, dónde buscar, regla, faltante, ejemplo).
     guia: dict[str, Any] = field(default_factory=dict, compare=False)
+    # Columnas que calcula el programa (no el extractor): cómo se calculan, según el libro (instruccion_operativa.derivada).
+    derivada: dict[str, Any] | None = field(default=None, compare=False)
+    # Versión del libro que agregó la columna; el Excel anterior puede no traer su encabezado.
+    agregada_en_version: str | None = None
+
+    @property
+    def es_derivada(self) -> bool:
+        return self.derivada is not None
 
     @property
     def es_numerica(self) -> bool:
@@ -49,5 +57,7 @@ class DefinicionDeColumna:
             "nivel_de_registro": self.nivel_de_registro,
             "nota_encabezado": self.nota_encabezado,
             "es_numerica": self.es_numerica,
+            "es_derivada": self.es_derivada,
+            "agregada_en_version": self.agregada_en_version,
             "guia": self.guia,
         }

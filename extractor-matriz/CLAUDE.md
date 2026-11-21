@@ -22,7 +22,7 @@ Especificación en `docs/CONSTRUIR_extractor_matriz.md`. Decisiones se registran
 
 ## Reglas de la especificación (sección 0)
 
-- Libro de códigos `recursos/Libro_de_codigos_extraccion_v2.json` es la norma. Columnas, vocabularios y validaciones salen de él; no copiar reglas al código ni escribir 54 columnas a mano.
+- Libro de códigos `recursos/Libro_de_codigos_extraccion_v2.json` (v2.3, 59 columnas; ADR 0008) es la norma. Columnas, vocabularios y validaciones salen de él; no copiar reglas al código ni escribir las columnas a mano. Las columnas con `derivada` las calcula el programa (`matriz/dominio/derivadas.py`).
 - No reescribir `recursos/validar_extraccion.py` ni `recursos/escribir_matriz.py`. Usar vía adaptadores; cualquier cambio se propone al responsable del dominio.
 - Algo no definido en especificación → detenerse y preguntar al responsable del dominio. No tomar decisiones de dominio por cuenta propia.
 - Resultado contradice especificación → registrar ADR nuevo en `docs/decisiones/` y consultar antes de seguir.
@@ -58,3 +58,4 @@ Correr todos antes de terminar cambio. Cada tabla nueva necesita migración Alem
 - Extracción real cuesta ~2,6 USD equivalentes y 4 min por artículo. Preguntar antes de correr una.
 - Sin Opus (ADR 0005, propuesto): portero en `extraccion/dominio/portero.py` elige Sonnet o Haiku por llamada; la interfaz muestra los modelos de cada PDF.
 - Botón «Restablecer errores» (ADR 0006, propuesto): ERROR vuelve al estado previo sin lanzar extracciones.
+- Libro v2.3 (ADR 0008, aprobado 2026-11-21): 5 columnas nuevas (BC–BG). Migrar bases con `python -m app.cli migrar-libro`. Pendientes: confirmar cond. 10 y tabla IDV, proponer V30–V32 y probar con Kumar y Singh.

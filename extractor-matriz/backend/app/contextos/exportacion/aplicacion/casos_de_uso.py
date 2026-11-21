@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 from app.contextos.exportacion.puertos import (
     AlmacenDeExportaciones,
@@ -29,6 +30,15 @@ class Exportacion:
     filas_extraidas: int
 
 
+def _completa(salida: dict[str, Any], valores: dict[str, Any]) -> dict[str, Any]:
+    """Suma a `fila` las columnas que el extractor no escribe (derivadas o agregadas por el libro v2.3).
+
+    escribir_matriz.py lee fila[k] de todas las columnas del libro; esas celdas salen de la matriz guardada.
+    """
+    fila = salida.get("fila") or {}
+    return {**salida, "fila": {**{k: v for k, v in valores.items() if k not in fila}, **fila}}
+
+
 class ExportarMatriz:
     def __init__(self, fuente: FuenteDeMatriz, heredadas: EscritorDeHeredadas, escritor: EscritorDeMatriz,
                  almacen: AlmacenDeExportaciones) -> None:
@@ -44,7 +54,7 @@ class ExportarMatriz:
         datos = self._heredadas.escribir(base, heredadas, columnas)
         if extraidas:
             datos = self._escritor.escribir(
-                salida=[f.salida for f in extraidas if f.salida is not None],
+                salida=[_completa(f.salida, f.valores) for f in extraidas if f.salida is not None],
                 libro=self._fuente.libro(proyecto_id),
                 matriz_base=datos,
                 auditoria=[a for f in extraidas for a in f.auditoria],

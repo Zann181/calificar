@@ -16,7 +16,7 @@ const LENTO_MS = 6000; // nada en curso: solo se vigila que alguien lance una
 // Pasos que ve la persona en el detalle del monitor (mismos hitos que PASOS del motor).
 export const PASOS_VISIBLES = [
   { clave: "preparando", texto: "Preparar el artículo (texto e imágenes)", desde: 2, hasta: 8 },
-  { clave: "extrayendo", texto: "Extractor: llena las 54 columnas", desde: 8, hasta: 45 },
+  { clave: "extrayendo", texto: "Extractor: llena las columnas", desde: 8, hasta: 45 },
   { clave: "corrigiendo", texto: "Corregir lo que rechace el validador", desde: 45, hasta: 58 },
   { clave: "anclando", texto: "Anclar cada cita al PDF", desde: 58, hasta: 62 },
   { clave: "auditando", texto: "Auditor y codificador ciego", desde: 62, hasta: 85 },

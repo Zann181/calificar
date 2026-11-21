@@ -5,7 +5,7 @@
     "objeto": "Libro de códigos de la matriz de extracción de una revisión sistemática con metaanálisis sobre felicidad en el trabajo y desempeño laboral.",
     "filas_con_datos": 71,
     "documentos": 47,
-    "columnas_con_encabezado": 54,
+    "columnas_con_encabezado": 59,
     "estructura_de_cada_columna": {
       "descripcion": "Qué registra la columna.",
       "naturaleza": "Cuantitativa, Cualitativa, Mixta o Identificador.",
@@ -22,8 +22,8 @@
     },
     "nota_de_claves": "Cada clave es el nombre de la columna sin espacios finales ni saltos de línea. Tres encabezados están duplicados en el Excel (cómo lo llaman, Fiabilidad Alfa - Omega, Analysis method); para que las claves sean únicas se agregó entre paréntesis el constructo o el nivel. El encabezado exacto se conserva en encabezado_original.",
     "control_de_calidad": "Dos revisiones independientes: auditoría de cada cifra y ejemplo contra el Excel, y revisión metodológica de las reglas (PRISMA 2020, Cochrane, Hunter y Schmidt, Peterson y Brown). Sus correcciones están incorporadas.",
-    "version": "2.2",
-    "fecha_version": "2026-10-05",
+    "version": "2.3",
+    "fecha_version": "2026-11-21",
     "capas_del_documento": {
       "capa_diagnostica": "Campos heredados de la versión 1 (comportamiento_observado, alertas_de_calidad, recomendaciones): describen la matriz actual de 71 filas y sus problemas. No son instrucciones de extracción.",
       "capa_operativa": "Campos nuevos (protocolo_de_extraccion, vocabularios_controlados, instruccion_operativa dentro de cada columna, trazabilidad_por_fila, validaciones_automaticas, esquema_de_salida, ejemplo_verificado, prompt_para_el_extractor): son las instrucciones que se siguen para extraer una fila nueva o reextraer una existente.",
@@ -40,9 +40,18 @@
       "Versión 2.1: se incorporan las correcciones de dos revisiones independientes (prueba a ciegas con Singh et al., 2023, y auditoría metodológica): árbol de inclusión reordenado, categoría SEM latente, N faltante permitido, signo armonizado coherente, oleadas unificadas, fiabilidad alfa por defecto, tipo de efecto y técnica separados, citas literales verificables, esquema endurecido.",
       "Se listan las decisiones metodológicas que la versión 1 dejaba abiertas y la opción adoptada provisionalmente, para que el equipo las confirme.",
       "Versión 2.2 (2026-10-05, aprobada por el responsable del dominio): cada objeto de evidencia admite bloque_id, el identificador del bloque del texto etiquetado (pNN-bMM) donde está la cita. Es opcional en el esquema para que las filas heredadas y el ejemplo verificado sigan validando; el programa lo exige en toda extracción nueva para resaltar la cita en el visor (ADR 0001, hallazgo H5)."
+    ],
+    "cambios_respecto_a_version_2.2": [
+      "Se agregan 5 columnas a la derecha de BB: ID muestra (BC), Método obtención r (BD), Constructo desempeño (BE), Cultura Hofstede (BF) y Conjunto MA (BG). Ver docs/PLAN_COLUMNAS_NUEVAS.md y ADR 0008.",
+      "Solo Constructo desempeño la escribe el extractor en fila. Las otras cuatro las deriva el programa (derivada en instruccion_operativa): ID muestra y Método obtención r desde la trazabilidad, Cultura Hofstede desde Pais y Conjunto MA desde la condición del árbol de Incluir.",
+      "Conjunto MA adopta 5 valores. Multinivel (condición 5) y PLS (condición 8) pasan de Sensibilidad a Excluir; trazabilidad.conjunto_sugerido se conserva (V27) con sus 3 valores.",
+      "Tabla IDV de Hofstede agregada (pendiente de confirmar por el responsable).",
+      "Refuerzos del manual de codificación a las columnas existentes (T1–T1, beta ≠ r, N de personas en diarios, rangos de fiabilidad, siglas canónicas, equivalencias de nombres).",
+      "motivo_decision_inclusion: el árbol tiene 11 condiciones (el texto decía 1 a 6).",
+      "Validaciones V30 a V32 propuestas; no las implementa validar_extraccion.py."
     ]
   },
-  "prompt_para_el_extractor": "Eres el extractor de datos de una revisión sistemática con metaanálisis sobre felicidad en el trabajo y desempeño laboral. Recibes un artículo en PDF y este libro de códigos en JSON. Solo son normativos protocolo_de_extraccion, vocabularios_controlados, columnas[*].instruccion_operativa, trazabilidad_por_fila, validaciones_automaticas y esquema_de_salida; lo demás es contexto. Sigue protocolo_de_extraccion.flujo_por_documento paso a paso. Cumple los principios_de_veracidad sin excepción: no escribas ningún dato que no puedas señalar en el artículo con página del PDF, ubicación y cita textual literal; no completes datos con conocimiento externo (ni siglas, ni años de teorías, ni número de ítems); registra toda inferencia y toda contradicción del artículo en la trazabilidad; usa solo los códigos de faltante No indica, No indica (no significativo) y No aplica. Si una tabla o página no es legible, detente en ese dato y repórtalo. Abre filas según como_se_construye_cada_fila.regla_para_abrir_una_fila_nueva, con la excepción de varias_oleadas en reglas_de_desempate. Revisa tu salida contra validaciones_automaticas, sin afirmar que ejecutaste comprobaciones que no ejecutaste: la validación formal la hace validar_extraccion.py. Entrega únicamente un arreglo JSON que cumpla esquema_de_salida.json_schema, con el mismo formato que ejemplo_verificado.salida; tus observaciones van dentro de trazabilidad.advertencias_pendientes. Datos que te entrega el equipo para este artículo: Documento = <n>, Estudio inicial = <n>, Covidence # = <n o vacío>, Vía de identificación = <texto>.",
+  "prompt_para_el_extractor": "Eres el extractor de datos de una revisión sistemática con metaanálisis sobre felicidad en el trabajo y desempeño laboral. Recibes un artículo en PDF y este libro de códigos en JSON. Solo son normativos protocolo_de_extraccion, vocabularios_controlados, columnas[*].instruccion_operativa, trazabilidad_por_fila, validaciones_automaticas y esquema_de_salida; lo demás es contexto. Sigue protocolo_de_extraccion.flujo_por_documento paso a paso. Cumple los principios_de_veracidad sin excepción: no escribas ningún dato que no puedas señalar en el artículo con página del PDF, ubicación y cita textual literal; no completes datos con conocimiento externo (ni siglas, ni años de teorías, ni número de ítems); registra toda inferencia y toda contradicción del artículo en la trazabilidad; usa solo los códigos de faltante No indica, No indica (no significativo) y No aplica. Si una tabla o página no es legible, detente en ese dato y repórtalo. Abre filas según como_se_construye_cada_fila.regla_para_abrir_una_fila_nueva, con la excepción de varias_oleadas en reglas_de_desempate. Revisa tu salida contra validaciones_automaticas, sin afirmar que ejecutaste comprobaciones que no ejecutaste: la validación formal la hace validar_extraccion.py. Entrega únicamente un arreglo JSON que cumpla esquema_de_salida.json_schema, con el mismo formato que ejemplo_verificado.salida; tus observaciones van dentro de trazabilidad.advertencias_pendientes. Antes de leer cualquier tabla, decide si el artículo reporta una tabla bivariada de puntajes de escala: si existe, esa es tu fuente de r aunque el modelo final sea SEM. Una fila por cada par felicidad–desempeño y por cada subescala de desempeño; cada fila lleva su id_muestra. No copies valores de la diagonal: un valor mayor que 0.80 entre felicidad y desempeño se vuelve a verificar contra la tabla (puede ser un alfa). Llena Constructo desempeño con la lista cerrada. No llenes ID muestra, Método obtención r, Cultura Hofstede ni Conjunto MA en fila: las deriva el programa de la trazabilidad y de Pais. Datos que te entrega el equipo para este artículo: Documento = <n>, Estudio inicial = <n>, Covidence # = <n o vacío>, Vía de identificación = <texto>.",
   "protocolo_de_extraccion": {
     "rol": "Extractor de datos para una revisión sistemática con metaanálisis sobre felicidad en el trabajo y desempeño laboral. El extractor transcribe y codifica lo que el artículo informa; no interpreta más allá de las reglas de este libro de códigos.",
     "insumos": [
@@ -569,6 +578,85 @@
           "No Indica": "No indica",
           "-": "No indica",
           "no": "Revisar: puede ser No o No indica"
+        }
+      },
+      "Constructo desempeño": {
+        "valores": [
+          "Task Performance",
+          "In-Role Behavior",
+          "Job Proficiency",
+          "OCB-Individual",
+          "OCB-Organization",
+          "Contextual Performance",
+          "Helping",
+          "Civic Virtue",
+          "Job Performance Global",
+          "Sales",
+          "Productivity",
+          "Innovation",
+          "Creativity",
+          "Otro: <especificar>"
+        ],
+        "compatibilidad_con_desempeno": {
+          "In-rol": [
+            "Task Performance",
+            "In-Role Behavior",
+            "Job Proficiency",
+            "Sales",
+            "Productivity"
+          ],
+          "Extra-rol": [
+            "OCB-Individual",
+            "OCB-Organization",
+            "Contextual Performance",
+            "Helping",
+            "Civic Virtue"
+          ],
+          "General": [
+            "Job Performance Global"
+          ],
+          "Innovador": [
+            "Innovation",
+            "Creativity"
+          ],
+          "Organizacional": [
+            "Otro: <especificar>"
+          ],
+          "Contraproductivo": [
+            "Otro: <especificar>"
+          ]
+        },
+        "nota": "El par (Desempeño, Constructo desempeño) debe ser compatible (V30)."
+      },
+      "Método obtención r": {
+        "valores": [
+          "Pearson observado",
+          "Correlación entre variables latentes CB-SEM",
+          "Correlación entre compuestos PLS",
+          "No especificado",
+          "No disponible"
+        ]
+      },
+      "Cultura Hofstede": {
+        "valores": [
+          "Individualista",
+          "Colectivista",
+          "No indica"
+        ],
+        "nota": "Se calcula con la tabla IDV de columnas['Cultura Hofstede'].instruccion_operativa.derivada.tabla_idv (pendiente de confirmar)."
+      },
+      "Conjunto MA": {
+        "valores": [
+          "Principal_Hedonico",
+          "Principal_Eudaimonico",
+          "Principal_Mixto",
+          "Sensibilidad",
+          "Excluir"
+        ],
+        "equivalencias_con_v2_2": {
+          "Principal": "Principal_Hedonico | Principal_Eudaimonico | Principal_Mixto",
+          "Sensibilidad": "Sensibilidad",
+          "Narrativo": "Excluir"
         }
       }
     }
@@ -1170,7 +1258,10 @@
         "obligatorio": true,
         "valores_permitidos": "Nombre corto oficial en español (Colombia, Estados Unidos, Reino Unido, Países Bajos, Corea del Sur...) o Multinacional cuando el coeficiente combina varios países.",
         "donde_buscar": "Método: participantes o procedimiento.",
-        "regla_de_decision": "País donde se recolectaron los datos, no el de afiliación de los autores. Efectos separados por país abren filas.",
+        "regla_de_decision": [
+          "País donde se recolectaron los datos, no el de afiliación de los autores. Efectos separados por país abren filas.",
+          "Cultura Hofstede (58) se calcula desde este país con la tabla IDV del libro; Gran Bretaña se normaliza a Reino Unido."
+        ],
         "codigo_si_falta": "No indica",
         "requiere_evidencia": true,
         "nivel_de_registro": "Muestra"
@@ -1568,7 +1659,10 @@
         "obligatorio": true,
         "formato": "Autor (año) | Adaptada de Autor (año) | Propia | Un solo ítem | Cifras organizacionales. Dos instrumentos: separados por punto y coma.",
         "donde_buscar": "Sección de medidas.",
-        "regla_de_decision": "Adaptada solo si el artículo dice que modificó, abrevió o tradujo la escala.",
+        "regla_de_decision": [
+          "Adaptada solo si el artículo dice que modificó, abrevió o tradujo la escala.",
+          "Siglas canónicas, solo para normalizar cuando el artículo ya usa el nombre: Williams-Anderson, Goodman-Svyantek, Koopmans, Podsakoff-OCB, Campbell, Janssen, Single-item, Objetivo."
+        ],
         "codigo_si_falta": "No indica",
         "requiere_evidencia": true,
         "nivel_de_registro": "Efecto"
@@ -1644,7 +1738,9 @@
           "Se escribe el alfa de Cronbach cuando existe, por ser el coeficiente más homogéneo entre estudios. Si no hay alfa, omega; si no, CR. El tipo va a trazabilidad.tipo_fiabilidad_desempeno y los demás coeficientes a trazabilidad.fiabilidad_alternativa_desempeno.",
           "Si la fila usa una dimensión, la fiabilidad de esa dimensión.",
           "Si solo hay coeficientes por dimensión para una puntuación global, null con estado No indica y los valores en trazabilidad (no calcular Mosier ni promedios).",
-          "Desempeño calificado por supervisor: si el artículo reporta fiabilidad entre evaluadores, va a fiabilidad_alternativa con tipo entre evaluadores."
+          "Desempeño calificado por supervisor: si el artículo reporta fiabilidad entre evaluadores, va a fiabilidad_alternativa con tipo entre evaluadores.",
+          "Rango de plausibilidad 0.60–0.99; fuera de rango se marca para revisión, no se corrige.",
+          "Con varios tiempos, el del tiempo de la correlación. Omega es válido si no hay alfa."
         ],
         "codigo_si_falta": "null; estado No aplica si es un ítem o registros objetivos; No indica en otro caso",
         "requiere_evidencia": true,
@@ -1769,7 +1865,10 @@
         "tipo_de_dato": "entero o null",
         "obligatorio": false,
         "formato": "Entero.",
-        "regla_de_decision": "Ítems con los que se calculó la puntuación usada en el análisis (retenidos). Si difieren de los aplicados, los aplicados van a trazabilidad y la diferencia a discrepancias_en_el_articulo. 1 para medida de un ítem. Registros objetivos: null con estado No aplica.",
+        "regla_de_decision": [
+          "Ítems con los que se calculó la puntuación usada en el análisis (retenidos). Si difieren de los aplicados, los aplicados van a trazabilidad y la diferencia a discrepancias_en_el_articulo. 1 para medida de un ítem. Registros objetivos: null con estado No aplica.",
+          "Si el artículo no lo dice, No indica; no se infiere de la referencia del instrumento (principio P2)."
+        ],
         "codigo_si_falta": "null con estado No indica o No aplica",
         "requiere_evidencia": true,
         "nivel_de_registro": "Efecto"
@@ -1830,7 +1929,11 @@
           "Eudaimónica",
           "Hedónica y eudaimónica"
         ],
-        "regla_de_decision": "Usar la tabla vocabularios_controlados.Tipo de felicidad real.correspondencia_hedonica_eudaimonica. Solo si el Tipo es Otro se decide con reglas_de_codificacion y se registra la inferencia.",
+        "regla_de_decision": [
+          "Usar la tabla vocabularios_controlados.Tipo de felicidad real.correspondencia_hedonica_eudaimonica. Solo si el Tipo es Otro se decide con reglas_de_codificacion y se registra la inferencia.",
+          "Work Engagement (UWES): se mantiene Hedónica y eudaimónica; excepción: si el autor lo enmarca explícitamente como hedónico, Hedónica.",
+          "Happiness at Work genérico: decidir por el instrumento y por cómo lo define el artículo."
+        ],
         "codigo_si_falta": "No debe faltar",
         "requiere_evidencia": false,
         "nivel_de_registro": "Efecto"
@@ -1962,7 +2065,10 @@
           "Agotamiento (signo invertido)",
           "Otro: <especificar>"
         ],
-        "regla_de_decision": "Según lo que miden los ítems. Otro solo si ninguna categoría describe el constructo, y explicarlo en trazabilidad.inferencias.",
+        "regla_de_decision": [
+          "Según lo que miden los ítems. Otro solo si ninguna categoría describe el constructo, y explicarlo en trazabilidad.inferencias.",
+          "Happiness at Work genérico: decidir por el instrumento y por cómo lo define el artículo."
+        ],
         "codigo_si_falta": "No debe faltar",
         "requiere_evidencia": false,
         "nivel_de_registro": "Efecto"
@@ -2018,7 +2124,10 @@
         "tipo_de_dato": "texto",
         "obligatorio": true,
         "formato": "SIGLA (Autor, año) si el artículo usa la sigla; Autor (año); Basado en Autor (año); Propia.",
-        "regla_de_decision": "Escribir la sigla solo si el artículo la usa. Si no la usa, escribir Autor (año) tal como lo cita el artículo. No completar siglas ni nombres con conocimiento externo.",
+        "regla_de_decision": [
+          "Escribir la sigla solo si el artículo la usa. Si no la usa, escribir Autor (año) tal como lo cita el artículo. No completar siglas ni nombres con conocimiento externo.",
+          "Siglas canónicas, solo para normalizar cuando el artículo ya usa la sigla (no para completarla): SWLS, PANAS, UWES-9, UWES-17, PWB-Ryff, MSQ, JSS, JDI, PHI, PERMA, FS, WAMI."
+        ],
         "codigo_si_falta": "No indica",
         "requiere_evidencia": true,
         "nivel_de_registro": "Efecto"
@@ -2074,7 +2183,10 @@
         "tipo_de_dato": "entero o null",
         "obligatorio": false,
         "formato": "Entero.",
-        "regla_de_decision": "Ítems con los que se calculó la puntuación usada en el análisis (retenidos). Si difieren de los aplicados, los aplicados van a trazabilidad y la diferencia a discrepancias_en_el_articulo. 1 para medida de un ítem.",
+        "regla_de_decision": [
+          "Ítems con los que se calculó la puntuación usada en el análisis (retenidos). Si difieren de los aplicados, los aplicados van a trazabilidad y la diferencia a discrepancias_en_el_articulo. 1 para medida de un ítem.",
+          "Si el artículo no lo dice, No indica; no se infiere de la referencia del instrumento (principio P2)."
+        ],
         "codigo_si_falta": "null con estado No indica",
         "requiere_evidencia": true,
         "nivel_de_registro": "Efecto"
@@ -2139,7 +2251,11 @@
         "tipo_de_dato": "número o null",
         "obligatorio": false,
         "formato": "Número entre 0 y 1.",
-        "regla_de_decision": "Mismas reglas que la fiabilidad de desempeño; destino trazabilidad.tipo_fiabilidad_felicidad y fiabilidad_alternativa_felicidad.",
+        "regla_de_decision": [
+          "Mismas reglas que la fiabilidad de desempeño; destino trazabilidad.tipo_fiabilidad_felicidad y fiabilidad_alternativa_felicidad.",
+          "Rango de plausibilidad 0.60–0.99; fuera de rango se marca para revisión, no se corrige.",
+          "Con varios tiempos, el del tiempo de la correlación. Omega es válido si no hay alfa."
+        ],
         "codigo_si_falta": "null; estado No aplica o No indica",
         "requiere_evidencia": true,
         "nivel_de_registro": "Efecto"
@@ -2381,7 +2497,10 @@
         "regla_de_decision": [
           "N final analizado del coeficiente de la fila.",
           "Nivel organizacional: número de unidades.",
-          "Multinivel o diario: número de personas (no de observaciones ni de días); el número de observaciones va a trazabilidad.n_observaciones y el de grupos a trazabilidad.n_nivel_2."
+          "Multinivel o diario: número de personas (no de observaciones ni de días); el número de observaciones va a trazabilidad.n_observaciones y el de grupos a trazabilidad.n_nivel_2.",
+          "Longitudinal: el N de la correlación extraída (T1–T3 usa el menor por atrición).",
+          "Con N variable por datos faltantes, el N específico del par felicidad–desempeño (nota de tabla «N ranges from…»).",
+          "Diario: el N es de personas, nunca de días ni observaciones."
         ],
         "codigo_si_falta": "null con estado No indica; la fila queda en No por la condición 1 de Incluir",
         "requiere_evidencia": true,
@@ -2449,7 +2568,10 @@
           "Directivo sobre la unidad",
           "No indica"
         ],
-        "regla_de_decision": "Quién respondió la escala de desempeño según lo declara el artículo (self-report, self-rated, supervisor ratings, registros). Si el artículo no lo declara, No indica; la sospecha se anota en advertencias_pendientes. No inferir autoinforme por el formato Likert.",
+        "regla_de_decision": [
+          "Quién respondió la escala de desempeño según lo declara el artículo (self-report, self-rated, supervisor ratings, registros). Si el artículo no lo declara, No indica; la sospecha se anota en advertencias_pendientes. No inferir autoinforme por el formato Likert.",
+          "Equivalencias con el manual: Self-report = Self perception; Supervisor = Supervisor/manager; Objetivo = Cifras organizacionales; Mixto = Combinada; Pares = Pares."
+        ],
         "codigo_si_falta": "No debe faltar",
         "requiere_evidencia": true,
         "nivel_de_registro": "Efecto"
@@ -2511,7 +2633,10 @@
         "tipo_de_dato": "texto",
         "obligatorio": true,
         "formato": "Correlación <valor como en el artículo><marca> (Tabla X, p. Y del PDF) | Beta <valor><marca> (Tabla o Figura, p. Y del PDF). Omitir la parte que no exista.",
-        "regla_de_decision": "Se escribe antes que Correlación y Beta. Todo número de esas dos columnas debe aparecer aquí con el mismo valor absoluto; si el signo difiere, trazabilidad.signo_armonizado = true. Y es siempre la página del PDF.",
+        "regla_de_decision": [
+          "Se escribe antes que Correlación y Beta. Todo número de esas dos columnas debe aparecer aquí con el mismo valor absoluto; si el signo difiere, trazabilidad.signo_armonizado = true. Y es siempre la página del PDF.",
+          "Antes de copiar, comprobar que la variable es felicidad↔desempeño y no felicidad↔otra variable (compromiso, rotación…)."
+        ],
         "codigo_si_falta": "No indica",
         "requiere_evidencia": true,
         "nivel_de_registro": "Efecto"
@@ -2581,7 +2706,11 @@
         "regla_de_decision": [
           "Solo correlación de orden cero reportada entre la felicidad y el desempeño de la fila.",
           "Clasificar el origen en trazabilidad.metodo_obtencion_r: Pearson observado si viene de una tabla de descriptivos de puntuaciones de escala; Correlación entre compuestos PLS si la tabla es de constructos de un modelo PLS (tabla de Fornell y Larcker o de variables latentes en PLS); Correlación entre variables latentes CB-SEM si viene del modelo de medida CB-SEM; No especificado si el artículo no permite saberlo.",
-          "Valores derivados o imputados no van aquí."
+          "Valores derivados o imputados no van aquí.",
+          "Con varios tiempos, usar la correlación del mismo tiempo (T1–T1) y anotar «se usó T1–T1».",
+          "Con varias subescalas de felicidad, una fila por cada una.",
+          "Un n.s. nunca se convierte en valor: se busca el número en otra parte o queda No indica (no significativo).",
+          "No copiar valores de la diagonal; un valor mayor que 0.80 entre felicidad y desempeño se vuelve a verificar contra la tabla (puede ser un alfa)."
         ],
         "codigo_si_falta": "null; estado No indica o No indica (no significativo)",
         "requiere_evidencia": true,
@@ -2654,7 +2783,8 @@
           "Solo coeficiente estandarizado de la ruta felicidad hacia desempeño.",
           "Registrar trazabilidad.tipo_de_efecto, trazabilidad.tecnica_del_beta y trazabilidad.covariables_del_beta.",
           "Si el artículo lo rotula como estandarizado pero hay evidencia interna de lo contrario (cargas fijadas en 1, valor distinto de r en un modelo de un solo predictor), registrar el valor rotulado, anotar la discrepancia y poner confianza Baja.",
-          "Si el artículo solo modela desempeño hacia felicidad, null con estado No aplica y el coeficiente a trazabilidad.otros_coeficientes."
+          "Si el artículo solo modela desempeño hacia felicidad, null con estado No aplica y el coeficiente a trazabilidad.otros_coeficientes.",
+          "Beta no es r: el modelo de regresión controla otras variables. Un beta nunca pasa a Correlación Feli 1 - JP."
         ],
         "codigo_si_falta": "null; estado No indica, No indica (no significativo) o No aplica",
         "requiere_evidencia": true,
@@ -2836,7 +2966,10 @@
           "Multinivel",
           "Group"
         ],
-        "regla_de_decision": "Individual: una observación por persona. Multinivel: datos anidados modelados en dos o más niveles. Group: la unidad de análisis es el grupo u organización. Un ensayo con análisis individual es Individual.",
+        "regla_de_decision": [
+          "Individual: una observación por persona. Multinivel: datos anidados modelados en dos o más niveles. Group: la unidad de análisis es el grupo u organización. Un ensayo con análisis individual es Individual.",
+          "Diario: el N es de personas, nunca de días ni observaciones."
+        ],
         "codigo_si_falta": "No debe faltar",
         "requiere_evidencia": false,
         "nivel_de_registro": "Efecto"
@@ -3007,7 +3140,10 @@
           "Randomised controlled trial",
           "No indica"
         ],
-        "regla_de_decision": "Cross sectional study: una medición (aunque el artículo no use la palabra, si hay una sola aplicación; registrar inferencia). Longitudinal study: dos o más oleadas con los mismos participantes.",
+        "regla_de_decision": [
+          "Cross sectional study: una medición (aunque el artículo no use la palabra, si hay una sola aplicación; registrar inferencia). Longitudinal study: dos o más oleadas con los mismos participantes.",
+          "Equivalencias con el manual: Experimental = Randomised controlled trial; Diary = Diary study."
+        ],
         "codigo_si_falta": "No indica",
         "requiere_evidencia": true,
         "nivel_de_registro": "Muestra"
@@ -3927,12 +4063,294 @@
         "requiere_evidencia": true,
         "nivel_de_registro": "Documento"
       }
+    },
+    "ID muestra": {
+      "encabezado_original": "ID muestra",
+      "posicion": 55,
+      "letra_excel": "BC",
+      "agregada_en_version": "2.3",
+      "descripcion": "Identificador de la muestra de personas de la que sale el efecto de la fila; es el conglomerado del metaanálisis de tres niveles.",
+      "naturaleza": "Identificador",
+      "escala_de_medicion": "Nominal.",
+      "nivel_de_registro": {
+        "recomendado": "Muestra: filas de la misma muestra de personas comparten el ID.",
+        "observado_en_la_matriz": "Columna nueva de la versión 2.3: no existe en las 71 filas heredadas de la matriz."
+      },
+      "como_se_extrae": [
+        "Buscar en Participants / Sample / Procedure cuántas muestras independientes tiene el artículo.",
+        "Si el artículo dice que los datos vienen de un estudio anterior, es la misma muestra: se usa el ID de la primera aparición."
+      ],
+      "reglas_de_codificacion": [
+        "Formato D<Documento>-M<n>. Ejemplo: D28-M1.",
+        "Un documento con dos muestras independientes usa M1 y M2.",
+        "Si la muestra ya apareció en otro documento, se usa el ID de la primera aparición y se anota en advertencias_pendientes."
+      ],
+      "tratamiento_del_dato_faltante": "No debe faltar. Si no se puede decidir, D<Documento>-M1 con confianza Baja.",
+      "relacion_con_otras_columnas": "Variable de conglomerado; se relaciona con Pais, Población y Study design (V20). Los documentos 28 (dos muestras) y 30/31 (posible muestra repetida) la exigen.",
+      "instruccion_operativa": {
+        "tipo_de_dato": "texto",
+        "obligatorio": true,
+        "formato": "D<Documento>-M<n>",
+        "donde_buscar": "Participants / Sample / Procedure.",
+        "regla_de_decision": [
+          "Filas de la misma muestra de personas comparten el ID.",
+          "Documento con dos muestras independientes: M1 y M2.",
+          "Muestra ya vista en otro documento: usar el ID de la primera aparición y anotarlo en advertencias_pendientes."
+        ],
+        "codigo_si_falta": "No debe faltar",
+        "requiere_evidencia": false,
+        "nivel_de_registro": "Muestra",
+        "derivada": {
+          "tipo": "trazabilidad",
+          "campo": "id_muestra",
+          "provisional_heredada": "D{documento}-M1",
+          "nota": "La hoja refleja trazabilidad.id_muestra, que es la fuente de verdad. La evidencia, si el extractor la da, va en trazabilidad.evidencia con la clave ID muestra."
+        }
+      }
+    },
+    "Método obtención r": {
+      "encabezado_original": "Método obtención r",
+      "posicion": 56,
+      "letra_excel": "BD",
+      "agregada_en_version": "2.3",
+      "descripcion": "Cómo se obtuvo la correlación felicidad–desempeño de la fila: Pearson observado, entre variables latentes de CB-SEM o entre compuestos de PLS.",
+      "naturaleza": "Cualitativa",
+      "escala_de_medicion": "Nominal.",
+      "nivel_de_registro": {
+        "recomendado": "Efecto: puede cambiar entre filas del mismo artículo.",
+        "observado_en_la_matriz": "Columna nueva de la versión 2.3: no existe en las 71 filas heredadas de la matriz."
+      },
+      "como_se_extrae": [
+        "Antes de leer cualquier tabla, decidir si el artículo reporta una tabla bivariada de puntajes de escala.",
+        "Mirar el título de la tabla de donde sale la r, la sección Data analysis y el software (AMOS, Mplus, LISREL = SEM; SmartPLS, WarpPLS = PLS)."
+      ],
+      "reglas_de_codificacion": [
+        "Aplicar en este orden: 1) tabla de descriptivos con correlaciones entre puntajes de escala → Pearson observado, aunque el artículo pruebe sus hipótesis con SEM; 2) la única correlación viene de una tabla de constructos latentes o del modelo de medida CFA → Correlación entre variables latentes CB-SEM; 3) viene de un modelo PLS (Fornell-Larcker, composite reliability) → Correlación entre compuestos PLS; 4) el artículo no permite saberlo → No especificado; 5) la fila no tiene correlación (solo beta o nada) → No disponible.",
+        "Errores comunes: confundir la diagonal (alfa) con r; tomar la r del modelo estructural cuando existe la bivariada."
+      ],
+      "tratamiento_del_dato_faltante": "No disponible cuando no hay r; nunca vacía.",
+      "relacion_con_otras_columnas": "Decide Incluir en meta análisi (V12) y, con él, Conjunto MA. Equivale a trazabilidad.metodo_obtencion_r.",
+      "instruccion_operativa": {
+        "tipo_de_dato": "categoría",
+        "obligatorio": true,
+        "valores_permitidos": [
+          "Pearson observado",
+          "Correlación entre variables latentes CB-SEM",
+          "Correlación entre compuestos PLS",
+          "No especificado",
+          "No disponible"
+        ],
+        "donde_buscar": "Título de la tabla de donde sale la r; Data analysis; software.",
+        "regla_de_decision": [
+          "Aplicar en este orden y detenerse en la primera que se cumpla:",
+          "1. Existe una tabla de descriptivos con correlaciones entre puntajes de escala (Means, standard deviations and intercorrelations; Correlation matrix; alfas en la diagonal) → Pearson observado, aunque el artículo pruebe sus hipótesis con SEM.",
+          "2. La única correlación viene de una tabla de constructos latentes o del modelo de medida CFA → Correlación entre variables latentes CB-SEM.",
+          "3. Viene de una tabla de constructos de un modelo PLS (Fornell-Larcker, composite reliability) → Correlación entre compuestos PLS.",
+          "4. El artículo no permite saberlo → No especificado.",
+          "5. La fila no tiene correlación (solo beta o nada) → No disponible."
+        ],
+        "codigo_si_falta": "No disponible",
+        "requiere_evidencia": false,
+        "nivel_de_registro": "Efecto",
+        "derivada": {
+          "tipo": "trazabilidad",
+          "campo": "metodo_obtencion_r",
+          "nota": "La hoja refleja trazabilidad.metodo_obtencion_r, que es la fuente de verdad. La evidencia (título de la tabla o frase de Data analysis), si el extractor la da, va en trazabilidad.evidencia con la clave Método obtención r."
+        }
+      }
+    },
+    "Constructo desempeño": {
+      "encabezado_original": "Constructo desempeño",
+      "posicion": 57,
+      "letra_excel": "BE",
+      "agregada_en_version": "2.3",
+      "descripcion": "Constructo de desempeño que miden los ítems de la fila, con los 13 valores del manual de codificación; refina la columna Tipo de desempeño, que es texto libre.",
+      "naturaleza": "Cualitativa",
+      "escala_de_medicion": "Nominal.",
+      "nivel_de_registro": {
+        "recomendado": "Efecto: una fila por subescala de desempeño.",
+        "observado_en_la_matriz": "Columna nueva de la versión 2.3: no existe en las 71 filas heredadas de la matriz."
+      },
+      "como_se_extrae": [
+        "Leer Measures (nombre de la escala y ejemplos de ítems) y los encabezados de tabla.",
+        "Decidir por lo que miden los ítems, no por el nombre."
+      ],
+      "reglas_de_codificacion": [
+        "Debe ser compatible con Desempeño (columna L): In-rol ↔ Task Performance, In-Role Behavior, Job Proficiency, Sales, Productivity; Extra-rol ↔ OCB-Individual, OCB-Organization, Contextual Performance, Helping, Civic Virtue; General ↔ Job Performance Global; Innovador ↔ Innovation, Creativity; Organizacional y Contraproductivo ↔ Otro: <especificar>.",
+        "Con varias subescalas, una fila por subescala.",
+        "No se crean valores fuera de la lista (principio P5)."
+      ],
+      "tratamiento_del_dato_faltante": "No indica.",
+      "relacion_con_otras_columnas": "Refina Desempeño y Tipo de desempeño; la combinación se valida con la tabla de compatibilidad (V30).",
+      "instruccion_operativa": {
+        "tipo_de_dato": "categoría",
+        "obligatorio": true,
+        "valores_permitidos": [
+          "Task Performance",
+          "In-Role Behavior",
+          "Job Proficiency",
+          "OCB-Individual",
+          "OCB-Organization",
+          "Contextual Performance",
+          "Helping",
+          "Civic Virtue",
+          "Job Performance Global",
+          "Sales",
+          "Productivity",
+          "Innovation",
+          "Creativity",
+          "Otro: <especificar>"
+        ],
+        "donde_buscar": "Measures (nombre y ejemplos de ítems) y encabezados de tabla.",
+        "regla_de_decision": [
+          "Se decide por lo que miden los ítems, no por el nombre de la escala.",
+          "Debe ser compatible con Desempeño según vocabularios_controlados.columnas.'Constructo desempeño'.compatibilidad_con_desempeno.",
+          "Con varias subescalas de desempeño, una fila por subescala.",
+          "Otro solo si ninguno de los 13 valores describe el constructo, y explicarlo en trazabilidad.inferencias."
+        ],
+        "codigo_si_falta": "No indica",
+        "requiere_evidencia": false,
+        "nivel_de_registro": "Efecto"
+      }
+    },
+    "Cultura Hofstede": {
+      "encabezado_original": "Cultura Hofstede",
+      "posicion": 58,
+      "letra_excel": "BF",
+      "agregada_en_version": "2.3",
+      "descripcion": "Orientación cultural del país de la muestra según el índice de individualismo (IDV) de Hofstede.",
+      "naturaleza": "Cualitativa",
+      "escala_de_medicion": "Nominal.",
+      "nivel_de_registro": {
+        "recomendado": "Muestra: se hereda de Pais.",
+        "observado_en_la_matriz": "Columna nueva de la versión 2.3: no existe en las 71 filas heredadas de la matriz."
+      },
+      "como_se_extrae": [
+        "No la llena el extractor ni la IA: la calcula el programa con la tabla país → IDV del libro."
+      ],
+      "reglas_de_codificacion": [
+        "Individualista: IDV > 50. Colectivista: IDV ≤ 50.",
+        "El país es el de la recolección de datos (columna I), no el de los autores.",
+        "Multinacional o país fuera de la tabla → No indica y se avisa para revisión humana."
+      ],
+      "tratamiento_del_dato_faltante": "No indica.",
+      "relacion_con_otras_columnas": "Derivada de Pais (I) con la tabla IDV de esta columna. Moderador cultural del metaanálisis.",
+      "instruccion_operativa": {
+        "tipo_de_dato": "categoría",
+        "obligatorio": true,
+        "valores_permitidos": [
+          "Individualista",
+          "Colectivista",
+          "No indica"
+        ],
+        "donde_buscar": "No se busca en el artículo: se calcula desde Pais.",
+        "regla_de_decision": [
+          "Individualista si el IDV del país es mayor que 50; Colectivista si es 50 o menor.",
+          "Multinacional o país fuera de la tabla → No indica y aviso para revisión humana."
+        ],
+        "codigo_si_falta": "No indica",
+        "requiere_evidencia": false,
+        "nivel_de_registro": "Muestra",
+        "derivada": {
+          "tipo": "tabla",
+          "de": "Pais",
+          "umbral": 50,
+          "por_encima": "Individualista",
+          "por_debajo_o_igual": "Colectivista",
+          "sin_dato": "No indica",
+          "alias": {
+            "Gran Bretaña": "Reino Unido"
+          },
+          "estado_de_la_tabla": "PENDIENTE DE CONFIRMAR por el responsable del dominio (Hofstede, valores publicados; no se contrastó con el manual de codificación).",
+          "tabla_idv": {
+            "Australia": 90,
+            "Canadá": 80,
+            "China": 20,
+            "Colombia": 13,
+            "Corea del Sur": 18,
+            "Emiratos Árabes Unidos": 25,
+            "España": 51,
+            "Estados Unidos": 91,
+            "Francia": 71,
+            "India": 48,
+            "Irán": 41,
+            "Japón": 46,
+            "Malasia": 26,
+            "Pakistán": 14,
+            "Países Bajos": 80,
+            "Portugal": 27,
+            "Reino Unido": 89,
+            "Taiwán": 17,
+            "Turquía": 37
+          }
+        }
+      }
+    },
+    "Conjunto MA": {
+      "encabezado_original": "Conjunto MA",
+      "posicion": 59,
+      "letra_excel": "BG",
+      "agregada_en_version": "2.3",
+      "descripcion": "Conjunto del metaanálisis al que va el efecto: análisis principal (hedónico, eudaimónico o mixto), sensibilidad o excluido.",
+      "naturaleza": "Cualitativa",
+      "escala_de_medicion": "Nominal.",
+      "nivel_de_registro": {
+        "recomendado": "Efecto.",
+        "observado_en_la_matriz": "Columna nueva de la versión 2.3: no existe en las 71 filas heredadas de la matriz."
+      },
+      "como_se_extrae": [
+        "No la llena el extractor ni la IA: la calcula el programa con el número de condición del árbol de decisión de Incluir en meta análisi (trazabilidad.motivo_decision_inclusion)."
+      ],
+      "reglas_de_codificacion": [
+        "Condición 6 → Principal_* según Hedónica/eudaimónica (S): Hedónica → Principal_Hedonico; Eudaimónica → Principal_Eudaimonico; Hedónica y eudaimónica → Principal_Mixto.",
+        "Condiciones 7 (r imputada desde beta) y 9 (solo CB-SEM latente) → Sensibilidad.",
+        "Cualquier otra condición (1 a 5, 8, 10 y 11) → Excluir. Decisión del responsable: Multinivel (5) y PLS (8) pasan de Sensibilidad a Excluir; la condición 10 queda por confirmar."
+      ],
+      "tratamiento_del_dato_faltante": "Sin condición del árbol (filas heredadas) la celda queda pendiente hasta que se calcule el árbol.",
+      "relacion_con_otras_columnas": "Se deriva de Incluir en meta análisi (D), Hedónica/eudaimónica (S) y trazabilidad.motivo_decision_inclusion. No reemplaza trazabilidad.conjunto_sugerido (que sigue la V27 con 3 valores).",
+      "instruccion_operativa": {
+        "tipo_de_dato": "categoría",
+        "obligatorio": true,
+        "valores_permitidos": [
+          "Principal_Hedonico",
+          "Principal_Eudaimonico",
+          "Principal_Mixto",
+          "Sensibilidad",
+          "Excluir"
+        ],
+        "donde_buscar": "No se busca en el artículo: se calcula.",
+        "regla_de_decision": [
+          "Condición 6 del árbol de Incluir → Principal_Hedonico, Principal_Eudaimonico o Principal_Mixto según Hedónica/eudaimónica.",
+          "Condiciones 7 y 9 → Sensibilidad.",
+          "Condiciones 1 a 5, 8, 10 y 11 → Excluir."
+        ],
+        "codigo_si_falta": "No debe faltar",
+        "requiere_evidencia": false,
+        "nivel_de_registro": "Efecto",
+        "derivada": {
+          "tipo": "por_condicion",
+          "campo": "motivo_decision_inclusion",
+          "condiciones": {
+            "6": "Principal",
+            "7": "Sensibilidad",
+            "9": "Sensibilidad"
+          },
+          "por_defecto": "Excluir",
+          "columna_para_principal": "Hedónica/eudaimónica",
+          "principal": {
+            "Hedónica": "Principal_Hedonico",
+            "Eudaimónica": "Principal_Eudaimonico",
+            "Hedónica y eudaimónica": "Principal_Mixto"
+          },
+          "por_confirmar": "Condición 10 → Excluir (el libro v2.2 decía Sensibilidad)."
+        }
+      }
     }
   },
   "trazabilidad_por_fila": {
     "descripcion": "Objeto que acompaña a cada fila y no se pega en el Excel (o se pega en columnas adicionales a la derecha de BB). Hace auditable cada dato.",
     "campos": {
-      "id_muestra": "Texto D<Documento>-M<n>. Filas de la misma muestra comparten id; muestras que se repiten entre documentos usan el id de la primera aparición y se anota en advertencias_pendientes.",
+      "id_muestra": "Texto D<Documento>-M<n>. Filas de la misma muestra comparten id; muestras que se repiten entre documentos usan el id de la primera aparición y se anota en advertencias_pendientes. Es la fuente de verdad de la columna ID muestra (55).",
       "via_de_identificacion": "Covidence | Otros métodos: <búsqueda manual, bola de nieve, experto>.",
       "estado_del_dato": "Objeto {columna: código} para cada columna numérica que quedó null. Códigos: No indica, No indica (no significativo), No aplica.",
       "evidencia": "Objeto {columna: [ {pagina_pdf: entero, ubicacion: 'Tabla 1' | 'Figura 5' | 'Método, Measures', fila_tabla: texto o null, columna_tabla: texto o null, cita_textual: subcadena literal de 25 palabras como máximo, leido_de_figura: booleano, bloque_id: 'pNN-bMM' (identificador del bloque del texto etiquetado; obligatorio en extracciones hechas por el programa)} ]} para cada columna con requiere_evidencia = true y valor distinto de faltante. Es una lista para admitir varias páginas.",
@@ -3942,20 +4360,20 @@
       "fiabilidad_alternativa_felicidad": "Igual para felicidad.",
       "items_aplicados_desempeno": "Entero o null, si difiere de los retenidos.",
       "items_aplicados_felicidad": "Entero o null, si difiere de los retenidos.",
-      "metodo_obtencion_r": "Pearson observado | Correlación entre compuestos PLS | Correlación entre variables latentes CB-SEM | No especificado | No disponible.",
+      "metodo_obtencion_r": "Pearson observado | Correlación entre compuestos PLS | Correlación entre variables latentes CB-SEM | No especificado | No disponible. Es la fuente de verdad de la columna Método obtención r (56).",
       "r_derivado": "Número o null. r calculado desde t, F o d, o beta simple; indicar la fórmula en inferencias.",
       "r_imputado_desde_beta": "Número o null. Solo si se cumplen las condiciones de Peterson y Brown.",
       "tipo_de_efecto": "simple | parcial | total | directo | condicional | No aplica. Qué efecto es el beta (condicional: efecto principal en un modelo con interacción).",
       "tecnica_del_beta": "Regresión | CB-SEM latente | PLS | MSEM | Otra | No aplica. Con qué técnica se estimó.",
       "sensibilidad_r_cero": "true si el efecto se informó como no significativo sin valor.",
-      "conjunto_sugerido": "Principal | Sensibilidad | Narrativo.",
+      "conjunto_sugerido": "Principal | Sensibilidad | Narrativo. Se conserva para la V27. La columna Conjunto MA (59) usa otra tabla (5 valores) y se deriva de motivo_decision_inclusion.",
       "n_observaciones": "Número de observaciones en diseños de diario o multinivel, o null.",
       "covariables_del_beta": "Texto con las demás variables del modelo del que sale el beta, o Ninguna.",
       "signo_armonizado": "true si se invirtió el signo; false en otro caso.",
       "misma_fuente": "Si | No. Felicidad y desempeño respondidos por la misma persona.",
       "retardo_meses": "Número de meses entre la medida de felicidad y la de desempeño; 0 si son simultáneas.",
       "n_nivel_2": "Número de grupos en diseños multinivel, o null.",
-      "motivo_decision_inclusion": "Número de condición del árbol (1 a 6) y frase breve.",
+      "motivo_decision_inclusion": "Número de condición del árbol (1 a 11) y frase breve.",
       "otros_coeficientes": "Lista de coeficientes relevantes no usados en la fila (alfa cuando se usó CR, sincrónicas, efectos directos, no estandarizados), cada uno con su evidencia.",
       "mapa_de_efectos": "Solo en la primera fila del documento: lista de medidas, muestras, fuentes y oleadas, y cuántas filas se abrieron y por qué.",
       "inferencias": "Lista de {columna, valor, regla_aplicada, razonamiento}.",
@@ -4112,10 +4530,28 @@
       "id": "V29",
       "nivel": "error",
       "regla": "r_derivado solo existe si hay una conversión autorizada; nunca desde un beta latente (tecnica_del_beta CB-SEM latente o PLS)."
+    },
+    {
+      "id": "V30",
+      "nivel": "error",
+      "estado": "Propuesta al responsable: aún no la implementa validar_extraccion.py (no se reescribe).",
+      "regla": "El par (Desempeño, Constructo desempeño) es compatible según vocabularios_controlados.columnas['Constructo desempeño'].compatibilidad_con_desempeno."
+    },
+    {
+      "id": "V31",
+      "nivel": "advertencia",
+      "estado": "Propuesta al responsable: aún no la implementa validar_extraccion.py (no se reescribe).",
+      "regla": "Una correlación felicidad–desempeño mayor que 0.80 en valor absoluto se vuelve a verificar contra la tabla (puede ser un alfa de la diagonal)."
+    },
+    {
+      "id": "V32",
+      "nivel": "error",
+      "estado": "Propuesta al responsable: aún no la implementa validar_extraccion.py (no se reescribe).",
+      "regla": "La hoja refleja trazabilidad: ID muestra = trazabilidad.id_muestra y Método obtención r = trazabilidad.metodo_obtencion_r."
     }
   ],
   "esquema_de_salida": {
-    "descripcion": "La salida del extractor es un arreglo JSON; cada elemento es una fila con dos objetos: fila (54 claves en el orden de posicion) y trazabilidad. Para pegar en Excel se toman los valores de fila en ese orden; null se pega como celda vacía. El esquema controla tipos y vocabularios; las reglas entre columnas las controla validar_extraccion.py.",
+    "descripcion": "La salida del extractor es un arreglo JSON; cada elemento es una fila con dos objetos: fila (54 claves en el orden de posicion, más Constructo desempeño, posición 57) y trazabilidad. Las columnas 55 (ID muestra), 56 (Método obtención r), 58 (Cultura Hofstede) y 59 (Conjunto MA) no las escribe el extractor: las deriva el programa después. Para pegar en Excel se toman los valores de fila en el orden de posicion; null se pega como celda vacía. El esquema controla tipos y vocabularios; las reglas entre columnas las controla validar_extraccion.py.",
     "json_schema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "array",
@@ -4719,6 +5155,35 @@
                 "minLength": 1,
                 "x-encabezado_excel": "Conclusion",
                 "x-letra_excel": "BB"
+              },
+              "Constructo desempeño": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "Task Performance",
+                      "In-Role Behavior",
+                      "Job Proficiency",
+                      "OCB-Individual",
+                      "OCB-Organization",
+                      "Contextual Performance",
+                      "Helping",
+                      "Civic Virtue",
+                      "Job Performance Global",
+                      "Sales",
+                      "Productivity",
+                      "Innovation",
+                      "Creativity",
+                      "No indica"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^Otro: \\S.*$"
+                  }
+                ],
+                "x-encabezado_excel": "Constructo desempeño",
+                "x-letra_excel": "BE"
               }
             }
           },

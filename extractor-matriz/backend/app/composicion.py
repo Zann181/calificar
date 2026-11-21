@@ -66,6 +66,7 @@ from app.contextos.extraccion.puertos import ArticuloParaExtraer, LibroVigente, 
 from app.contextos.matriz.adaptadores.lector_excel import LectorExcel
 from app.contextos.matriz.adaptadores.repositorio_sql import UnidadDeTrabajoMatrizSql
 from app.contextos.matriz.aplicacion.casos_de_uso import (
+    AgregarColumnasDelLibro,
     CasosDeMatriz,
     ConsultasDeMatriz,
     EscribirFilasDeExtraccion,
@@ -261,6 +262,7 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
     matriz = CasosDeMatriz(
         importar=ImportarMatriz(udt_mat, columnas_de_normas, LectorExcel(), almacen),
         consultas=consultas_matriz, marcar_version=MarcarVersionDeFilas(udt_mat),
+        agregar_columnas=AgregarColumnasDelLibro(udt_mat, columnas_de_normas),
         escribir_extraidas=EscribirFilasExtraidas(udt_mat), revisar=RevisarCelda(udt_mat, columnas_de_normas),
         escribir_extraccion=EscribirFilasDeExtraccion(udt_mat, columnas_de_normas),
     )

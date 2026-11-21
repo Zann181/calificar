@@ -40,7 +40,7 @@ X = EstadoExtraccion
 # entre hitos. El porcentaje oficial sube solo cuando el motor termina un paso.
 PASOS: dict[str, tuple[int, int, int, str]] = {
     "preparando": (2, 8, 5, "Preparando el artículo: texto etiquetado e imágenes de páginas"),
-    "extrayendo": (8, 45, 300, "Extractor: leyendo el artículo y llenando las 54 columnas"),
+    "extrayendo": (8, 45, 300, "Extractor: leyendo el artículo y llenando las columnas"),
     "corrigiendo": (45, 58, 180, "Extractor: corrigiendo los errores del validador"),
     "anclando": (58, 62, 5, "Anclando cada cita a su bloque y rectángulo del PDF"),
     "auditando": (62, 85, 100, "Auditor de evidencia y codificador ciego, en paralelo"),

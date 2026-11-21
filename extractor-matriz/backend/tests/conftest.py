@@ -17,6 +17,7 @@ RECURSOS = RAIZ / "recursos"
 FIXTURES = RECURSOS / "fixtures"
 LIBRO = RECURSOS / "Libro_de_codigos_extraccion_v2.json"
 MATRIZ = RECURSOS / "Matriz_de_sintesis_con_notas.xlsx"
+LIBRO_V22 = RECURSOS / "Libro_de_codigos_extraccion_v2.2_original.json"
 
 
 @pytest.fixture(scope="session")
