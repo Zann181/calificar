@@ -23,7 +23,7 @@ from app.compartido.db import RegistroProyecto, crear_motor, fabrica_de_sesiones
 from app.compartido.dominio import ErrorDeDominio
 from app.compartido.outbox import Despachador
 from app.config import Settings
-from app.contextos.biblioteca.adaptadores.almacen import AlmacenEnDisco, AlmacenS3
+from app.contextos.biblioteca.adaptadores.almacen import AlmacenEnBase, AlmacenEnDisco, AlmacenS3
 from app.contextos.biblioteca.adaptadores.mineru import MineruHttp, _grilla
 from app.contextos.biblioteca.adaptadores.repositorio_sql import UnidadDeTrabajoBibliotecaSql
 from app.contextos.biblioteca.aplicacion.casos_de_uso import (
@@ -225,6 +225,8 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
               modelo: ModeloDeLenguaje | None = None) -> Contenedor:
     if fabrica is None:
         fabrica = fabrica_de_sesiones(crear_motor(ajustes.database_url))
+    if almacen is None and (ajustes.modo == "nube" or ajustes.almacen_en_base):
+        almacen = AlmacenEnBase(fabrica)  # ADR 0009: la nube gratuita guarda los archivos en la base
     if almacen is None and ajustes.almacen_dir is not None:
         almacen = AlmacenEnDisco(ajustes.almacen_dir)
     if almacen is None:

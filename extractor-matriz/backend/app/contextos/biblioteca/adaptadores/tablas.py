@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.compartido.db import Base
@@ -32,6 +32,19 @@ class RegistroArticulo(Base):
     # Bloqueo optimista: dos procesos no pueden avanzar el mismo artículo a la vez.
     version: Mapped[int] = mapped_column(Integer, default=1)
     __mapper_args__ = {"version_id_col": version}
+
+
+class RegistroArchivo(Base):
+    """Archivo guardado dentro de la base (AlmacenEnBase, ADR 0009). La clave es la misma del almacén en disco."""
+
+    __tablename__ = "biblioteca_archivos"
+
+    clave: Mapped[str] = mapped_column(String(500), primary_key=True)
+    tipo: Mapped[str] = mapped_column(String(100))
+    tamano: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64), index=True)
+    datos: Mapped[bytes] = mapped_column(LargeBinary)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class RegistroDocumento(Base):

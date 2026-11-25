@@ -75,15 +75,37 @@ def restablecer(datos: ParaRestablecer, proyecto_id: uuid.UUID = Depends(proyect
     return [a_json(a) for a in c.restablecer.ejecutar(proyecto_id, datos.articulos)]
 
 
+def entregar_pdf(datos: bytes, rango: str | None) -> Response:
+    """Entrega el PDF completo o, si piden `Range: bytes=a-b` (un solo tramo), solo ese tramo (206). pdf.js lo usa
+    para abrir un PDF grande sin bajarlo entero."""
+    cabeceras = {"Accept-Ranges": "bytes", "Cache-Control": "private"}
+    total = len(datos)
+    if rango and rango.startswith("bytes=") and "," not in rango:
+        inicio_s, _, fin_s = rango[len("bytes="):].strip().partition("-")
+        try:
+            if inicio_s == "":  # «bytes=-500»: los últimos 500
+                inicio, fin = max(total - int(fin_s), 0), total - 1
+            else:
+                inicio, fin = int(inicio_s), (int(fin_s) if fin_s else total - 1)
+        except ValueError:
+            return Response(datos, media_type="application/pdf", headers=cabeceras)
+        fin = min(fin, total - 1)
+        if inicio < 0 or inicio > fin:
+            return Response(status_code=416, headers={**cabeceras, "Content-Range": f"bytes */{total}"})
+        return Response(datos[inicio:fin + 1], status_code=206, media_type="application/pdf",
+                        headers={**cabeceras, "Content-Range": f"bytes {inicio}-{fin}/{total}"})
+    return Response(datos, media_type="application/pdf", headers=cabeceras)
+
+
 @enrutador.get("/articulos/{articulo_id}/pdf")
-def pdf(articulo_id: uuid.UUID, proyecto_id: uuid.UUID = Depends(proyecto_valido),
+def pdf(articulo_id: uuid.UUID, request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido),
         c: CasosDeBiblioteca = Depends(casos)) -> Response:
     articulo = c.consultas.articulo(proyecto_id, articulo_id)
     url = c.almacen.url_temporal(articulo.clave_almacen)
     if url.startswith(("http://", "https://")):
         return RedirectResponse(url, status_code=307)
-    # Almacén en disco o en memoria: no hay URL firmada, la API entrega el PDF.
-    return Response(c.almacen.leer(articulo.clave_almacen), media_type="application/pdf")
+    # Almacén en disco, en memoria o en la base: no hay URL firmada, la API entrega el PDF (con soporte de Range).
+    return entregar_pdf(c.almacen.leer(articulo.clave_almacen), request.headers.get("range"))
 
 
 @enrutador.get("/articulos/{articulo_id}/documento")

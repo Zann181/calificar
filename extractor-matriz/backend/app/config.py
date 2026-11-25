@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 RAIZ_REPO = Path(__file__).resolve().parents[2]
@@ -13,6 +15,12 @@ RAIZ_REPO = Path(__file__).resolve().parents[2]
 class Settings(BaseSettings):
     # env_ignore_empty: una variable vacía en .env (TOPE_TOKENS_MENSUAL=) toma el valor por defecto.
     model_config = SettingsConfigDict(env_file=(RAIZ_REPO / ".env", ".env"), extra="ignore", env_ignore_empty=True)
+
+    # ADR 0009. «local»: la aplicación de escritorio de siempre. «nube»: réplica de solo lectura (sin despachador, sin
+    # ejecutor de extracciones, sin conversión) con los archivos dentro de la base de datos.
+    modo: Literal["local", "nube"] = "local"
+    # True: los archivos van a la tabla biblioteca_archivos (bytea) en lugar de disco o S3. En modo nube siempre.
+    almacen_en_base: bool = False
 
     database_url: str = "postgresql+psycopg://extractor:extractor@localhost:5432/extractor"
     redis_url: str = "redis://localhost:6379/0"
@@ -62,6 +70,15 @@ class Settings(BaseSettings):
     # y se extrae de corrido. True: el despachador convierte cada PDF al cargarlo, sin esperar ese clic.
     convertir_al_cargar: bool = False
     registro_ruta: Path = RAIZ_REPO / "datos" / "registro.jsonl"
+
+    @field_validator("database_url")
+    @classmethod
+    def _url_con_controlador(cls, v: str) -> str:
+        """Neon y otros proveedores entregan «postgresql://» o «postgres://»; SQLAlchemy necesita el controlador psycopg."""
+        for prefijo in ("postgres://", "postgresql://"):
+            if v.startswith(prefijo):
+                return "postgresql+psycopg://" + v[len(prefijo):]
+        return v
 
     @property
     def libro_de_codigos(self) -> Path:

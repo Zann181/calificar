@@ -1,323 +1,350 @@
-# Plan · Matriz, PDF y visor en la nube (solo lectura) con sincronización automática
+# Plan · Réplica completa en la nube (solo lectura, gratis) con sincronización automática
 
-- Estado: **propuesto** · Fecha: 2026-11-24 · Responsable: Pablo Andrés Erazo Muñoz
+- Estado: **propuesto, v2** · Fecha: 2026-11-24 · Responsable: Pablo Andrés Erazo Muñoz
 - Decisión asociada: `docs/decisiones/0009-nube-solo-lectura-y-sincronizacion.md`
-- Tallas de esfuerzo: **S** ≤ 1 día · **M** 2–4 días · **L** ≥ 1 semana (una persona, con pruebas)
+- Cambios frente a la v1: la réplica incluye la **extracción completa** (no resúmenes); el alojamiento queda **decidido y
+  gratuito**; no quedan decisiones abiertas, solo datos tuyos por aportar (sección 12).
+- Tallas: **S** ≤ 1 día · **M** 2–4 días · **L** ≥ 1 semana (una persona, con pruebas)
 
-## 1. Qué se pide y qué no
+## 1. Alcance cerrado
 
-**Ahora (Fases 0–2):** ver en la nube la matriz, los PDF y el visor con resaltado de citas; solo lectura; cada cambio
-hecho en local se refleja solo; un panel de configuración para definir a qué nube se sube; sin Claude.
-
-**Después (Fases 3–4):** extraer con Claude desde la nube. Este plan no lo construye, pero impide cerrarle la puerta
-(sección 10).
-
-**Fuera de alcance:** edición desde la nube, varios proyectos de varios dueños, aplicación móvil, dominio propio
-(decisión abierta, sección 13).
-
-## 2. Punto de partida: lo que el código ya resuelve y lo que no
-
-| Hallazgo en el código | Consecuencia para el plan |
+| Dentro | Fuera (por ahora) |
 |---|---|
-| `AlmacenDeArchivos` es un puerto con 3 adaptadores; `AlmacenS3` ya genera URL firmadas y `GET /articulos/{id}/pdf` ya redirige a ellas (`biblioteca/api.py:78`) | El PDF en la nube casi no requiere código nuevo. |
-| Los PDF se guardan por SHA-256 (`huella_sha256`, clave `pdf/<proyecto>/<sha>.pdf`) | Subida idempotente y deduplicada: `HEAD` por hash y solo se envía lo que falta. |
-| IDs son UUID y todo lleva `proyecto_id` | Se puede replicar sin renumerar y escalar a varios proyectos. |
-| Hay outbox transaccional con eventos (`CeldaAprobada`, `FilaEscrita`, `ArticuloConvertido`, …) | Sirve de **disparador**, no de fuente de verdad (la CLI y las migraciones escriben sin pasar por la API). |
-| `JsonB` cae a JSON en SQLite y a JSONB en PostgreSQL; `psycopg` y `boto3` ya son dependencias | La nube puede ser PostgreSQL sin reescribir modelos. **Nunca se ha corrido el código en PostgreSQL** (ADR 0003, «queda sin probar»; el CI solo usa SQLite). Es el riesgo n.º 1. |
-| La API sirve la interfaz compilada en `/` (`main.py:78`) y la interfaz llama a `/api/v1` relativo | La nube es **un solo contenedor** con la misma imagen: sin CORS, sin segundo despliegue del front. |
-| `seguridad.usuario_actual` devuelve siempre el administrador local; ADR 0007 pide reabrir la decisión si se comparte | La nube **no puede** reutilizar esa dependencia: hay que añadir identidad real en modo nube. |
-| `despachador_en_servidor` y el ejecutor de extracciones corren en hilos dentro de la API | En la nube de solo lectura se apagan; la API queda sin estado y puede escalar horizontalmente. |
-| La interfaz mezcla controles de escritura y servicios locales (extraer, cargar, restablecer, aprobar, monitor de Claude, MinerU, registro) | Hace falta un contrato `GET /api/v1/capacidades` para que el visor oculte lo que no aplica. |
-| `pdfjs.getDocument({ withCredentials: true })` (`VisorPdf.tsx:15`) | Con redirección a un bucket de otro dominio, el navegador exige CORS con credenciales y falla. En modo nube va `false` y el bucket lleva CORS para el origen del visor. |
-| Volumen real: 79 filas, 4 661 celdas, 53 PDF (35 MB), ~18 MB de JSON; crudo de MinerU 24 MB | Sin problema de escala; el manifiesto completo cabe en decenas de KB. No se optimiza antes de tiempo. |
+| Matriz, PDF, visor con resaltado de citas, **extracción completa** de cada artículo, libro de códigos | Extraer, cargar, aprobar, corregir o rechazar desde la nube |
+| Sincronización automática local → nube, sin intervención | Claude en la nube (Fases 3–4, solo se dejan las costuras) |
+| Panel de configuración local para definir el destino y ver el estado | Edición desde la nube; sincronización nube → local |
+| Acceso solo para una lista de correos | Enlaces públicos |
+| Costo: **0 USD/mes** | Dominio propio (usa la URL gratuita del proveedor) |
 
-## 3. Principios
+«Extracción completa» significa, sin excepciones: **todas las columnas** de cada corrida terminada de
+`extraccion_extracciones` (`salida`, `codificacion_ciega`, `anclas`, `hallazgos`, `errores_validador`, `avisos_validador`,
+`acuerdo_campos_criticos`, `iteraciones_validador`, `uso_tokens`, `datos_del_equipo`, `paso_fallido`, `error`, fechas),
+más el documento estructurado y el crudo de MinerU de cada artículo. Hoy esos datos **no tienen ningún endpoint de
+lectura** (la API solo expone `avance` y `modelos`), así que se agregan, en ambos modos (sección 6.4).
 
-1. **Local primero.** La app local nunca espera ni falla por la nube. La sincronización es un hilo de fondo con reintentos.
-2. **Un solo escritor por agregado.** Hoy es el equipo local; no hay conflictos que resolver.
-3. **Disparar por eventos, reconciliar por contenido.** Los eventos dicen «mira ahora»; la verdad la dan los hashes.
-4. **Mismo código, dos modos** (`MODO=local|nube`), una imagen.
-5. **Contenido direccionado por hash** para todo archivo.
-6. **Seguridad que falla cerrada** y mínimo privilegio (el token que escribe no lee; quien lee no escribe).
-7. **No construir lo que no se usa**: las costuras para Claude se dejan, el motor no.
+## 2. Decisiones cerradas
 
-## 4. Arquitectura objetivo
+| Tema | Decisión | Razón |
+|---|---|---|
+| Fuente de verdad | El equipo local. La nube es réplica de solo lectura | Sin conflictos que resolver |
+| Qué se replica | **Todo el proyecto**, salvo cola de extracción, outbox, usuarios, registro/logs, copias `.db` antiguas y Excel exportados (se regeneran) | Réplica completa = la nube sirve de segundo resguardo (con la restauración de la Fase 2) |
+| Extracciones en curso | Se replican solo al terminar (`COMPLETADA` o `FALLIDA`) | Evita reenviar cada pocos segundos el progreso de una corrida activa |
+| Contenedor | **Render, plan Free** (Docker, desde GitHub `Zann181/calificar`) | Único host Docker gratuito vigente que verifiqué y que no exige cuenta de facturación como Cloud Run (si Render pidiera tarjeta al registrarte, ver sección 12) |
+| Base de datos | **Neon, plan Free** (PostgreSQL) en AWS us-east-2 | 1 GB y sin la pausa semanal de Supabase (no verifiqué si Neon borra proyectos inactivos a largo plazo; el agente escribe con frecuencia y la réplica es desechable) |
+| Archivos (PDF, crudo, Excel base) | **Dentro de PostgreSQL** (tabla `archivos`, `bytea`, clave = SHA-256) con un adaptador nuevo `AlmacenEnBase` | Un solo proveedor y una sola copia de seguridad; evita límites de 50 MB y dudas de compatibilidad S3 de otros planes gratuitos. Salida de emergencia en la sección 3.4 |
+| Entrega del PDF | La API lo sirve con soporte de `Range` (mismo origen) | Sin CORS ni `withCredentials`; pdf.js funciona igual que en local |
+| Subida de archivos | El agente los envía por la API (`PUT /sync/blobs/{sha}`), la nube verifica el hash | Sin URL firmadas de subida |
+| Inicio de sesión | **Google** (OpenID: `openid email`) con lista de correos en `LECTORES_PERMITIDOS`; contingencia: GitHub OAuth | Gratuito, sin proveedor extra; `itsdangerous` (ya instalado) firma la cookie de sesión |
+| Agente → nube | Token de servicio propio, guardado hasheado en la nube y en el Administrador de credenciales de Windows en local | Mínimo privilegio |
+| Mantener despierto | UptimeRobot (gratis, cada 5 min) a `GET /api/v1/salud`, que **no toca la base** | Evita el sueño de 15 min de Render sin consumir horas de cómputo de Neon |
+| Actualización del visor | Sondeo de `GET /api/v1/revision` cada 15 s con `ETag` | Coherente con el ADR 0007 (sin WebSocket) |
+| Modo | `MODO=local` (hoy) o `MODO=nube`; una sola imagen | Un solo código |
+
+## 3. Alojamiento gratuito
+
+### 3.1 Qué se usa y qué dicen los planes (verificado el 2026-11-24; los planes gratuitos cambian, revísalos al registrarte)
+
+| Servicio | Plan | Límite relevante | Lo que implica para nosotros |
+|---|---|---|---|
+| **Render** web service Free | 0 USD | 512 MB RAM, 0,1 CPU; **se duerme tras 15 min sin tráfico** y tarda ~1 min en despertar; 750 h/mes por cuenta; disco **efímero**; ancho de banda saliente mensual incluido (la cifra solo se ve en el panel) | Un solo servicio en la cuenta (744 h = 24/7). Nada de estado en disco. La app debe caber en 512 MB (sección 3.3) |
+| **Neon** Free | 0 USD | 1 GB por proyecto; 100 horas-cómputo/mes; el cómputo se suspende a los 5 min sin consultas; restauración a un punto: 6 h | Datos de hoy ≈ 80 MB (8 % del cupo). El keepalive no debe consultar la base, o se gasta el cupo de cómputo |
+| **UptimeRobot** Free | 0 USD | 50 monitores, intervalo de 5 min | Basta un monitor |
+| **Google Cloud** (cliente OAuth) | 0 USD | Con alcances básicos (`openid`, `email`) no hace falta verificar la app | Pendiente de confirmar en la Fase 0 que crear el cliente no pide facturación |
+
+### 3.2 Alternativas que se descartaron con datos
+
+| Opción | Por qué no |
+|---|---|
+| Render Postgres gratuito | **Caduca a los 30 días**, 1 GB, sin copias |
+| Supabase Free | 500 MB y **pausa el proyecto tras 1 semana con poca actividad de base de datos**; archivos de máx. 50 MB. Servible, pero con más piezas y una pausa que hay que vigilar |
+| Oracle Cloud «Always Free» | En 2026 se reportó un recorte a 2 OCPU/12 GB y desactivaciones de instancias; fiabilidad dudosa |
+| Hugging Face Spaces (Docker) | Informes de 2026 de que el CPU gratuito exige PRO pese a la documentación |
+| Fly.io / Koyeb | Sin plan gratuito estable para cuentas nuevas (tarjeta y/o prueba corta) |
+| Google Cloud Run | Gratuito con apagado a cero, pero exige cuenta de facturación con tarjeta |
+
+### 3.3 Comportamiento esperado (sin sorpresas)
+
+- **Primera carga tras un tiempo sin uso:** hasta ~1 min si Render durmió; con el monitor de 5 min no debería dormir, pero
+  Render puede reiniciar un servicio gratuito en cualquier momento (cifra a medir en la Fase 1).
+- **Primera consulta con la base suspendida:** una pequeña espera extra mientras Neon despierta.
+- **Memoria:** `MODO=nube` no importa `pymupdf` (solo lo usa `extraccion/adaptadores/pdf.py`), ni crea ejecutor, despachador
+  ni cliente de MinerU/Claude. Meta: **≤ 350 MB** de memoria en reposo, medida en la Fase 0.
+- **Conexión a Neon:** punto de conexión con pool, `sslmode=require` y `prepare_threshold=None` en `psycopg`.
+
+### 3.4 Salidas si cambian las reglas (todo por variables de entorno, sin reescribir)
+
+| Si ocurre | Se hace |
+|---|---|
+| Los archivos superan ~400 MB en Neon | Nuevo adaptador de `AlmacenDeArchivos` hacia Cloudflare R2 (10 GB gratis; pide tarjeta) o Backblaze B2; el puerto ya existe y `AlmacenS3` ya está escrito. Script de migración de blobs |
+| Render retira el plan gratuito o el keepalive molesta | Render *Starter* de pago o Cloud Run; misma imagen |
+| Neon recorta el plan | Supabase Free, o Neon de pago; solo cambia `DATABASE_URL` |
+| Google exige facturación para el cliente OAuth | Contingencia ya definida: GitHub OAuth (también gratuito) |
+
+La nube es **desechable por diseño**: si se pierde, «Reenviar todo» la reconstruye desde el equipo local en minutos.
+
+## 4. Arquitectura
 
 ```mermaid
 flowchart LR
   subgraph Local["Equipo local (fuente de verdad)"]
     UI1[Interfaz React] --> API1[API FastAPI<br/>MODO=local]
     API1 --> DB1[(SQLite)]
-    API1 --> FS[(Almacén en disco<br/>PDF por SHA-256)]
+    API1 --> FS[(Almacén en disco)]
     API1 -. eventos outbox .-> AG[Agente de sincronización<br/>contexto «sincronizacion»]
     AG --> DB1
     AG --> FS
   end
-  subgraph Nube["Nube (réplica de solo lectura)"]
+  subgraph Render["Render Free (512 MB)"]
     API2[Contenedor FastAPI<br/>MODO=nube<br/>API lectura + /sync + interfaz]
-    API2 --> DB2[(PostgreSQL)]
-    API2 --> OBJ[(Almacén S3<br/>PDF privados)]
-    IDP[Identidad<br/>lista de correos]
   end
-  AG -- "HTTPS · token de servicio<br/>lotes de agregados + blobs" --> API2
-  V[Lector en el navegador] -- "sesión + sondeo /revision" --> API2
-  V -- "URL firmada corta" --> OBJ
-  V --- IDP
+  subgraph Neon["Neon Free"]
+    DB2[(PostgreSQL<br/>datos + tabla archivos)]
+  end
+  AG -- "HTTPS · token de servicio<br/>sobres + archivos" --> API2
+  API2 --> DB2
+  V[Lector] -- "Google · sesión · sondeo /revision" --> API2
+  UP[UptimeRobot<br/>cada 5 min] -- "GET /salud (sin base)" --> API2
 ```
 
-Fase 3 (futuro) añade a la derecha un **worker de extracción** y un **servicio de conversión** que leen la cola de
-PostgreSQL; la API de la nube pasa de réplica a escritora solo cuando el proyecto cambia de sede (sección 10).
+## 5. Qué se replica
 
-## 5. Modelo de sincronización
-
-### 5.1 Qué viaja y qué no
-
-| Agregado | Origen local | Viaja | Nota |
+| Agregado | Origen local | Sobre | Tamaño hoy |
 |---|---|---|---|
-| Proyecto | `proyectos` | Sí | nombre + id |
-| Libro de códigos | `normas_versiones_libro` | Sí (todas las versiones) | la interfaz lee columnas y vocabularios de la versión activa |
-| Artículo | `biblioteca_articulos` | Sí | estado, página, motivo de exclusión |
-| PDF | almacén `pdf/…` | Sí (blob) | por SHA-256, antes que el artículo |
-| Documento estructurado | `biblioteca_documentos` (8,9 MB) | Sí | lo usa `/articulos/{id}/documento` para anclar y resaltar |
-| Fila y sus celdas | `matriz_filas` + `matriz_celdas` | Sí, **como un solo agregado** | evidencias, inferencia, historial de revisión |
-| Resumen de extracción | `extraccion_extracciones` | Solo campos de lectura (estado, modelos, acuerdos, fechas) | `salida` y `anclas` completas (4 MB) quedan en local; interruptor en el panel |
-| Excel base de la matriz | `matriz_bases` + blob | Opcional (apagado) | solo si se habilita «Exportar» en la nube |
-| Crudo de MinerU (`crudo/*.zip`, 24 MB) | almacén | Opcional (apagado) | no lo usa el visor; es respaldo costoso de regenerar |
-| Cola de extracción, outbox, usuarios, registro, bases `.db` antiguas | — | **No** | estado local |
+| Proyecto | `proyectos` | `proyecto` | — |
+| Libro de códigos (todas las versiones) | `normas_versiones_libro` | `libro` | pequeño |
+| Artículo | `biblioteca_articulos` | `articulo` | 53 filas |
+| Documento estructurado | `biblioteca_documentos` | `documento` | 8,9 MB |
+| Fila de la matriz **con sus celdas** (un solo agregado) | `matriz_filas` + `matriz_celdas` | `fila` | 3,8 MB |
+| **Extracción completa** (25 columnas) | `extraccion_extracciones` terminadas | `extraccion` | 4,5 MB (59 corridas: 47 completadas, 12 fallidas) |
+| Base de la matriz | `matriz_bases` | `base` | 1 fila |
+| PDF | almacén `pdf/<proyecto>/<sha>.pdf` | archivo | 35 MB (máx. 3,4 MB) |
+| Crudo de MinerU | almacén `crudo/<articulo>.zip` | archivo | 24 MB (máx. 2 MB) |
+| Excel base | almacén `matrices/…` | archivo | 0,2 MB |
+| **Total** | | | **≈ 80 MB** (8 % del cupo de Neon) |
 
-### 5.2 Sobre de réplica (contrato versionado)
+**No se replica:** `extraccion_cola`, `outbox`, `usuarios`, `matriz_secuencias`, registro y logs, copias `.db`, Excel
+exportados, extracciones sin terminar.
+
+## 6. Sincronización
+
+### 6.1 Sobre de réplica
 
 ```json
-{ "esquema": 1, "tipo": "fila", "id": "<uuid>", "proyecto_id": "<uuid>",
-  "hash": "sha256:…", "eliminado": false, "datos": { … agregado completo … } }
+{ "esquema": 1, "tipo": "extraccion", "id": "<uuid>", "proyecto_id": "<uuid>",
+  "hash": "sha256:…", "eliminado": false, "datos": { …todas las columnas… } }
 ```
 
-- `hash` = SHA-256 del JSON canónico de `datos` (claves ordenadas, sin espacios, sin campos del transporte). Dos
-  máquinas que describen lo mismo producen el mismo hash; por eso el reenvío es inocuo.
-- Cada contexto aporta `a_replica()` y `de_replica()` en sus adaptadores (la fila reutiliza `_volcar_celda` /
-  `_celda_a_dominio`). El contexto `sincronizacion` **no lee tablas ajenas**: pide los sobres a cada contexto por su
-  puerto, y el único lugar que los conecta sigue siendo `app/composicion.py`.
-- `esquema` es el contrato. Si la nube no lo soporta responde **426**; el panel muestra «actualice la nube».
+- `hash` = SHA-256 del JSON canónico de `datos` (claves ordenadas, sin espacios). Mismo contenido → mismo hash.
+- Cada contexto aporta `a_replica()` y `de_replica()` en sus adaptadores. `sincronizacion` **no lee tablas ajenas**; los
+  conecta `app/composicion.py`.
+- Un `esquema` que la nube no conoce → **426** y aviso en el panel («actualice la nube»).
 
-### 5.3 Algoritmo del agente (local)
+### 6.2 Algoritmo del agente
 
 ```
-disparadores:  evento de outbox (agrupados 5 s)  |  temporizador (10 min)  |  arranque de la app  |  botón «Sincronizar ahora»
+disparadores:  eventos de outbox (agrupados 5 s) | temporizador 10 min | arranque | botón «Sincronizar ahora»
 
 pasada(proyecto):
-  1. local  = { (tipo,id): hash }            # sobres de todos los agregados activos
-  2. nube   = GET /sync/manifiesto            # { revision, items: {tipo: {id: hash}} }
-  3. faltan = local − nube (hash distinto o ausente);  sobran = nube − local → eliminado:true
-  4. blobs: para cada PDF de `faltan` →  HEAD /sync/blobs/{sha}; si no existe, subir (URL firmada) y verificar hash
-  5. enviar `faltan` y `sobran` en lotes ≤ 2 MB, en orden de dependencia:
-        libro → artículo(+documento) → fila(+celdas) → resumen de extracción
-  6. verificar: GET /sync/manifiesto debe coincidir con el local; registrar la corrida
-  error de red → reintento con espera creciente (5 s … 10 min); nunca bloquea la app local
+  1. local  = { (tipo,id): hash }  de todos los agregados replicables (extracciones: solo terminadas)
+  2. nube   = GET /sync/manifiesto          → { revision, items }
+  3. faltan = local − nube (ausente o hash distinto);  sobran = nube − local → eliminado:true
+  4. archivos: por cada referencia nueva → HEAD /sync/blobs/{sha}; si falta → PUT bytes; la nube verifica el SHA-256
+  5. sobres en lotes ≤ 1 MB, en orden: libro → artículo → documento → fila → extracción → base
+  6. verificar: manifiesto de la nube == local; registrar la corrida
+  error de red → espera creciente (5 s … 10 min); la app local nunca espera
 ```
 
-Consecuencias de diseñarlo así:
+- **Autorreparable:** nube vacía, restaurada o cortada a medias → la siguiente pasada la completa.
+- **Cubre lo que los eventos no ven** (CLI, `importar-matriz`, `migrar-libro`): temporizador y arranque.
+- **Sin tabla local de «lo enviado»:** la nube es la referencia; no hay dos contabilidades.
+- Lotes de ≤ 1 MB y archivos de ≤ 3,4 MB respetan el límite de 512 MB de la nube; un documento estructurado (~175 KB) o una
+  extracción (~80 KB) caben de sobra.
 
-- **Autorreparable**: nube vacía, restaurada de una copia o con una pasada cortada a medias → la siguiente pasada la
-  completa sin lógica especial.
-- **Cubre lo que los eventos no ven**: `importar-matriz`, `migrar-libro` y la CLI escriben en SQLite sin pasar por la
-  API; el temporizador y el arranque lo detectan.
-- **Sin tabla de «lo enviado»** en local: la nube es la referencia, así no hay dos contabilidades que se desincronicen.
-- Con 79 filas y 4 661 celdas calcular todos los hashes es trabajo de una fracción de segundo (por medir en 1.5). Si
-  algún día hay >5 000 agregados se añade un filtro por `actualizado_en`; antes no.
+### 6.3 Protocolo en la nube (solo `MODO=nube`)
 
-### 5.4 Protocolo en la nube (solo `MODO=nube`)
-
-| Método y ruta | Quién | Qué hace |
+| Ruta | Quién | Qué hace |
 |---|---|---|
-| `GET /api/v1/sync/manifiesto?proyecto=` | token de servicio | hashes por agregado + `revision` |
-| `HEAD /api/v1/sync/blobs/{sha256}` | token de servicio | ¿existe el PDF? |
-| `POST /api/v1/sync/blobs/{sha256}` | token de servicio | devuelve URL firmada de subida; la nube verifica el hash |
-| `PUT /api/v1/sync/lote` | token de servicio | aplica hasta N sobres en **una transacción**; cabecera `Idempotency-Key`; responde aceptados/rechazados y la nueva `revision` |
-| `GET /api/v1/revision` | lector | entero que sube con cada lote aplicado; con `ETag` |
-| `GET /api/v1/capacidades` | lector | `{modo:"nube", escritura:false, servicios_locales:false, exportar:…}` |
-| Todas las rutas de escritura de dominio | — | **405** en modo nube |
+| `GET /api/v1/sync/manifiesto?proyecto=` | token de servicio | hashes por agregado y `revision` |
+| `HEAD /api/v1/sync/blobs/{sha}` · `PUT /api/v1/sync/blobs/{sha}` | token de servicio | existe / subir (verifica el hash) |
+| `PUT /api/v1/sync/lote` | token de servicio | aplica los sobres en **una transacción**; `Idempotency-Key`; devuelve aceptados, rechazados y `revision` |
+| `GET /api/v1/revision` | lector | entero que sube con cada lote; `ETag` |
+| `GET /api/v1/capacidades` | lector | `{modo:"nube", escritura:false, …}` para ocultar controles |
+| Todo endpoint de escritura de dominio | — | **405** |
 
-El `PUT /lote` llama a los casos de uso de importación de cada contexto (a través de `composicion.py`); no escribe
-tablas ajenas. Aplica solo si `hash` difiere y rechaza un `esquema` desconocido.
+El `PUT /lote` usa casos de uso de importación de cada contexto; no escribe tablas ajenas. Un archivo se publica antes
+que el artículo que lo referencia: la nube nunca muestra un artículo sin su PDF.
 
-### 5.5 Garantías y fallos
+### 6.4 Lectura de la extracción completa (nuevo, en ambos modos)
+
+- `GET /api/v1/proyectos/{p}/extracciones` → lista sin cuerpos (id, artículo, estado, fechas, acuerdo, iteraciones, modelos).
+- `GET /api/v1/proyectos/{p}/extracciones/{id}` → registro completo, con todas las columnas.
+- Interfaz: en la ficha de cada artículo, una sección **«Extracción»** de solo lectura con pestañas: *Salida*,
+  *Codificación ciega*, *Anclas*, *Hallazgos*, *Validador* (errores, avisos, iteraciones), *Uso de tokens*, *Datos del
+  equipo*. Las anclas enlazan al visor de PDF en la página y el rectángulo.
+- `avance` y `modelos` siguen siendo del modo local; en la nube `modelos` se calcula desde las extracciones replicadas.
+
+### 6.5 Fallos y garantías
 
 | Situación | Comportamiento |
 |---|---|
-| Sin internet | La app local sigue normal; el panel muestra «N cambios pendientes»; reintenta solo. |
-| Corte a mitad de una pasada | Los lotes son transaccionales y los PDF van antes que sus artículos: la nube nunca muestra un artículo sin su PDF. La siguiente pasada completa. |
-| Mismo lote dos veces | Idempotente (`hash` + `Idempotency-Key`). |
-| Se borra una fila (`reemplazar` al importar, exclusión) | El agente la manda con `eliminado:true`; la nube la quita. |
-| La nube cambia de esquema antes que el local | Se despliega primero la nube; es compatible hacia atrás (expandir/contraer). |
-| El local migra antes que la nube (p. ej. otra versión del libro) | La nube responde 426 y el panel lo explica; no se pierde nada. |
-| Se restaura la base de la nube desde una copia | La reconciliación reenvía lo que falte. |
-| Dos equipos locales sincronizan el mismo proyecto | Se impide: el destino guarda `sede` y el `id` de instalación; el segundo recibe 409. |
+| Sin internet | La app local sigue normal; el panel muestra «N cambios pendientes»; reintenta sola |
+| Corte a mitad | Lotes transaccionales; la siguiente pasada completa |
+| Mismo lote dos veces | Idempotente (`hash` + `Idempotency-Key`) |
+| Fila reemplazada o artículo excluido | Se envía `eliminado:true` y la nube lo quita |
+| Local más nuevo que la nube | 426 y aviso; se despliega primero la nube |
+| Render dormido | El agente reintenta; el primer intento lo despierta |
+| Neon agotó el cupo de cómputo del mes | La API responde 503 con mensaje claro; el agente reintenta; se muestra en el panel |
+| Dos equipos sincronizando el mismo proyecto | 409 (la nube guarda el id de instalación del primero) |
 
-### 5.6 Visor «vivo»
+### 6.6 Visor vivo
 
-El visor consulta `GET /api/v1/revision` cada 15 s (con `ETag`: respuesta vacía si no cambió). Si el número subió,
-invalida las consultas de `react-query` y se redibuja. Muestra «Actualizado hace 12 s · revisión 345» y un aviso si la
-nube lleva más de 15 min sin recibir nada. Latencia esperada local → visor: **≤ 30 s** (5 s de agrupación + subida +
-15 s de sondeo). Server-Sent Events es una mejora de la fase 2 y es lo que se reutilizará para mostrar el avance de
-Claude en la fase 3.
+Sondeo de `/revision` cada 15 s con `ETag`; si sube, se invalidan las consultas de `react-query`. Texto fijo: «Actualizado
+hace 12 s · revisión 345»; aviso si pasan 15 min sin recibir nada. Latencia local → visor: **≤ 30 s** con la nube despierta.
 
-## 6. Panel de configuración (interfaz local, «Configuración › Nube»)
+## 7. Panel de configuración (interfaz local, «Configuración › Nube»)
 
-Disponible solo en modo local. Cinco bloques:
+1. **Destino:** **URL de la nube** (`https://….onrender.com`), **Token de sincronización** (campo oculto), botón **Probar
+   conexión** (comprueba URL, token, versión de esquema, nube despierta, base disponible y dice qué falló), enlace **Abrir visor**.
+2. **Qué se sube:** interruptores, todos activados por defecto: PDF, documento estructurado, matriz y evidencias,
+   historial de revisiones, **extracción completa**, crudo de MinerU, Excel base.
+3. **Cuándo:** automático (sí) · agrupar cambios 5 s · reconciliar cada 10 min · **Pausar**.
+4. **Estado:** indicador en la cabecera: `✔ Sincronizado hace 8 s` · `↻ Subiendo 3 de 12` · `⚠ Sin conexión · 4 pendientes` ·
+   `✖ Error: …`. Tabla de las últimas corridas. Botones: **Sincronizar ahora**, **Verificar integridad**, **Reenviar todo**.
 
-1. **Destino** — perfil: *Nube propia (recomendado)* · *Carpeta sincronizada (solo respaldo de exportaciones)* ·
-   *Desactivado*. Campos del primero: **URL de la nube**, **Token de sincronización** (campo oculto), nombre del
-   proyecto en la nube, enlace **«Abrir visor»**. Botón **Probar conexión**: comprueba URL, token, versión de esquema,
-   espacio y devuelve qué falló, no solo «error».
-2. **Qué se sube** — interruptores: PDF (sí), documento estructurado (sí, el visor lo necesita), matriz y evidencias
-   (sí), historial de revisiones (sí), resumen de extracción (sí), extracción completa (no), Excel base (no), crudo de
-   MinerU (no).
-3. **Cuándo** — Automático (sí) · agrupar cambios durante (5 s) · reconciliar cada (10 min) · **Pausar**.
-4. **Estado** — indicador permanente en la cabecera (junto al monitor de servicios): `✔ Sincronizado hace 8 s`,
-   `↻ Subiendo 3 de 12`, `⚠ Sin conexión · 4 cambios pendientes`, `✖ Error: …`. Tabla de las últimas corridas (hora,
-   motivo, enviados, omitidos, bytes, duración, error). Botones: **Sincronizar ahora**, **Verificar integridad**
-   (compara manifiestos y lista diferencias), **Reenviar todo**.
-5. **Acceso** (fase 2) — rotar el token, ver y editar la lista de lectores permitidos.
+Reglas: el token va al **Administrador de credenciales de Windows** (`keyring`, clave por `proyecto_id`) y la API local
+**nunca** lo devuelve; los ajustes no secretos viven en la base local (`sync_destinos`), así *principal* y *test* no se
+mezclan; una nube mal configurada o caída **nunca** impide usar la app. Tablas nuevas con migración Alembic:
+`sync_destinos`, `sync_corridas`. Rutas locales: `/api/v1/sincronizacion/{ajustes,probar,ahora,verificar,estado,corridas}`.
 
-Reglas del panel:
-
-- El token se guarda en el **almacén de credenciales del sistema** (Windows Credential Manager, paquete `keyring`),
-  indexado por `proyecto_id`. La API local **nunca** lo devuelve: solo `configurado: true` y «Reemplazar».
-- La configuración no secreta vive en la base local (`sync_destinos`), así los conjuntos *principal* y *test* no se
-  mezclan: cada base apunta a su propio destino.
-- Endpoints locales: `GET/PUT /api/v1/sincronizacion/ajustes`, `POST …/probar`, `POST …/ahora`, `POST …/verificar`,
-  `GET …/estado`, `GET …/corridas`. Tablas nuevas con su migración Alembic: `sync_destinos`, `sync_corridas`.
-- Un destino mal configurado o una nube caída **nunca** impide abrir ni usar la app.
-
-## 7. Seguridad
+## 8. Seguridad
 
 | Tema | Decisión |
 |---|---|
-| Lectores | Inicio de sesión con proveedor de identidad (correo de la lista permitida). Rol `lector`. Sin cuenta, la API responde 401 y la interfaz muestra la pantalla de acceso. |
-| Agente | Token de servicio aparte, con permiso solo para `/sync/*`. Se guarda hasheado en la nube; rotable. |
-| Falla cerrada | `MODO=nube` no arranca si falta el proveedor de identidad o el token. La dependencia que da el «administrador local» no se registra en modo nube. |
-| PDF | Bucket privado; URL firmada de ≤ 15 min por solicitud; sin enlaces públicos; CORS solo para el origen del visor. |
-| Derechos de autor | Los PDF son artículos de terceros: mantener la nube privada y limitada a la lista de lectores (asesores, jurados). Compartir enlaces abiertos puede violar licencias de las editoriales. |
-| Secretos | Variables de entorno en el proveedor; nada en el repositorio. Local: `keyring`. Nunca se registran en logs ni en el panel. |
-| Copias | Versionado del bucket y copias automáticas de PostgreSQL con recuperación a un punto en el tiempo. |
-| Transporte | Solo HTTPS; el agente rechaza URL `http://` salvo `localhost`. |
-
-## 8. Proveedores (a decidir; el diseño no depende de uno)
-
-El diseño solo exige: un contenedor, PostgreSQL, un bucket S3-compatible y un proveedor de identidad.
-
-| Perfil | Composición | Cuándo conviene |
-|---|---|---|
-| **A (recomendado)** | **Supabase** (PostgreSQL + Storage con API S3 + Auth) + **Render** (contenedor desde GitHub) | Mínimo trabajo: Auth, base y bucket en un panel; despliegue automático al hacer `push` a `main`. |
-| B | **Fly.io** (contenedor + PostgreSQL + Tigris S3) con Auth por correo propio | Un solo proveedor; algo más de operación. |
-| C | Google Cloud Run + Cloud SQL + Cloud Storage + Identity Platform | Si el grupo ya tiene proyecto en GCP; más caro y más configuración. |
-
-Notas de oficio (verificar precios y límites vigentes antes de contratar): los planes gratuitos suelen **pausar o
-dormir** el servicio y la base tras un tiempo sin uso, lo que arruina un visor «siempre disponible»; para el visor
-conviene el plan de pago más bajo. Con el pool de conexiones de Supabase (modo transacción) hay que abrir
-`psycopg` con `prepare_threshold=None`. El despliegue continuo desde el repositorio `Zann181/calificar` puede
-usar el mismo flujo de `ci.yml`.
+| Lectores | Google → correo en `LECTORES_PERMITIDOS`; sin sesión, 401 y pantalla de acceso |
+| Agente | Token de servicio con permiso solo para `/sync/*`; hasheado en la nube; rotable |
+| Falla cerrada | `MODO=nube` no arranca sin cliente OAuth, lista de lectores y token de servicio; el «administrador local» no se registra |
+| PDF | Solo con sesión; sin enlaces públicos; `Cache-Control: private` |
+| Derechos de autor | Los PDF son artículos de terceros: la nube se mantiene privada y limitada a la lista (asesores, jurados) |
+| Secretos | Variables de entorno de Render y `keyring` local; nada en el repositorio, ni en logs, ni en el panel |
+| Transporte | Solo HTTPS (el agente rechaza `http://` salvo `localhost`) |
+| Datos del equipo | `datos_del_equipo` y `uso_tokens` viajan con la extracción: otra razón para la lista cerrada de lectores |
 
 ## 9. Fases
 
-### Fase 0 · Cimientos y pruebas de riesgo (esfuerzo total: M)
+### Fase 0 · Compuertas (esfuerzo total: M). Si una falla se usa su plan B y se continúa
 
-| # | Tarea | Talla | Hecho cuando |
-|---|---|---|---|
-| 0.1 | Añadir al CI un job con PostgreSQL 16 (servicio) y correr `alembic upgrade head`, `alembic check` y `pytest` contra él | M | CI verde en ambos motores; los fallos de JSONB / índice parcial quedan arreglados |
-| 0.2 | Ajuste `MODO` (`local`\|`nube`) en `config.py`; en nube: `despachador_en_servidor=False`, sin ejecutor, sin `usuario_actual` local | S | arranque en nube sin hilos de fondo; en local nada cambia |
-| 0.3 | Dockerfile único (backend + `frontend/dist`), variables por entorno, migraciones al arrancar | S | `docker run` sirve la interfaz y `/api/v1/salud` |
-| 0.4 | Decidir proveedor y lista de lectores (sección 13) | S | ADR 0009 aprobado |
+| # | Prueba | Talla | Pasa si | Si falla |
+|---|---|---|---|---|
+| 0.1 | CI con servicio PostgreSQL 16: `alembic upgrade head`, `alembic check`, `pytest` | M | verde en SQLite y PostgreSQL | se corrigen JSONB/índice parcial; no se avanza sin esto |
+| 0.2 | Imagen Docker en `MODO=nube` desplegada en Render Free contra Neon | M | `/salud` responde; memoria en reposo ≤ 350 MB; migraciones aplican | quitar dependencias del arranque; si no cabe, plan de pago de Render |
+| 0.3 | `AlmacenEnBase`: guardar y leer 60 MB de archivos con `Range` | S | un PDF de 3,4 MB se sirve y pdf.js lo abre | R2 con `AlmacenS3` (sección 3.4) |
+| 0.4 | Cliente OAuth de Google sin facturación, con la lista de correos | S | inicia sesión un correo permitido y se rechaza otro | GitHub OAuth |
+| 0.5 | Monitor de UptimeRobot a `/salud` durante 48 h | S | el servicio no se duerme y Neon se suspende en reposo | aceptar el despertar de ~1 min y mostrarlo en el panel |
 
-### Fase 1 · Nube de solo lectura + sincronización (esfuerzo total: L)
+**Resultado de la Fase 0 (2026-11-24, en el equipo local; PostgreSQL 16.2 embebido, sin Docker):**
+
+| # | Estado | Evidencia |
+|---|---|---|
+| 0.1 | **Pasa en local** | Migraciones 0001→0006 y `alembic check` limpios en PostgreSQL; 286 pruebas verdes en SQLite **y** en PostgreSQL (`PRUEBAS_POSTGRES_URL`, un esquema por prueba). Falló una cosa real: `migrations/env.py` rompía con cualquier URL con `%` (contraseñas codificadas como las de Neon); corregido. El job de CI quedó escrito pero **no corre en GitHub** (ver nota abajo) |
+| 0.2 | **Pasa a medias** | `MODO=nube` arranca sin hilos de fondo y sirve la interfaz y la API sobre PostgreSQL con los datos reales (79 filas, 59 extracciones, 53 PDF): **≈ 100 MB en reposo y ≈ 135 MB tras abrir 15 documentos y 15 PDF** (Windows, Python 3.13; meta ≤ 350 MB). `pymupdf` pasó a importarse al usarlo. **Falta:** construir la imagen (`Dockerfile` escrito, sin probar: no hay Docker aquí) y desplegar en Render contra Neon |
+| 0.3 | **Pasa en local** | `AlmacenEnBase` (+ tabla `biblioteca_archivos`, migración 0006): 60 MB en 107 archivos se guardan y leen en 1,4 s; el endpoint del PDF soporta `Range` (206/416); en el navegador pdf.js abrió el PDF servido desde la base (capa de texto de 387 fragmentos, sin errores). **Falta:** medirlo contra Neon real (latencia de red) |
+| 0.4 | **Pendiente de ti** | Necesita tu cuenta de Google Cloud |
+| 0.5 | **Pendiente de ti** | Necesita Render desplegado y tu cuenta de UptimeRobot |
+
+Nota sobre el CI: la raíz del repositorio git es `calificar/`, y GitHub solo ejecuta flujos de `calificar/.github/workflows/`.
+El `ci.yml` vive en `extractor-matriz/.github/workflows/`, así que **hoy ningún CI corre en GitHub**. Moverlo a la raíz
+(con `working-directory: extractor-matriz/backend`) es una decisión tuya porque empezaría a ejecutarse en cada `push`.
+
+Cambios añadidos por la Fase 0: `MODO` y `ALMACEN_EN_BASE` en `config.py`; `DATABASE_URL` acepta `postgresql://` y
+`postgres://` (como las entrega Neon) y el motor desactiva las sentencias preparadas (pool de Neon); `Dockerfile`,
+`.dockerignore` y `.env.nube.example`.
+
+### Fase 1 · Réplica completa de solo lectura (esfuerzo total: L)
 
 | # | Tarea | Talla | Aceptación |
 |---|---|---|---|
-| 1.1 | **Modo nube de solo lectura**: rutas de escritura → 405; `GET /capacidades`; la interfaz oculta extraer, cargar, restablecer, aprobar/corregir/rechazar, monitor de Claude, estado de servicios y registro | M | recorrido completo del visor en nube sin ningún botón de escritura |
-| 1.2 | **Identidad de lectores** en nube + token de servicio; falla cerrada | M | sin sesión → 401; token de servicio no puede leer; lector no puede escribir; sin IdP no arranca |
-| 1.3 | **Contrato de réplica**: `a_replica()/de_replica()` por contexto, hash canónico, `esquema: 1` | M | ida y vuelta idéntica (extiende `test_ida_y_vuelta_matriz`) |
-| 1.4 | **Ingesta en nube**: `manifiesto`, `blobs`, `lote`, `revision` | M | idempotente; transaccional; 426 con esquema desconocido |
-| 1.5 | **Agente local** (contexto `sincronizacion`: dominio/aplicación/puertos/adaptadores, hilo con la outbox, reintentos con espera creciente) + migración de `sync_destinos` y `sync_corridas` | L | pasada completa de 79 filas y 53 PDF; segunda pasada = 0 envíos |
-| 1.6 | **Panel de configuración** y indicador de cabecera (sección 6) | M | probar conexión, sincronizar, verificar y pausar funcionan; el token no aparece en ninguna respuesta |
-| 1.7 | **Visor vivo**: sondeo de `/revision`, aviso de actualización, `withCredentials:false` y CORS del bucket en nube | S | aprobar una celda en local aparece en el visor en ≤ 30 s |
-| 1.8 | **Despliegue** en el proveedor elegido, copias y vigilancia de `/salud` | M | URL privada operativa; restauración de la base probada una vez |
-| 1.9 | **Publicación inicial** de la base principal (y, si se quiere, del conjunto de test como proyecto aparte) | S | manifiestos iguales, 0 diferencias |
+| 1.1 | `MODO=nube`: rutas de escritura → 405; `/capacidades`; la interfaz oculta extraer, cargar, restablecer, aprobar/corregir/rechazar, monitor de Claude/servicios y registro | M | recorrido completo del visor sin ningún botón de escritura |
+| 1.2 | Inicio de sesión de lectores + token de servicio; falla cerrada | M | 401 sin sesión; el token no lee; el lector no escribe; sin configuración no arranca |
+| 1.3 | `a_replica()/de_replica()` por contexto, hash canónico, `esquema: 1` | M | ida y vuelta idéntica, incluida la extracción completa (extiende `test_ida_y_vuelta_matriz`) |
+| 1.4 | Endpoints de lectura de extracciones y sección «Extracción» (6.4), en ambos modos | M | los 59 registros se ven completos en local y en nube |
+| 1.5 | Ingesta en nube: `manifiesto`, `blobs`, `lote`, `revision` | M | idempotente, transaccional, 426 |
+| 1.6 | Agente local (contexto `sincronizacion`) + migraciones `sync_destinos`, `sync_corridas` | L | pasada completa de 79 filas, 59 extracciones, 53 artículos con su PDF, 51 documentos y todos los crudos existentes; segunda pasada = 0 envíos |
+| 1.7 | Panel de configuración e indicador de cabecera | M | probar, sincronizar, verificar y pausar funcionan; el token no aparece en ninguna respuesta |
+| 1.8 | Visor vivo: sondeo de `/revision` y aviso de actualización | S | aprobar una celda en local → visible en la nube en ≤ 30 s |
+| 1.9 | Despliegue continuo desde `main` en Render; publicación inicial | S | manifiestos local y nube idénticos |
 
-Entrega mínima útil: 1.1 + 1.2 + 1.3 + 1.4 + 1.5 con la configuración por archivo; el panel (1.6) llega justo después.
+### Fase 2 · Resguardo y comodidad (M–L)
 
-### Fase 2 · Endurecer y ampliar la lectura (M–L, cuando haga falta)
+- **«Descargar proyecto desde la nube»** (restauración al equipo local). Hasta que exista, la nube **no** es un respaldo
+  de registro: el respaldo sigue siendo `datos/` local.
+- Server-Sent Events en lugar del sondeo; paginación y búsqueda en servidor (hoy `api.filas` pide `tam=500`).
+- Exportar Excel desde la nube; más lectores con alta y baja desde el panel.
 
-- Varios lectores con invitación y baja desde el panel; registro de accesos.
-- Server-Sent Events en lugar del sondeo; caché de PDF por CDN con URL firmada.
-- Respaldo del crudo de MinerU y de las extracciones completas; **«Descargar proyecto desde la nube»** (restauración
-  local, hoy inexistente).
-- Observabilidad: métricas de la pasada de sincronización, alerta si la nube lleva > N min sin recibir.
-- Paginación y búsqueda en servidor (hoy la interfaz pide `tam=500` fijo en `api.filas`).
+### Fase 3 · Claude en la nube (futuro)
 
-### Fase 3 · Claude en la nube (futuro; solo se enumera lo que obliga a decidir)
-
-- **Reabrir ADR 0002**: la CLI `claude -p` con sesión iniciada no existe en un contenedor; habrá que usar clave de API
-  o el SDK de agentes, con tope de gasto (ADR 0005 y `tope_tokens_mensual`).
-- **Worker de extracción** que consume `extraccion_cola` (ya en base) con `FOR UPDATE SKIP LOCKED`, o Dramatiq+Redis
-  (ya en `pyproject.toml`). La prueba de concurrencia que el ADR 0007 descartó vuelve a aplicar.
-- **MinerU** necesita su propio servicio (11–21 s por página en CPU, ~7,7 GB de RAM en el equipo actual): contenedor
-  aparte, probablemente con GPU, o API de conversión externa.
-- **Versión optimista por fila** (`version` en `matriz_filas`) y `sede` por proyecto, para impedir doble escritura.
+Reabrir el ADR 0002 (la CLI con sesión no existe en un contenedor: clave de API o SDK de agentes, con tope de gasto);
+worker que consuma `extraccion_cola` (ya en base) con `FOR UPDATE SKIP LOCKED`; MinerU como servicio aparte (11–21 s por
+página en CPU y ~7,7 GB de RAM: **no cabe en ningún plan gratuito**, saldrá del cupo gratuito); `version` por fila para
+concurrencia optimista. **Esta fase deja de ser gratuita.**
 
 ### Fase 4 · Cambio de sede (futuro)
 
-Operación explícita «Mover la sede a la nube»: el local hace una última pasada, marca `sede = nube` con una valla de
-`revision`, y desde ahí la nube es la escritora y el local pasa a réplica de lectura (o a copia de respaldo). Se evita
-la fusión bidireccional; el costo es que solo un lado escribe a la vez.
+Operación explícita «Mover la sede a la nube»: última pasada local, `sede = nube` con valla de `revision`, y la nube pasa
+a ser la escritora. Sin fusión bidireccional.
 
-## 10. Costuras que se dejan ya para Claude en la nube
+## 10. Costuras para Fases 3–4 que ya existen o se dejan hoy
 
-| Costura | Estado | Qué falta |
-|---|---|---|
-| IDs UUID y `proyecto_id` en todo | ya existe | nada |
-| Blobs por contenido y puerto `AlmacenDeArchivos` con S3 | ya existe | nada |
-| Outbox como cola de trabajo | ya existe | worker (fase 3) |
-| `extraccion_cola` en la base | ya existe | consumirla desde otro proceso |
-| API sin estado en modo nube | fase 0.2 | — |
-| `sede` por proyecto (`local` único valor permitido hoy) | fase 1.5, en `sync_destinos` | permitir `nube` (fase 4) |
-| Identidad de usuario en `autor` de cada revisión | ya existe (correo) | mapear el correo del IdP |
-| `version` por fila para concurrencia optimista | **no se agrega ahora** | fase 3, con su ADR |
+IDs UUID y `proyecto_id` en todo (existe) · puerto `AlmacenDeArchivos` con adaptadores intercambiables (existe, se añade
+`AlmacenEnBase`) · outbox y `extraccion_cola` en base (existen) · API sin estado en nube (1.1) · `sede` por proyecto en
+`sync_destinos`, con solo `local` permitido (1.6) · `autor` de cada revisión = correo, que ya coincide con el correo de
+Google. **No se agrega `version` por fila hasta la Fase 3.**
 
 ## 11. Pruebas
 
-Siguiendo la cultura del repositorio (pruebas doradas, sin modelo real, `import-linter`):
+1. **Paridad local/nube** (la central): tras sincronizar contra una nube de prueba (`TestClient`; en el CI de 0.1 también
+   PostgreSQL), las respuestas de `/matriz/filas`, `/celdas/{clave}`, `/articulos`, `/documento`, `/normas/columnas`,
+   `/extracciones` y `/extracciones/{id}` son **idénticas**.
+2. **Extracción completa:** las 25 columnas de cada una de las 59 corridas coinciden bit a bit tras la ida y vuelta.
+3. **Idempotencia:** segunda pasada sin envíos; mismo lote y misma `Idempotency-Key` → mismo resultado.
+4. **Recuperación:** corte a mitad, nube vaciada, fila alterada en la nube → la pasada siguiente iguala los manifiestos.
+5. **Borrado:** una fila reemplazada o un artículo excluido desaparecen de la nube.
+6. **Extracciones en curso:** no se envían hasta terminar; al terminar, sí.
+7. **Esquema:** `esquema` mayor → 426 y el panel lo explica.
+8. **Seguridad:** 401 sin sesión; el token de servicio no lee; el lector no escribe; escritura de dominio → 405; sin
+   configuración no arranca; el token no aparece en respuestas ni logs.
+9. **Recursos:** memoria ≤ 350 MB en reposo; PDF de 3,4 MB servido con `Range`.
+10. **Arquitectura:** contrato de `import-linter` — `sincronizacion` no importa adaptadores ni tablas de otros contextos.
+11. **Manual de extremo a extremo:** aprobar una celda y verla en ≤ 30 s; apagar el internet, aprobar tres, reconectar y
+    verificar que llegan.
 
-1. **Paridad local/nube (la prueba central).** Con una base local sembrada, se sincroniza hacia una nube de prueba
-   (`TestClient` + SQLite en memoria; el CI de la fase 0 añade PostgreSQL) y se comparan las respuestas JSON de
-   `/matriz/filas`, `/celdas/{clave}`, `/articulos`, `/documento` y `/normas/columnas`: deben ser **idénticas**.
-2. **Idempotencia:** dos pasadas seguidas → la segunda no envía nada; mismo lote con la misma `Idempotency-Key` → mismo resultado.
-3. **Recuperación:** pasada cortada a mitad, nube vaciada, nube con una fila alterada → la pasada siguiente deja
-   manifiestos iguales.
-4. **Borrado:** una fila reemplazada/excluida en local desaparece de la nube.
-5. **Esquema:** un sobre con `esquema` mayor → 426 y el panel lo explica.
-6. **Seguridad:** sin sesión 401; el token de servicio no lee; el lector no escribe; escritura de dominio en nube → 405;
-   sin IdP no arranca; el token no aparece en ninguna respuesta ni en logs.
-7. **Arquitectura:** contrato nuevo de `import-linter` — `sincronizacion` no importa adaptadores ni tablas de otros contextos.
-8. **Manual de extremo a extremo:** aprobar una celda en local y verla en el visor en ≤ 30 s; apagar el internet,
-   aprobar tres celdas, reconectar y verificar que llegan.
+## 12. Lo que necesitas aportar (no son decisiones: son datos y cuentas)
 
-## 12. Riesgos
+| # | Qué | Para qué |
+|---|---|---|
+| 1 | Crear cuenta en **Render**, **Neon** y **UptimeRobot** (gratis); conectar Render con el repositorio `Zann181/calificar`. Si alguno pide tarjeta, avísame antes de ingresarla: ese dato lo pones tú | Fase 0.2 y 0.5 |
+| 2 | Lista de **correos de lectores** (con cuenta Google; si alguien no tiene, GitHub) | Fase 0.4 |
+| 3 | Confirmar que **solo** la base principal se publica (el conjunto de test no) | Fase 1.9 |
+| 4 | Aceptar que los PDF quedan en una nube **privada** con la lista cerrada (sección 8) | Seguridad |
+
+## 13. Riesgos
 
 | Riesgo | Prob. | Impacto | Mitigación |
 |---|---|---|---|
-| El código no corre limpio en PostgreSQL | Media | Alto | Fase 0.1 antes de cualquier otra cosa; el CI protege después |
-| Planes gratuitos que duermen la base o el servicio | Alta | Medio | Plan de pago mínimo para el visor; el agente reintenta con espera creciente |
-| Derechos de autor de los PDF | Media | Alto | Nube privada, lista de lectores, URL firmadas; decisión del responsable (sección 13) |
-| Esquemas desalineados tras `git pull` automático del lanzador | Media | Medio | Nube primero, 426 + aviso en el panel, migraciones compatibles hacia atrás |
-| Credenciales filtradas | Baja | Alto | `keyring`, token con un solo permiso, rotación desde el panel, sin secretos en el repositorio |
-| Dos fuentes de verdad al llegar Claude a la nube | Media | Alto | Fase 4: sede explícita y valla de revisión; no hay edición bidireccional |
-| Dependencia de un proveedor | Baja | Medio | Solo se exige contenedor + PostgreSQL + S3 + OIDC; todo por variables de entorno |
+| El código no corre limpio en PostgreSQL | Media | Alto | Compuerta 0.1 |
+| 512 MB de RAM no alcanzan | Media | Alto | Compuerta 0.2; `MODO=nube` ligero; plan de pago de Render si hiciera falta |
+| Un plan gratuito cambia o desaparece | Media | Medio | Salidas de la sección 3.4; réplica desechable |
+| Despertar de ~1 min molesta a los lectores | Media | Bajo | Keepalive; aviso visible; nota en el enlace que se comparte |
+| Se agota el cómputo de Neon (100 h/mes) | Baja | Medio | `/salud` sin base; agente con reintento; mensaje claro |
+| Derechos de autor de los PDF | Media | Alto | Lista cerrada, sin enlaces públicos |
+| Esquemas desalineados tras el `git pull` automático del lanzador | Media | Medio | Nube primero; 426 y aviso |
+| Credenciales filtradas | Baja | Alto | `keyring`, token de un solo permiso, rotación desde el panel |
 
-## 13. Decisiones abiertas para el responsable
+## 14. Fuentes consultadas el 2026-11-24
 
-1. **Proveedor** (recomendado: perfil A, Supabase + Render) y quién paga la cuenta.
-2. **Quién puede ver el visor**: lista de correos (asesores, jurados). ¿Algún enlace abierto? (se desaconseja por los PDF).
-3. **Excel exportable en el visor**: ¿sí o no en la fase 1? (recomendado: no, se agrega luego).
-4. **Crudo de MinerU**: ¿respaldarlo en la nube? (recomendado: sí, en la fase 2; ~24 MB, caro de regenerar).
-5. **Dominio propio** (p. ej. `matriz.<dominio>`): ¿ahora o después?
-6. **Conjunto de test**: ¿se publica como un segundo proyecto o solo la base principal? (recomendado: solo la principal).
+- Render: [Deploy for Free](https://render.com/docs/free), [Compute plans](https://render.com/docs/compute-plans), [Postgres gratuito caduca a los 30 días](https://render.com/changelog/free-postgresql-instances-now-expire-after-30-days-previously-90)
+- Neon: [Planes](https://neon.com/pricing), [Límites del plan gratuito](https://neon.com/faqs/free-plan-limits-and-quotas), [Ventana de historial](https://neon.com/docs/introduction/history-window)
+- Supabase: [Pausa de proyectos gratuitos](https://supabase.com/docs/guides/platform/free-project-pausing), [Límite de archivos](https://www.supabase.com/docs/guides/storage/uploads/file-limits)
+- UptimeRobot: [Intervalo de monitoreo](https://help.uptimerobot.com/en/articles/11360876-what-is-a-monitoring-interval-in-uptimerobot/)
+- Google: [Audiencia de la app OAuth](https://support.google.com/cloud/answer/15549945)
+- Oracle: [Recorte de Always Free (InfoQ)](https://infoq.com/news/2026/07/oracle-cloud-free-tier-limits/)
+- Cloudflare R2: [Precios](https://developers.cloudflare.com/r2/platform/pricing/)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import uuid
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -16,6 +17,7 @@ from typing import Any
 import pytest
 from alembic import command
 from alembic.config import Config
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 from app.compartido.db import RegistroProyecto, crear_motor, fabrica_de_sesiones
@@ -37,11 +39,30 @@ def migrar(url: str) -> None:
 
 @pytest.fixture
 def fabrica(tmp_path: Path) -> Iterator[Callable[[], Session]]:
-    url = f"sqlite:///{(tmp_path / 'prueba.db').as_posix()}"
-    migrar(url)
-    motor = crear_motor(url)
-    yield fabrica_de_sesiones(motor)
-    motor.dispose()
+    """SQLite por defecto. Con PRUEBAS_POSTGRES_URL corre sobre PostgreSQL (ADR 0009, compuerta 0.1):
+    cada prueba usa un esquema propio, migrado con Alembic y borrado al terminar."""
+    base = os.environ.get("PRUEBAS_POSTGRES_URL")
+    if not base:
+        url = f"sqlite:///{(tmp_path / 'prueba.db').as_posix()}"
+        migrar(url)
+        motor = crear_motor(url)
+        yield fabrica_de_sesiones(motor)
+        motor.dispose()
+        return
+    esquema = f"t_{uuid.uuid4().hex[:12]}"
+    admin = create_engine(base, isolation_level="AUTOCOMMIT")
+    with admin.connect() as c:
+        c.execute(text(f'CREATE SCHEMA "{esquema}"'))
+    url = f"{base}{'&' if '?' in base else '?'}options=-csearch_path%3D{esquema}"
+    try:
+        migrar(url)
+        motor = crear_motor(url)
+        yield fabrica_de_sesiones(motor)
+        motor.dispose()
+    finally:
+        with admin.connect() as c:
+            c.execute(text(f'DROP SCHEMA IF EXISTS "{esquema}" CASCADE'))
+        admin.dispose()
 
 
 @pytest.fixture

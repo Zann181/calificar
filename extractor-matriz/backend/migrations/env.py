@@ -20,7 +20,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 url = context.get_x_argument(as_dictionary=True).get("url") or settings().database_url
-config.set_main_option("sqlalchemy.url", url)
+# configparser interpreta «%»: una URL con contraseña codificada (p. ej. la de Neon) lo necesita escapado.
+config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
 metadatos = Base.metadata
 
 

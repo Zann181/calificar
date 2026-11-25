@@ -54,6 +54,9 @@ class RegistroOutbox(Base):
 
 
 def crear_motor(url: str) -> Engine:
+    if url.startswith("postgresql"):
+        # Sin sentencias preparadas del lado del servidor: el pool de Neon (pgBouncer en modo transacción) no las admite.
+        return create_engine(url, pool_pre_ping=True, future=True, connect_args={"prepare_threshold": None})
     return create_engine(url, pool_pre_ping=True, future=True)
 
 

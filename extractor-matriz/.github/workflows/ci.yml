@@ -30,6 +30,40 @@ jobs:
           alembic -x url=sqlite:///ci.db upgrade head
           alembic -x url=sqlite:///ci.db check
 
+  # ADR 0009, compuerta 0.1: el mismo esquema y las mismas pruebas sobre PostgreSQL 16 (la nube usa Neon).
+  backend-postgres:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: pruebas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PRUEBAS_POSTGRES_URL: postgresql+psycopg://postgres:pruebas@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e ".[dev]"
+      - name: pytest (unitarias e integración sobre PostgreSQL)
+        run: pytest -q
+      - name: Migración sin diferencias con los modelos
+        run: |
+          alembic -x url=$PRUEBAS_POSTGRES_URL upgrade head
+          alembic -x url=$PRUEBAS_POSTGRES_URL check
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

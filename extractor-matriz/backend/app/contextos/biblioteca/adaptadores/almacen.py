@@ -2,8 +2,16 @@
 
 from __future__ import annotations
 
+import hashlib
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+from sqlalchemy import exists, select
+from sqlalchemy.orm import Session
+
+from app.compartido.dominio import ahora
+from app.contextos.biblioteca.adaptadores.tablas import RegistroArchivo
 
 
 class AlmacenS3:
@@ -72,6 +80,40 @@ class AlmacenEnDisco:
 
     def url_temporal(self, clave: str, segundos: int = 900) -> str:
         return f"disco://{clave}"
+
+
+class AlmacenEnBase:
+    """Guarda cada objeto como bytea en la misma base (ADR 0009: la nube gratuita usa un solo proveedor).
+
+    Pensado para decenas o cientos de PDF de pocos MB. Si los archivos pasaran de ~400 MB se cambia por AlmacenS3
+    (el puerto es el mismo)."""
+
+    def __init__(self, fabrica: Callable[[], Session]) -> None:
+        self._fabrica = fabrica
+
+    def guardar(self, clave: str, datos: bytes, tipo: str) -> None:
+        with self._fabrica() as s:
+            fila = s.get(RegistroArchivo, clave)
+            if fila is None:
+                fila = RegistroArchivo(clave=clave, creado_en=ahora())
+                s.add(fila)
+            fila.tipo, fila.tamano, fila.sha256 = tipo, len(datos), hashlib.sha256(datos).hexdigest()
+            fila.datos = datos
+            s.commit()
+
+    def leer(self, clave: str) -> bytes:
+        with self._fabrica() as s:
+            fila = s.get(RegistroArchivo, clave)
+            if fila is None:
+                raise FileNotFoundError(clave)
+            return bytes(fila.datos)
+
+    def existe(self, clave: str) -> bool:
+        with self._fabrica() as s:
+            return s.scalar(select(exists().where(RegistroArchivo.clave == clave))) is True
+
+    def url_temporal(self, clave: str, segundos: int = 900) -> str:
+        return f"base://{clave}"
 
 
 class AlmacenEnMemoria:

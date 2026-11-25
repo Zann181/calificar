@@ -33,8 +33,12 @@ def crear_app(ajustes: Settings | None = None, contenedor: Any = None) -> FastAP
 
             app.state.contenedor = construir(ajustes)
         servidor = logging.getLogger("servidor")
-        servidor.info("Servidor listo")
+        servidor.info("Servidor listo (modo %s)", ajustes.modo)
         c = app.state.contenedor
+        if ajustes.modo == "nube":
+            # ADR 0009: réplica de solo lectura. Sin hilos de fondo, sin conversión ni extracción: la API no tiene estado.
+            yield
+            return
         if ajustes.despachador_en_servidor:
             c.despachador.iniciar_en_hilo(periodica=c.convertir_nuevos if ajustes.convertir_al_cargar else None)
         else:
