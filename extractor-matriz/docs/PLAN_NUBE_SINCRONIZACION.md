@@ -325,6 +325,12 @@ Notas:
 
 ### Fase 3 · Claude en la nube (futuro)
 
+**Decisión del responsable (2026-11-25): no se hace por ahora.** La extracción sigue solo en el equipo local y la nube queda
+como visor y respaldo. Si se retoma, las preferencias ya dadas son: **MinerU sigue en el equipo local** (a la nube solo
+llegan los documentos ya convertidos) y la nube escribiría **únicamente extracciones nuevas** con las filas que generan
+(aprobar y corregir siguen en local, casi sin conflictos); falta decidir el acceso a Claude (token de larga duración con
+la CLI, que mantiene el ADR 0002, o clave de API, que lo reemplaza) y el tope de gasto.
+
 Reabrir el ADR 0002 (la CLI con sesión no existe en un contenedor: clave de API o SDK de agentes, con tope de gasto);
 worker que consuma `extraccion_cola` (ya en base) con `FOR UPDATE SKIP LOCKED`; MinerU como servicio aparte (11–21 s por
 página en CPU y ~7,7 GB de RAM: **no cabe en ningún plan gratuito**, saldrá del cupo gratuito); `version` por fila para
