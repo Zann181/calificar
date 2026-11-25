@@ -21,6 +21,9 @@ import type {
   ExtraccionCompleta,
   ResultadoProbar,
   ResumenExtraccion,
+  EstadoRestauracion,
+  LectoresNube,
+  PlanRestauracion,
 } from "./tipos";
 
 export class ErrorApi extends Error {
@@ -89,6 +92,16 @@ export const api = {
       ),
     estado: (pid: string) => pedir<EstadoSync>(`${sync(pid)}/estado`),
     corridas: (pid: string) => pedir<CorridaSync[]>(`${sync(pid)}/corridas`),
+    // «Descargar proyecto desde la nube»: plan (sin tocar nada), arranque en segundo plano y avance.
+    restaurarPlan: (pid: string) => pedir<PlanRestauracion>(`${sync(pid)}/restaurar/plan`, { method: "POST" }),
+    restaurar: (pid: string, reemplazar: boolean) =>
+      pedir<{ aceptado: boolean }>(`${sync(pid)}/restaurar`, json({ reemplazar })),
+    restaurarEstado: (pid: string) => pedir<EstadoRestauracion>(`${sync(pid)}/restaurar/estado`),
+    // Quién puede entrar al visor de la nube.
+    lectores: (pid: string) => pedir<LectoresNube>(`${sync(pid)}/lectores`),
+    altaLector: (pid: string, correo: string) => pedir<LectoresNube>(`${sync(pid)}/lectores`, json({ correo })),
+    bajaLector: (pid: string, correo: string) =>
+      pedir<LectoresNube>(`${sync(pid)}/lectores?correo=${encodeURIComponent(correo)}`, { method: "DELETE" }),
   },
   proyectos: () => pedir<Proyecto[]>("/proyectos"),
   columnas: (pid: string) => pedir<Columna[]>(`${p(pid)}/normas/columnas`),
@@ -179,6 +192,8 @@ export const api = {
       `${p(pid)}/exportaciones`,
       { method: "POST" },
     ),
+  // Excel de la matriz generado al vuelo (sirve en la nube de solo lectura, que no guarda exportaciones).
+  urlExcel: (pid: string) => `/api/v1${p(pid)}/exportaciones/matriz.xlsx`,
   urlPdf: (pid: string, articuloId: string) =>
     `/api/v1${p(pid)}/articulos/${articuloId}/pdf`,
 };

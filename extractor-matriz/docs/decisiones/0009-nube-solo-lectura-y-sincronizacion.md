@@ -59,7 +59,7 @@ volumen.
 - Fase 0 con compuertas: PostgreSQL en el CI, memoria ≤ 350 MB en 512 MB de RAM, `AlmacenEnBase`, cliente OAuth de Google
   sin facturación y keepalive durante 48 h. Cada una tiene plan B definido.
 - Los planes gratuitos cambian: las salidas están en la sección 3.4 del plan y la nube es **desechable** (se reconstruye
-  con «Reenviar todo»). Hasta la Fase 2 («Descargar proyecto desde la nube») la nube **no** es respaldo de registro.
+  con «Reenviar todo»). Desde la Fase 2 («Descargar proyecto desde la nube») la nube sí sirve de segundo resguardo; el respaldo de registro sigue siendo `datos/` local.
 - Latencia: hasta ~1 min si Render durmió; ≤ 30 s de un cambio local al visor con la nube despierta.
 - Esquemas: se despliega primero la nube; si el local es más nuevo, la nube responde 426 y el panel lo explica.
 - Los PDF son artículos de terceros: la nube es privada y con lista cerrada de lectores.

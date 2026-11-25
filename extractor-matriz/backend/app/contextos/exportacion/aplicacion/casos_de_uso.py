@@ -45,6 +45,14 @@ class ExportarMatriz:
         self._fuente, self._heredadas, self._escritor, self._almacen = fuente, heredadas, escritor, almacen
 
     def ejecutar(self, proyecto_id: uuid.UUID) -> Exportacion:
+        datos, heredadas, extraidas = self.generar(proyecto_id)
+        id_ = uuid.uuid4()
+        clave = self.clave(proyecto_id, id_)
+        self._almacen.guardar(clave, datos, TIPO_XLSX)
+        return Exportacion(id=id_, clave_almacen=clave, filas_heredadas=heredadas, filas_extraidas=extraidas)
+
+    def generar(self, proyecto_id: uuid.UUID) -> tuple[bytes, int, int]:
+        """El Excel de la matriz completa, sin guardarlo (la nube de solo lectura no escribe): bytes y conteos."""
         columnas = self._fuente.columnas(proyecto_id)
         base = self._fuente.base(proyecto_id)
         filas = self._fuente.filas(proyecto_id)
@@ -59,10 +67,7 @@ class ExportarMatriz:
                 matriz_base=datos,
                 auditoria=[a for f in extraidas for a in f.auditoria],
             )
-        id_ = uuid.uuid4()
-        clave = self.clave(proyecto_id, id_)
-        self._almacen.guardar(clave, datos, TIPO_XLSX)
-        return Exportacion(id=id_, clave_almacen=clave, filas_heredadas=len(heredadas), filas_extraidas=len(extraidas))
+        return datos, len(heredadas), len(extraidas)
 
     @staticmethod
     def clave(proyecto_id: uuid.UUID, exportacion_id: uuid.UUID) -> str:

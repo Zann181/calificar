@@ -8,6 +8,8 @@
                       [--reextraer [--motivo <texto>]]   cuatro roles con Claude Code CLI (ADR 0002)
     python -m app.cli despachar                  corre el despachador de la outbox
     python -m app.cli exportar <salida.xlsx>
+    python -m app.cli restaurar-nube --url <https://…> [--proyecto <id>] [--reemplazar]
+                                                 baja el proyecto desde la nube (token en SYNC_TOKEN o se pide)
     python -m app.cli token-sync                 token de servicio del agente (ADR 0009) y su hash para la nube
 """
 
@@ -132,6 +134,41 @@ def exportar(c: Contenedor, a: argparse.Namespace) -> None:
     print(f"{e.filas_heredadas} filas heredadas y {e.filas_extraidas} extraídas en {a.salida}")
 
 
+def restaurar_nube(c: Contenedor, a: argparse.Namespace) -> None:
+    """Restaura este equipo desde la nube (ADR 0009, Fase 2). Sirve sobre una base vacía (sin correr «semilla») o
+    sobre el mismo proyecto; nunca borra lo local."""
+    import getpass
+    import os
+
+    from app.contextos.sincronizacion.adaptadores.cliente_http import ClienteHttp
+    from app.contextos.sincronizacion.dominio.plan import ErrorDeSincronizacion
+
+    token = os.environ.get("SYNC_TOKEN") or getpass.getpass("Token de sincronización: ")
+    nube = ClienteHttp(a.url, token, uuid.uuid4().hex)
+    try:
+        proyectos = nube.proyectos()
+        if a.proyecto:
+            pid = uuid.UUID(a.proyecto)
+        elif len(proyectos) == 1:
+            pid = uuid.UUID(proyectos[0]["id"])
+        else:
+            sys.exit("La nube tiene " + (str(len(proyectos)) + " proyectos: indique --proyecto <id>. "
+                     + ", ".join(f"{p['id']} ({p['nombre']})" for p in proyectos)))
+        manifiesto = nube.manifiesto(pid)
+        plan = c.restaurador.planear(nube, pid, manifiesto)
+        print(f"Faltan {len(plan.faltan)} agregados y {len(plan.archivos_faltan)} archivos; difieren "
+              f"{len(plan.distintos)} agregados y {len(plan.archivos_distintos)} archivos; "
+              f"{len(plan.solo_locales)} existen solo aquí (no se tocan).")
+        r = c.restaurador.ejecutar(nube, pid, manifiesto, reemplazar=a.reemplazar)
+    except ErrorDeSincronizacion as e:
+        sys.exit(str(e))
+    except Exception as e:
+        if type(e).__name__ == "RestauracionRechazada":
+            sys.exit(str(e))
+        raise
+    print(f"Restaurado: {r.agregados} agregados, {r.archivos} archivos ({r.bytes_bajados / 1e6:.1f} MB).")
+
+
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     p = argparse.ArgumentParser(prog="python -m app.cli")
@@ -167,6 +204,11 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("salida")
     x.set_defaults(f=exportar)
     sub.add_parser("token-sync")
+    x = sub.add_parser("restaurar-nube")
+    x.add_argument("--url", required=True)
+    x.add_argument("--proyecto", default=None)
+    x.add_argument("--reemplazar", action="store_true", help="en lo que difiera, queda la versión de la nube")
+    x.set_defaults(f=restaurar_nube)
     a = p.parse_args(argv)
     if a.comando == "token-sync":
         import secrets

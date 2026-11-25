@@ -303,10 +303,25 @@ Diferencias con lo planeado, todas menores:
 
 ### Fase 2 · Resguardo y comodidad (M–L)
 
-- **«Descargar proyecto desde la nube»** (restauración al equipo local). Hasta que exista, la nube **no** es un respaldo
-  de registro: el respaldo sigue siendo `datos/` local.
-- Server-Sent Events en lugar del sondeo; paginación y búsqueda en servidor (hoy `api.filas` pide `tam=500`).
-- Exportar Excel desde la nube; más lectores con alta y baja desde el panel.
+| # | Tarea | Estado | Evidencia |
+|---|---|---|---|
+| 2.1 | **Descargar proyecto desde la nube** | **Hecha** | Panel (sección 5) y `python -m app.cli restaurar-nube`. Muestra primero el plan (faltan, difieren, solo aquí) y no borra nada local; con diferencias se rehúsa hasta pedir «reemplazar». Baja archivos y luego sobres en una transacción y verifica que quedó idéntico. En un equipo vacío la API responde igual que la del original; en la copia real: 30 filas perdidas → «Restaurado: 30 elementos», siguiente pasada sin envíos |
+| 2.1b | **Valla contra el desastre** (no estaba en el plan) | **Hecha** | Sin ella, un equipo que perdió datos habría **borrado la nube** en su siguiente pasada. Ahora, si «sobran» en la nube más de 10 elementos y más del 10 %, la pasada se detiene con un aviso; solo «Reenviar todo» lo permite |
+| 2.2 | **Eventos del servidor (SSE)** | **Hecha** | `GET /api/v1/eventos`: el visor recibe la revisión nueva al instante (en la prueba, 2 s después de terminar la pasada); latido cada 15 s; el sondeo de `/revision` queda de respaldo si la conexión cae. El aviso viaja en memoria, sin consultar la base |
+| 2.3 | **Exportar Excel desde la nube** | **Hecha** | `GET /exportaciones/matriz.xlsx` genera el libro al vuelo (no guarda nada); mismas hojas y celdas que el del equipo local |
+| 2.4 | **Lectores desde el panel** | **Hecha** | Sección 6 del panel: alta y baja que rigen al instante (también una sesión ya iniciada pierde el acceso). Los de `LECTORES_PERMITIDOS` son fijos y solo se quitan en Render. Tabla `sync_lectores` (migración 0008) |
+| 2.5 | **Paginación y búsqueda en servidor** | **Aplazada** | Con 79 filas y 53 artículos `tam=500` no es un problema; cambiar la grilla a un modelo de filas por demanda es un cambio grande sin beneficio hoy. Se retoma si la matriz pasa de unos cientos de filas |
+
+Pruebas nuevas: restauración (equipo vacío, diferencias, choque de nombre de proyecto, en segundo plano, endpoints con token),
+valla, Excel, lectores, SSE (difusor, flujo y aviso al aplicar un lote).
+**Sin correr sobre PostgreSQL**, como la Fase 1.
+
+Notas:
+
+- La restauración sobre un equipo nuevo debe hacerse **sin correr «semilla»** (el nombre del proyecto es único y la semilla le
+  pone otro identificador): el mensaje de error lo explica.
+- Restaurar no dispara eventos ni sincroniza hacia la nube mientras corre.
+- El panel pide el plan sin cambiar nada; recalcula todo al bajar (unos segundos con 61 MB de archivos).
 
 ### Fase 3 · Claude en la nube (futuro)
 

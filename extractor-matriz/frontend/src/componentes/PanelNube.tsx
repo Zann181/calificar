@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { api } from "../api";
-import type { AjustesNube, OpcionesNube, ResultadoProbar } from "../tipos";
+import type { AjustesNube, OpcionesNube, PlanRestauracion, ResultadoProbar } from "../tipos";
 
 const QUE_SE_SUBE: [keyof OpcionesNube, string][] = [
   ["pdf", "PDF de los artículos"],
@@ -27,6 +27,172 @@ const MOTIVO: Record<string, string> = {
 
 function bytes(n: number): string {
   return n > 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : n > 1000 ? `${Math.round(n / 1000)} kB` : `${n} B`;
+}
+
+function SeccionRestaurar({ pid }: { pid: string }) {
+  const qc = useQueryClient();
+  const [plan, setPlan] = useState<PlanRestauracion | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const estado = useQuery({
+    queryKey: ["sync-restaurar", pid],
+    queryFn: () => api.nube.restaurarEstado(pid),
+    refetchInterval: (q) => (q.state.data?.estado === "restaurando" ? 800 : false),
+  });
+  const ver = useMutation({
+    mutationFn: () => api.nube.restaurarPlan(pid),
+    onSuccess: (p) => {
+      setPlan(p);
+      setError(null);
+    },
+    onError: (e) => setError((e as Error).message),
+  });
+  const bajar = useMutation({
+    mutationFn: (reemplazar: boolean) => api.nube.restaurar(pid, reemplazar),
+    onSuccess: () => {
+      setPlan(null);
+      qc.invalidateQueries({ queryKey: ["sync-restaurar", pid] });
+    },
+    onError: (e) => setError((e as Error).message),
+  });
+  // Al terminar, lo que se ve en pantalla vuelve a pedirse.
+  const e = estado.data;
+  useEffect(() => {
+    if (e?.estado === "ok") qc.invalidateQueries({ predicate: (q) => !String(q.queryKey[0]).startsWith("sync-") });
+  }, [e?.estado, qc]);
+  const restaurando = e?.estado === "restaurando";
+  return (
+    <>
+      <h4>5. Restaurar desde la nube</h4>
+      <p className="tenue restaurar-plan">
+        Baja a este equipo lo que la nube guarda del proyecto (por ejemplo, tras cambiar de computador). Nunca borra nada de
+        lo que hay aquí; si hay diferencias, primero se las muestra.
+      </p>
+      <div className="botones fila">
+        <button onClick={() => ver.mutate()} disabled={ver.isPending || restaurando}>
+          {ver.isPending ? "Comparando…" : "Descargar proyecto desde la nube…"}
+        </button>
+      </div>
+      {error && <p className="aviso-nube mal" onClick={() => setError(null)}>{error}</p>}
+      {plan && !restaurando && (
+        <div className="restaurar-plan">
+          {plan.vacio ? (
+            <p className="aviso-nube ok">Este equipo ya tiene todo lo que hay en la nube.</p>
+          ) : (
+            <>
+              <p>
+                Faltan <strong>{plan.faltan}</strong> elementos y <strong>{plan.archivos_faltan}</strong> archivos.
+                {plan.hay_conflictos && (
+                  <>
+                    {" "}
+                    Difieren <strong>{plan.distintos}</strong> elementos y <strong>{plan.archivos_distintos}</strong> archivos
+                    {plan.ejemplos_distintos.length > 0 && <span className="tenue"> (p. ej. {plan.ejemplos_distintos.slice(0, 3).join(", ")})</span>}.
+                  </>
+                )}
+                {plan.solo_locales > 0 && <> Hay {plan.solo_locales} elementos solo aquí: no se tocan.</>}
+              </p>
+              <div className="botones fila">
+                {plan.hay_conflictos ? (
+                  <button
+                    className="primario"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `En lo que difiere (${plan.distintos} elementos), quedará la versión de la nube y se perderá lo de este equipo. ¿Continuar?`,
+                        )
+                      )
+                        bajar.mutate(true);
+                    }}
+                  >
+                    Bajar y reemplazar las diferencias
+                  </button>
+                ) : (
+                  <button className="primario" onClick={() => bajar.mutate(false)}>
+                    Bajar lo que falta
+                  </button>
+                )}
+                <button onClick={() => setPlan(null)}>Cancelar</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      {restaurando && e && (
+        <div className="restaurar-plan">
+          <div className="barra-restauracion">
+            <div style={{ width: `${e.total ? Math.round((100 * e.hechos) / e.total) : 5}%` }} />
+          </div>
+          <span className="tenue">
+            {e.fase === "archivos" ? "Bajando archivos" : "Aplicando"} {e.hechos} de {e.total || "…"}
+          </span>
+        </div>
+      )}
+      {e?.estado === "ok" && e.resultado && (
+        <p className="aviso-nube ok">
+          Restaurado: {e.resultado.agregados} elementos y {e.resultado.archivos} archivos ({bytes(e.resultado.bytes)}).
+        </p>
+      )}
+      {e?.estado === "error" && <p className="aviso-nube mal">{e.detalle}</p>}
+    </>
+  );
+}
+
+function SeccionLectores({ pid }: { pid: string }) {
+  const qc = useQueryClient();
+  const [correo, setCorreo] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const lista = useQuery({ queryKey: ["sync-lectores", pid], queryFn: () => api.nube.lectores(pid), retry: false });
+  const cambiar = {
+    onSuccess: () => {
+      setError(null);
+      qc.invalidateQueries({ queryKey: ["sync-lectores", pid] });
+    },
+    onError: (e: unknown) => setError((e as Error).message),
+  };
+  const alta = useMutation({
+    mutationFn: () => api.nube.altaLector(pid, correo),
+    ...cambiar,
+    onSuccess: () => {
+      setCorreo("");
+      cambiar.onSuccess();
+    },
+  });
+  const baja = useMutation({ mutationFn: (c: string) => api.nube.bajaLector(pid, c), ...cambiar });
+  return (
+    <>
+      <h4>6. Lectores del visor</h4>
+      <p className="tenue restaurar-plan">Quién puede entrar con su cuenta de Google. El cambio rige de inmediato.</p>
+      {lista.error && <p className="aviso-nube mal">{(lista.error as Error).message}</p>}
+      <ul className="lista-lectores">
+        {(lista.data?.fijos ?? []).map((c) => (
+          <li key={c}>
+            <span>{c}</span>
+            <span className="tenue" title="Se quita en la variable LECTORES_PERMITIDOS de la nube">fijo</span>
+          </li>
+        ))}
+        {(lista.data?.agregados ?? []).map((l) => (
+          <li key={l.correo}>
+            <span>{l.correo}</span>
+            <button className="sin-borde" onClick={() => baja.mutate(l.correo)} disabled={baja.isPending}>
+              Quitar
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="fila-alta">
+        <input
+          type="email"
+          value={correo}
+          onChange={(ev) => setCorreo(ev.target.value)}
+          placeholder="correo@ejemplo.com"
+          onKeyDown={(ev) => ev.key === "Enter" && correo && alta.mutate()}
+        />
+        <button className="primario" onClick={() => alta.mutate()} disabled={!correo || alta.isPending}>
+          Agregar
+        </button>
+      </div>
+      {error && <p className="aviso-nube mal" onClick={() => setError(null)}>{error}</p>}
+    </>
+  );
 }
 
 export function PanelNube({ pid, onCerrar }: { pid: string; onCerrar: () => void }) {
@@ -239,6 +405,8 @@ export function PanelNube({ pid, onCerrar }: { pid: string; onCerrar: () => void
             ))}
           </tbody>
         </table>
+        <SeccionRestaurar pid={pid} />
+        <SeccionLectores pid={pid} />
       </div>
     </div>,
     document.body,

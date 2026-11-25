@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 from app.compartido.db import RegistroProyecto, crear_motor, fabrica_de_sesiones
 from app.compartido.dominio import ErrorDeDominio
 from app.compartido.outbox import Despachador
-from app.compartido.replica_sql import ReplicaDeProyecto
+from app.compartido.replica_sql import ReplicaDeProyecto, listar_proyectos
 from app.config import Settings
 from app.contextos.biblioteca.adaptadores.almacen import AlmacenEnBase, AlmacenEnDisco, AlmacenS3
 from app.contextos.biblioteca.adaptadores.mineru import MineruHttp, _grilla
@@ -85,9 +85,15 @@ from app.contextos.normas.adaptadores.replica import ReplicaDeNormas
 from app.contextos.normas.adaptadores.repositorio_sql import UnidadDeTrabajoNormasSql
 from app.contextos.normas.aplicacion.casos_de_uso import CasosDeNormas, ConsultasDeNormas, PublicarLibro
 from app.contextos.sincronizacion.adaptadores.cliente_http import CredencialesKeyring, fabrica_http
-from app.contextos.sincronizacion.adaptadores.tablas import EstadoDeNubeSql, RepositorioDeDestinosSql
+from app.contextos.sincronizacion.adaptadores.tablas import (
+    EstadoDeNubeSql,
+    LectoresSql,
+    RepositorioDeDestinosSql,
+    TransaccionLocalSql,
+)
 from app.contextos.sincronizacion.aplicacion.agente import AgenteDeSincronizacion
 from app.contextos.sincronizacion.aplicacion.ingesta import Ingesta
+from app.contextos.sincronizacion.aplicacion.restaurador import Restaurador
 from app.contextos.sincronizacion.aplicacion.sincronizador import Sincronizador
 from app.contextos.sincronizacion.puertos import (
     Credenciales,
@@ -95,6 +101,7 @@ from app.contextos.sincronizacion.puertos import (
     FuenteDeReplica,
     RepositorioDeDestinos,
 )
+from app.eventos_nube import Difusor
 
 log = logging.getLogger("composicion")
 
@@ -240,6 +247,9 @@ class Contenedor:
     sincronizador: Sincronizador
     agente: AgenteDeSincronizacion
     ingesta: Ingesta
+    restaurador: Restaurador
+    lectores: LectoresSql
+    difusor: Difusor
 
 
 def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None,
@@ -416,8 +426,11 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
     destinos = RepositorioDeDestinosSql(fabrica)
     credenciales = credenciales or CredencialesKeyring()
     sincronizador = Sincronizador(fuentes, almacen, destinos, credenciales, fabrica_de_destino or fabrica_http)
-    agente = AgenteDeSincronizacion(sincronizador, destinos)
-    ingesta = Ingesta(fuentes, EstadoDeNubeSql(fabrica), almacen, replica_biblioteca.archivos_guardados)
+    restaurador = Restaurador(fuentes, almacen, TransaccionLocalSql(fabrica))
+    agente = AgenteDeSincronizacion(sincronizador, destinos, restaurador=restaurador)
+    difusor = Difusor()
+    ingesta = Ingesta(fuentes, EstadoDeNubeSql(fabrica), almacen, replica_biblioteca.archivos_guardados,
+                      lambda: listar_proyectos(fabrica), difusor.publicar)
     if ajustes.modo == "local":
         for evento in ("ArticuloCargado", "ArticuloConvertido", "ConversionFallida", "ArticuloExcluido",
                        "EstadoDeArticuloCambiado", "ExtraccionCompletada", "ExtraccionFallida", "FilaEscrita",
@@ -433,4 +446,4 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
                       despachador=despachador, ejecutor=ejecutor, mineru=mineru,
                       convertir_nuevos=convertir_nuevos, terminar_conversion=terminar_conversion,
                       destinos=destinos, credenciales=credenciales, sincronizador=sincronizador, agente=agente,
-                      ingesta=ingesta)
+                      ingesta=ingesta, restaurador=restaurador, lectores=LectoresSql(fabrica), difusor=difusor)

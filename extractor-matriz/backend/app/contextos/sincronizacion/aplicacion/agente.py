@@ -15,7 +15,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.contextos.sincronizacion.aplicacion.restaurador import RestauracionRechazada, Restaurador
 from app.contextos.sincronizacion.aplicacion.sincronizador import Sincronizador
+from app.contextos.sincronizacion.dominio.plan import ErrorDeSincronizacion
 from app.contextos.sincronizacion.puertos import Corrida, RepositorioDeDestinos
 
 log = logging.getLogger("sincronizacion")
@@ -59,8 +61,10 @@ class _Pedido:
 
 class AgenteDeSincronizacion:
     def __init__(self, sincronizador: Sincronizador, destinos: RepositorioDeDestinos,
-                 reloj: Callable[[], float] = time.monotonic) -> None:
+                 reloj: Callable[[], float] = time.monotonic, restaurador: Restaurador | None = None) -> None:
         self._s, self._destinos, self._reloj = sincronizador, destinos, reloj
+        self._restaurador = restaurador
+        self._restauraciones: dict[uuid.UUID, dict[str, Any]] = {}
         self._estados: dict[uuid.UUID, EstadoDelAgente] = {}
         self._pedidos: dict[uuid.UUID, list[_Pedido]] = {}
         self._desde: dict[uuid.UUID, float] = {}  # cuándo vence la espera de agrupación de cada proyecto
@@ -119,6 +123,51 @@ class AgenteDeSincronizacion:
             e.estado, e.detalle = ("sincronizado" if e.ultima_ok else "subiendo"), ""
         return e
 
+    # -- restauración (Fase 2) ----------------------------------------------------------------------------------
+    def plan_de_restauracion(self, proyecto_id: uuid.UUID) -> dict[str, Any]:
+        """Qué bajaría «Descargar proyecto desde la nube», sin tocar nada."""
+        assert self._restaurador is not None
+        _, nube = self._s.conectar(proyecto_id)
+        m = nube.manifiesto(proyecto_id)
+        p = self._restaurador.planear(nube, proyecto_id, m)
+        return {"faltan": len(p.faltan), "distintos": len(p.distintos), "solo_locales": len(p.solo_locales),
+                "archivos_faltan": len(p.archivos_faltan), "archivos_distintos": len(p.archivos_distintos),
+                "hay_conflictos": p.hay_conflictos, "vacio": p.vacio,
+                "ejemplos_distintos": p.distintos[:10], "ejemplos_solo_locales": p.solo_locales[:10]}
+
+    def restaurar(self, proyecto_id: uuid.UUID, *, reemplazar: bool) -> None:
+        """Baja el proyecto de la nube en segundo plano. Mientras tanto no se sincroniza hacia la nube."""
+        assert self._restaurador is not None
+        if self._restauraciones.get(proyecto_id, {}).get("estado") == "restaurando":
+            return
+        estado: dict[str, Any] = {"estado": "restaurando", "hechos": 0, "total": 0, "fase": "", "detalle": "",
+                                  "resultado": None}
+        self._restauraciones[proyecto_id] = estado
+        _, nube = self._s.conectar(proyecto_id)
+
+        def progreso(fase: str, hechos: int, total: int) -> None:
+            estado.update(fase=fase, hechos=hechos, total=total)
+
+        def correr() -> None:
+            try:
+                assert self._restaurador is not None
+                m = nube.manifiesto(proyecto_id)
+                r = self._restaurador.ejecutar(nube, proyecto_id, m, reemplazar=reemplazar, progreso=progreso)
+                estado.update(estado="ok", resultado={
+                    "agregados": r.agregados, "archivos": r.archivos, "bytes": r.bytes_bajados,
+                    "reemplazados": r.reemplazados, "solo_locales": len(r.solo_locales)})
+            except (RestauracionRechazada, ErrorDeSincronizacion) as e:
+                estado.update(estado="error", detalle=str(e))
+            except Exception as e:  # una restauración que falla nunca tumba la aplicación
+                log.exception("La restauración falló")
+                estado.update(estado="error", detalle=f"{type(e).__name__}: {e}")
+
+        threading.Thread(target=correr, name="restauracion", daemon=True).start()
+
+    def estado_de_restauracion(self, proyecto_id: uuid.UUID) -> dict[str, Any]:
+        return dict(self._restauraciones.get(proyecto_id, {"estado": "ninguna", "hechos": 0, "total": 0, "detalle": "",
+                                                           "fase": "", "resultado": None}))
+
     # -- interior -------------------------------------------------------------------------------------------------
     def _pedir(self, proyecto_id: uuid.UUID, pedido: _Pedido, inmediato: bool = False) -> None:
         d = self._destinos.obtener(proyecto_id)
@@ -147,6 +196,8 @@ class AgenteDeSincronizacion:
             with self._cerrojo:
                 vence = self._desde.get(pid)
                 pedidos = self._pedidos.get(pid, [])
+            if self._restauraciones.get(pid, {}).get("estado") == "restaurando":
+                continue  # no se sube nada mientras se baja
             manual = any(p.motivo == "manual" for p in pedidos)
             if d.pausado and not manual:
                 continue

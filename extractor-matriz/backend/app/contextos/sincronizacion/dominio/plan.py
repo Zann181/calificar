@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import posixpath
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
 from typing import Any
@@ -18,6 +19,17 @@ class ErrorDeSincronizacion(Exception):
     def __init__(self, mensaje: str, *, codigo: int | None = None, reintentable: bool = False) -> None:
         super().__init__(mensaje)
         self.codigo, self.reintentable = codigo, reintentable
+
+
+_CORREO = re.compile(r"^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$")
+
+
+def normalizar_correo(correo: str) -> str:
+    """Minúsculas y sin espacios; lanza ValueError si no parece un correo."""
+    c = correo.strip().lower()
+    if not _CORREO.match(c):
+        raise ValueError(f"«{correo}» no parece un correo")
+    return c
 
 
 class ConflictoDeInstalacion(Exception):
@@ -80,6 +92,46 @@ class Plan:
     @property
     def vacio(self) -> bool:
         return self.pendientes == 0
+
+
+@dataclass
+class PlanDeRestauracion:
+    """«Descargar proyecto desde la nube» (Fase 2): la nube es la referencia y el equipo local el destino.
+
+    Nunca se borra nada local: lo que solo existe en el equipo se informa y se deja."""
+
+    faltan: list[str] = field(default_factory=list)  # «tipo/id» que el equipo no tiene
+    distintos: list[str] = field(default_factory=list)  # los dos lo tienen, con contenido distinto
+    solo_locales: list[str] = field(default_factory=list)  # el equipo los tiene y la nube no
+    archivos_faltan: list[str] = field(default_factory=list)
+    archivos_distintos: list[str] = field(default_factory=list)
+
+    @property
+    def hay_conflictos(self) -> bool:
+        return bool(self.distintos or self.archivos_distintos)
+
+    @property
+    def vacio(self) -> bool:
+        return not (self.faltan or self.distintos or self.archivos_faltan or self.archivos_distintos)
+
+
+def calcular_restauracion(local: dict[str, str], archivos_locales: dict[str, str], nube: Manifiesto) -> PlanDeRestauracion:
+    plan = PlanDeRestauracion()
+    for k, h in nube.items.items():
+        if k not in local:
+            plan.faltan.append(k)
+        elif local[k] != h:
+            plan.distintos.append(k)
+    plan.solo_locales = [k for k in local if k not in nube.items]
+    for clave, sha in nube.archivos.items():
+        if clave not in archivos_locales:
+            plan.archivos_faltan.append(clave)
+        elif archivos_locales[clave] != sha:
+            plan.archivos_distintos.append(clave)
+    orden = {t: i for i, t in enumerate(ORDEN_DE_TIPOS)}
+    for lista in (plan.faltan, plan.distintos, plan.solo_locales):
+        lista.sort(key=lambda k: (orden.get(k.partition("/")[0], 99), k))
+    return plan
 
 
 def filtrar(sobres: Iterable[Sobre], opciones: Opciones) -> list[Sobre]:

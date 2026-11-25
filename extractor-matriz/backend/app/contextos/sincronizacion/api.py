@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import uuid
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.compartido.seguridad import proyecto_valido
@@ -21,10 +23,20 @@ from app.compartido.sobre import ESQUEMA, Sobre
 from app.contextos.sincronizacion.adaptadores.cliente_http import validar_url
 from app.contextos.sincronizacion.aplicacion.ingesta import EsquemaDesconocido, Ingesta, LoteInvalido
 from app.contextos.sincronizacion.aplicacion.sincronizador import SinConfigurar
-from app.contextos.sincronizacion.dominio.plan import ConflictoDeInstalacion, ErrorDeSincronizacion, Opciones
+from app.contextos.sincronizacion.dominio.plan import (
+    ConflictoDeInstalacion,
+    ErrorDeSincronizacion,
+    Opciones,
+    normalizar_correo,
+)
 from app.contextos.sincronizacion.puertos import Destino
 
 # ----------------------------------------------------------------------------------------------------- locales
+
+
+class CorreoNuevo(BaseModel):
+    correo: str
+
 local = APIRouter(prefix="/api/v1/proyectos/{proyecto_id}/sincronizacion", tags=["sincronización"])
 
 
@@ -179,6 +191,64 @@ def corridas(request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido)
             for k in _c(request).destinos.ultimas(proyecto_id)]
 
 
+def _con_nube(c: Any, proyecto_id: uuid.UUID, accion: Any) -> dict[str, Any]:
+    _exigir_configurada(c, proyecto_id)
+    try:
+        resultado: dict[str, Any] = accion(c.sincronizador.conectar(proyecto_id)[1])
+        return resultado
+    except ErrorDeSincronizacion as e:
+        raise HTTPException(status_code=409 if e.codigo == 409 else 502, detail=str(e)) from e
+
+
+@local.get("/lectores")
+def lectores(request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido)) -> dict[str, Any]:
+    """Quién puede entrar al visor de la nube: los fijos (variable de Render) y los agregados desde aquí."""
+    return _con_nube(_c(request), proyecto_id, lambda n: n.lectores())
+
+
+@local.post("/lectores")
+def alta_de_lector(datos: CorreoNuevo, request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido)) -> dict[str, Any]:
+    return _con_nube(_c(request), proyecto_id, lambda n: n.agregar_lector(datos.correo))
+
+
+@local.delete("/lectores")
+def baja_de_lector(correo: str, request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido)) -> dict[str, Any]:
+    return _con_nube(_c(request), proyecto_id, lambda n: n.quitar_lector(correo))
+
+
+class PedidoDeRestauracion(BaseModel):
+    reemplazar: bool = False
+
+
+@local.post("/restaurar/plan")
+def plan_de_restauracion(request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido)) -> dict[str, Any]:
+    """Qué bajaría «Descargar proyecto desde la nube»: lo que falta, lo que difiere y lo que solo hay aquí."""
+    c = _c(request)
+    _exigir_configurada(c, proyecto_id)
+    try:
+        resultado: dict[str, Any] = c.agente.plan_de_restauracion(proyecto_id)
+        return resultado
+    except ErrorDeSincronizacion as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+
+@local.post("/restaurar")
+def restaurar(datos: PedidoDeRestauracion, request: Request,
+              proyecto_id: uuid.UUID = Depends(proyecto_valido)) -> dict[str, bool]:
+    """Baja el proyecto de la nube en segundo plano (nunca borra nada local). Sin `reemplazar`, se rehúsa si hay
+    diferencias."""
+    c = _c(request)
+    _exigir_configurada(c, proyecto_id)
+    c.agente.restaurar(proyecto_id, reemplazar=datos.reemplazar)
+    return {"aceptado": True}
+
+
+@local.get("/restaurar/estado")
+def estado_de_restauracion(request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido)) -> dict[str, Any]:
+    resultado: dict[str, Any] = _c(request).agente.estado_de_restauracion(proyecto_id)
+    return resultado
+
+
 def _utc(t: datetime) -> str:
     """SQLite devuelve las fechas sin zona: son UTC, y el navegador debe saberlo."""
     return (t if t.tzinfo else t.replace(tzinfo=UTC)).astimezone(UTC).isoformat()
@@ -239,6 +309,69 @@ async def subir_archivo(request: Request, clave: str, _: None = Depends(servicio
     except LoteInvalido as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
     return {"clave": clave, "tamano": len(datos)}
+
+
+@nube.get("/proyectos")
+def proyectos_de_la_nube(_: None = Depends(servicio_autenticado), i: Ingesta = Depends(_ingesta)) -> list[dict[str, str]]:
+    return i.proyectos()
+
+
+@nube.get("/sobres")
+def bajar_sobres(proyecto: uuid.UUID, tipo: str, _: None = Depends(servicio_autenticado),
+                 i: Ingesta = Depends(_ingesta)) -> StreamingResponse:
+    """Los sobres de un tipo, uno por línea (NDJSON): el equipo los aplica sin cargar todo en memoria."""
+    try:
+        sobres = i.sobres_de(proyecto, tipo)
+    except LoteInvalido as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    return StreamingResponse((json.dumps(s.a_json(), ensure_ascii=False) + "\n" for s in sobres),
+                             media_type="application/x-ndjson")
+
+
+@nube.get("/archivos")
+def bajar_archivo(clave: str, _: None = Depends(servicio_autenticado), i: Ingesta = Depends(_ingesta)) -> Response:
+    try:
+        datos, sha = i.leer_archivo(clave)
+    except LoteInvalido as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=f"No existe el archivo {clave}") from e
+    return Response(datos, media_type="application/octet-stream", headers={"X-Sha256": sha})
+
+
+def _lectores_json(c: Any) -> dict[str, Any]:
+    return {"fijos": sorted(c.ajustes.lectores),
+            "agregados": [{"correo": k, "agregado_en": _utc(t)} for k, t in c.lectores.agregados()]}
+
+
+@nube.get("/lectores")
+def ver_lectores(request: Request, _: None = Depends(servicio_autenticado)) -> dict[str, Any]:
+    return _lectores_json(_c(request))
+
+
+@nube.put("/lectores")
+def agregar_lector(datos: CorreoNuevo, request: Request, _: None = Depends(servicio_autenticado)) -> dict[str, Any]:
+    c = _c(request)
+    try:
+        correo = normalizar_correo(datos.correo)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    c.lectores.agregar(correo)
+    return _lectores_json(c)
+
+
+@nube.delete("/lectores")
+def quitar_lector(correo: str, request: Request, _: None = Depends(servicio_autenticado)) -> dict[str, Any]:
+    c = _c(request)
+    try:
+        correo = normalizar_correo(correo)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    if correo in c.ajustes.lectores:
+        raise HTTPException(status_code=409, detail=f"{correo} es un lector fijo (variable LECTORES_PERMITIDOS de la "
+                                                    "nube): se quita allí, no desde el panel")
+    c.lectores.quitar(correo)
+    return _lectores_json(c)
 
 
 class LoteEnviado(BaseModel):

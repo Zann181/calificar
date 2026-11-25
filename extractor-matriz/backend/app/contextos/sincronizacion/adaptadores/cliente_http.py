@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
+from collections.abc import Iterable
 from typing import Any
 from urllib.parse import urlparse
 
@@ -77,6 +79,34 @@ class ClienteHttp:
             cab["X-Tomar-Control"] = "1"
         d = self._pedir("PUT", "/lote", json=cuerpo, headers=cab).json()
         return ResultadoLote(revision=d["revision"], aplicados=d["aplicados"], iguales=d["iguales"])
+
+
+    def proyectos(self) -> list[dict[str, str]]:
+        resultado: list[dict[str, str]] = self._pedir("GET", "/proyectos").json()
+        return resultado
+
+    def sobres(self, proyecto_id: uuid.UUID, tipo: str) -> Iterable[Sobre]:
+        r = self._pedir("GET", "/sobres", params={"proyecto": str(proyecto_id), "tipo": tipo})
+        for linea in r.text.splitlines():
+            if linea.strip():
+                yield Sobre.desde_json(json.loads(linea))
+
+    def bajar_archivo(self, clave: str) -> tuple[bytes, str]:
+        r = self._pedir("GET", "/archivos", params={"clave": clave})
+        return r.content, r.headers.get("x-sha256", "")
+
+
+    def lectores(self) -> dict[str, Any]:
+        d: dict[str, Any] = self._pedir("GET", "/lectores").json()
+        return d
+
+    def agregar_lector(self, correo: str) -> dict[str, Any]:
+        d: dict[str, Any] = self._pedir("PUT", "/lectores", json={"correo": correo}).json()
+        return d
+
+    def quitar_lector(self, correo: str) -> dict[str, Any]:
+        d: dict[str, Any] = self._pedir("DELETE", "/lectores", params={"correo": correo}).json()
+        return d
 
 
 def _detalle(r: httpx.Response) -> str:

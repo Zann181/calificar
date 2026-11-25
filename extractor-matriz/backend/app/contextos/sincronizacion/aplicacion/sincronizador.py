@@ -38,6 +38,8 @@ from app.contextos.sincronizacion.puertos import (
 )
 
 log = logging.getLogger("sincronizacion")
+UMBRAL_BORRADO_MINIMO = 10  # hasta tantos elementos se borran sin preguntar
+UMBRAL_BORRADO_FRACCION = 0.10  # …o hasta esta fracción de lo que la nube tiene, lo que sea mayor
 Progreso = Callable[[str, int, int], None]  # (fase, hechos, total)
 
 
@@ -113,6 +115,13 @@ class Sincronizador:
     def _ejecutar(self, corrida: Corrida, destino: Destino, nube: DestinoRemoto, tomar_control: bool, todo: bool,
                   progreso: Progreso) -> None:
         plan, inicial, _, archivos = self.plan(destino, nube, todo=todo)
+        # Valla contra el desastre: si el equipo perdió datos (base vacía, copia vieja), borrar lo que «sobra» en la
+        # nube destruiría el único resguardo. Un borrado masivo no se envía solo: hay que pedirlo («Reenviar todo»).
+        if not todo and len(plan.eliminar) > max(UMBRAL_BORRADO_MINIMO, len(inicial.items) * UMBRAL_BORRADO_FRACCION):
+            raise ErrorDeSincronizacion(
+                f"Se detuvo para no borrar la copia de la nube: este equipo tiene {len(plan.eliminar)} elementos menos "
+                f"que ella (de {len(inicial.items)}). Si perdió datos, use «Descargar proyecto desde la nube»; si fue a "
+                "propósito, use «Reenviar todo».")
         total = plan.pendientes
         hechos = 0
         for clave in plan.archivos:

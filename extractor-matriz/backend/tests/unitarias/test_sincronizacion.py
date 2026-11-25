@@ -169,3 +169,4 @@ def test_agente_pasa_reenviar_todo_y_tomar_control() -> None:
     agente.ahora(d.proyecto_id, todo=True, tomar_control=True)
     agente._una_vuelta()
     assert sinc.llamadas[0]["todo"] is True and sinc.llamadas[0]["tomar_control"] is True
+

@@ -477,6 +477,11 @@ export function App() {
           )}
           <div className="cuenta">
             {proyecto && escritura && <BotonExportar pid={proyecto.id} />}
+            {proyecto && !escritura && (
+              <a className="enlace-boton" href={api.urlExcel(proyecto.id)} download title="Descargar la matriz en Excel (.xlsx)">
+                <Icono nombre="bajar" tam={18} /> Exportar
+              </a>
+            )}
           </div>
         </header>
       )}

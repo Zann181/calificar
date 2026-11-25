@@ -463,3 +463,246 @@ def test_api_local_ajustes_probar_y_el_token_no_se_devuelve(mundo: Mundo) -> Non
     corridas = mundo.web_local.get(f"{p}/corridas").json()
     assert corridas and corridas[0]["estado"] == "ok"
     assert TOKEN not in mundo.web_local.get(f"{p}/corridas").text
+
+
+# ------------------------------------------------------------------------------- restauración (Fase 2)
+def _equipo_nuevo(mundo: Mundo, fabrica_nuevo: Callable[[], Session]) -> tuple[Contenedor, ClienteHttp]:
+    """Un equipo sin nada (ni siquiera el proyecto) y su conexión a la nube."""
+    c = construir(Settings(_env_file=None, despachador_en_servidor=False), fabrica=fabrica_nuevo,
+                  almacen=AlmacenEnMemoria(), conversor=ConversorFijo(FIXTURES / "mineru"))
+    return c, ClienteHttp(URL, TOKEN, "equipo-nuevo", cliente=mundo.http_nube)
+
+
+def test_restaurar_un_equipo_vacio_deja_todo_idéntico(mundo: Mundo, fabrica_nuevo: Callable[[], Session]) -> None:
+    mundo.local.sincronizador.pasada(mundo.pid)
+    nuevo, nube = _equipo_nuevo(mundo, fabrica_nuevo)
+    assert [p["id"] for p in nube.proyectos()] == [str(mundo.pid)]
+    m = nube.manifiesto(mundo.pid)
+    plan = nuevo.restaurador.planear(nube, mundo.pid, m)
+    assert len(plan.faltan) == len(m.items) and not plan.hay_conflictos and plan.solo_locales == []
+    r = nuevo.restaurador.ejecutar(nube, mundo.pid, m, reemplazar=False)
+    assert r.agregados == len(m.items) and r.archivos == len(m.archivos) >= 3
+    assert _manifiesto(nuevo, mundo.pid) == _manifiesto(mundo.local, mundo.pid)
+    # La API del equipo restaurado responde igual que la del original, PDF incluido.
+    web = TestClient(crear_app(Settings(_env_file=None, despachador_en_servidor=False), contenedor=nuevo))
+    p = f"/api/v1/proyectos/{mundo.pid}"
+    for ruta in (f"{p}/matriz/filas?pagina=1&tam=500", f"{p}/articulos", f"{p}/extracciones/{mundo.ext_id}",
+                 f"{p}/articulos/{mundo.aid}/documento", f"{p}/matriz/filas/1/celdas/Muestra"):
+        assert web.get(ruta).json() == mundo.web_local.get(ruta).json(), ruta
+    pdf = f"{p}/articulos/{mundo.aid}/pdf"
+    assert web.get(pdf).content == mundo.web_local.get(pdf).content
+    # Idempotente: restaurar de nuevo no encuentra nada que bajar.
+    assert nuevo.restaurador.planear(nube, mundo.pid, nube.manifiesto(mundo.pid)).vacio
+    # Y no generó eventos: el equipo restaurado no tiene nada pendiente de «ocurrir».
+    assert nuevo.despachador.despachar_pendientes() == 0
+
+
+def test_restaurar_con_diferencias_se_rehusa_y_con_reemplazar_deja_la_version_de_la_nube(
+        mundo: Mundo, fabrica_nuevo: Callable[[], Session]) -> None:
+    from app.contextos.sincronizacion.aplicacion.restaurador import RestauracionRechazada
+
+    mundo.local.sincronizador.pasada(mundo.pid)
+    nuevo, nube = _equipo_nuevo(mundo, fabrica_nuevo)
+    nuevo.restaurador.ejecutar(nube, mundo.pid, nube.manifiesto(mundo.pid), reemplazar=False)
+    with nuevo.fabrica() as s:  # el equipo nuevo cambia una celda y agrega una fila que la nube no tiene
+        s.execute(update(RegistroCelda).where(RegistroCelda.clave == "Muestra").values(valor=12345))
+        fila = s.scalars(select(RegistroFila).where(RegistroFila.estudio == 4)).one()
+        s.add(RegistroFila(id=uuid.uuid4(), proyecto_id=fila.proyecto_id, estudio=999, documento=999, origen="HEREDADA",
+                           trazabilidad={}, creado_en=fila.creado_en, actualizado_en=fila.actualizado_en,
+                           version_desactualizada=False, aprobada=False))
+        s.commit()
+    m = nube.manifiesto(mundo.pid)
+    plan = nuevo.restaurador.planear(nube, mundo.pid, m)
+    assert plan.hay_conflictos and plan.distintos and len(plan.solo_locales) == 1
+    with pytest.raises(RestauracionRechazada):
+        nuevo.restaurador.ejecutar(nube, mundo.pid, m, reemplazar=False)
+    r = nuevo.restaurador.ejecutar(nube, mundo.pid, m, reemplazar=True)
+    assert r.reemplazados == len(plan.distintos) and len(r.solo_locales) == 1
+    # Lo de la nube volvió; la fila que solo existía aquí no se borró.
+    local = _manifiesto(nuevo, mundo.pid)
+    assert all(local[k] == h for k, h in m.items.items()) and len(local) == len(m.items) + 1
+
+
+def test_restaurar_sobre_una_base_con_otro_proyecto_del_mismo_nombre_explica_el_choque(
+        mundo: Mundo, fabrica_nuevo: Callable[[], Session]) -> None:
+    from app.compartido.sobre import hash_de  # noqa: F401
+    from app.contextos.sincronizacion.dominio.plan import ErrorDeSincronizacion
+
+    mundo.local.sincronizador.pasada(mundo.pid)
+    nuevo, nube = _equipo_nuevo(mundo, fabrica_nuevo)
+    nuevo_proyecto(nuevo, "Felicidad y desempeño")  # como si hubiera corrido «semilla»
+    with pytest.raises(ErrorDeSincronizacion, match="semilla"):
+        nuevo.restaurador.ejecutar(nube, mundo.pid, nube.manifiesto(mundo.pid), reemplazar=False)
+
+
+def test_api_local_restaurar_en_segundo_plano(mundo: Mundo) -> None:
+    import time
+
+    p = f"/api/v1/proyectos/{mundo.pid}/sincronizacion"
+    mundo.local.sincronizador.pasada(mundo.pid)
+    with mundo.local.fabrica() as s:  # se pierde una fila local
+        fila = s.scalars(select(RegistroFila).where(RegistroFila.estudio == 6)).one()
+        s.execute(delete(RegistroCelda).where(RegistroCelda.fila_id == fila.id))
+        s.execute(delete(RegistroFila).where(RegistroFila.id == fila.id))
+        s.commit()
+    plan = mundo.web_local.post(f"{p}/restaurar/plan").json()
+    assert plan["faltan"] == 1 and plan["hay_conflictos"] is False
+    assert mundo.web_local.post(f"{p}/restaurar", json={"reemplazar": False}).json() == {"aceptado": True}
+    for _ in range(100):
+        e = mundo.web_local.get(f"{p}/restaurar/estado").json()
+        if e["estado"] != "restaurando":
+            break
+        time.sleep(0.2)
+    assert e["estado"] == "ok" and e["resultado"]["agregados"] == 1, e
+    assert _manifiesto(mundo.local, mundo.pid) == _manifiesto(mundo.nube, mundo.pid)
+    assert mundo.local.sincronizador.pasada(mundo.pid).sobres == 0  # y no hay nada que volver a subir
+
+
+def test_endpoints_de_descarga_exigen_el_token_de_servicio(mundo: Mundo) -> None:
+    mundo.local.sincronizador.pasada(mundo.pid)
+    anonimo = TestClient(mundo.http_nube.app, base_url=URL)
+    anonimo.cookies.set("sesion", _cookie_de_sesion())  # ni un lector con sesión
+    for ruta, params in (("/api/v1/sync/proyectos", {}), ("/api/v1/sync/sobres", {"proyecto": str(mundo.pid), "tipo": "fila"}),
+                         ("/api/v1/sync/archivos", {"clave": "pdf/x"})):
+        assert anonimo.get(ruta, params=params).status_code == 401, ruta
+    cab = {"Authorization": f"Bearer {TOKEN}"}
+    assert mundo.http_nube.get("/api/v1/sync/sobres", params={"proyecto": str(mundo.pid), "tipo": "x"}, headers=cab).status_code == 422
+    assert mundo.http_nube.get("/api/v1/sync/archivos", params={"clave": "../x"}, headers=cab).status_code == 422
+    assert mundo.http_nube.get("/api/v1/sync/archivos", params={"clave": "pdf/no/existe"}, headers=cab).status_code == 404
+
+
+def test_exportar_excel_desde_la_nube_es_igual_al_local(mundo: Mundo) -> None:
+    import io
+
+    import openpyxl
+
+    mundo.local.sincronizador.pasada(mundo.pid)
+    ruta = f"/api/v1/proyectos/{mundo.pid}/exportaciones/matriz.xlsx"
+    desde_nube = mundo.lector.get(ruta)
+    assert desde_nube.status_code == 200 and "attachment" in desde_nube.headers["content-disposition"]
+    desde_local = mundo.web_local.get(ruta)
+    a = openpyxl.load_workbook(io.BytesIO(desde_local.content))
+    b = openpyxl.load_workbook(io.BytesIO(desde_nube.content))
+    assert a.sheetnames == b.sheetnames
+    for hoja in a.sheetnames:
+        va = [[c.value for c in fila] for fila in a[hoja].iter_rows()]
+        vb = [[c.value for c in fila] for fila in b[hoja].iter_rows()]
+        assert va == vb, hoja
+    # La nube no guardó nada para generarlo: sigue sin escribir.
+    with mundo.nube.fabrica() as s:
+        from app.contextos.biblioteca.adaptadores.tablas import RegistroArchivo
+
+        assert not [k for k in s.scalars(select(RegistroArchivo.clave)) if k.startswith("exportaciones/")]
+    assert mundo.lector.post(f"/api/v1/proyectos/{mundo.pid}/exportaciones").status_code == 405
+    assert TestClient(mundo.http_nube.app, base_url=URL).get(ruta).status_code == 401
+
+
+# ------------------------------------------------------------------------------- lectores desde el panel (Fase 2)
+def test_alta_y_baja_de_lectores_desde_el_panel_local(mundo: Mundo) -> None:
+    mundo.local.sincronizador.pasada(mundo.pid)
+    p = f"/api/v1/proyectos/{mundo.pid}/sincronizacion/lectores"
+    ruta = f"/api/v1/proyectos/{mundo.pid}/articulos"
+    nuevo = TestClient(mundo.http_nube.app, base_url=URL)
+    nuevo.cookies.set("sesion", _cookie_de_sesion("Jurado@Ejemplo.co"))
+    assert nuevo.get(ruta).status_code == 401  # todavía no está en la lista
+
+    r = mundo.web_local.post(p, json={"correo": "  Jurado@Ejemplo.co "}).json()
+    assert r["fijos"] == [LECTOR] and [x["correo"] for x in r["agregados"]] == ["jurado@ejemplo.co"]
+    assert nuevo.get(ruta).status_code == 200  # el alta rige de inmediato
+    assert mundo.web_local.get(p).json()["agregados"][0]["correo"] == "jurado@ejemplo.co"
+    # Repetir el alta no duplica; un texto que no es correo se rechaza; un lector fijo no se quita desde aquí.
+    assert len(mundo.web_local.post(p, json={"correo": "jurado@ejemplo.co"}).json()["agregados"]) == 1
+    assert mundo.web_local.post(p, json={"correo": "no-es-correo"}).status_code == 502  # la nube lo rechaza (422)
+    assert mundo.web_local.delete(p, params={"correo": LECTOR}).status_code == 409
+
+    # La baja también rige de inmediato, aunque su cookie siga firmada y vigente.
+    assert mundo.web_local.delete(p, params={"correo": "jurado@ejemplo.co"}).json()["agregados"] == []
+    assert nuevo.get(ruta).status_code == 401
+
+
+def test_los_lectores_no_se_administran_con_sesion_ni_sin_token(mundo: Mundo) -> None:
+    for metodo, params in (("get", {}), ("put", {}), ("delete", {"correo": "a@b.co"})):
+        r = getattr(mundo.lector, metodo)("/api/v1/sync/lectores", **({"params": params} if params else {}))
+        assert r.status_code == 401
+    cab = {"Authorization": f"Bearer {TOKEN}"}
+    assert mundo.http_nube.put("/api/v1/sync/lectores", json={"correo": "x"}, headers=cab).status_code == 422
+
+
+def test_el_inicio_de_sesion_acepta_a_un_lector_agregado(mundo: Mundo) -> None:
+    import time
+
+    mundo.nube.lectores.agregar("nuevo@ejemplo.co")
+    reclamos = {"email": "nuevo@ejemplo.co", "email_verified": True, "aud": "id-de-google",
+                "iss": "https://accounts.google.com", "exp": time.time() + 600}
+    app = crear_app(mundo.ajustes_nube, contenedor=mundo.nube, intercambiar_codigo=lambda code, uri: reclamos)
+    c = TestClient(app, base_url=URL, follow_redirects=False)
+    estado = c.get("/api/v1/auth/google/entrar").headers["location"].split("state=")[1].split("&")[0]
+    assert c.get("/api/v1/auth/google/retorno", params={"code": "c", "state": estado}).status_code == 302
+    assert c.get("/api/v1/auth/yo").json() == {"correo": "nuevo@ejemplo.co"}
+
+
+def test_un_lote_aplicado_avisa_a_las_conexiones_abiertas_y_los_eventos_exigen_sesion(mundo: Mundo) -> None:
+    import asyncio
+
+    anonimo = TestClient(mundo.http_nube.app, base_url=URL)
+    assert anonimo.get("/api/v1/eventos").status_code == 401
+    assert mundo.http_nube.get("/api/v1/eventos", headers={"Authorization": f"Bearer {TOKEN}"}).status_code == 401
+
+    async def prueba() -> tuple[int, int]:
+        cola = mundo.nube.difusor.suscribir()
+        corrida = await asyncio.to_thread(mundo.local.sincronizador.pasada, mundo.pid)
+        assert corrida.estado == "ok"
+        ultimo = await asyncio.wait_for(cola.get(), 2)
+        while not cola.empty():
+            ultimo = cola.get_nowait()
+        return ultimo, mundo.nube.ingesta.revision()
+
+    avisada, real = asyncio.run(prueba())
+    assert avisada == real >= 1
+    # Sin cambios, el lote siguiente no avisa a nadie.
+    async def sin_cambios() -> bool:
+        cola = mundo.nube.difusor.suscribir()
+        await asyncio.to_thread(mundo.local.sincronizador.pasada, mundo.pid)
+        await asyncio.sleep(0.1)
+        return cola.empty()
+
+    assert asyncio.run(sin_cambios())
+
+
+def test_un_equipo_que_perdio_datos_no_borra_la_nube_y_la_restauracion_lo_repara(mundo: Mundo) -> None:
+    mundo.local.sincronizador.pasada(mundo.pid)
+    antes = _manifiesto(mundo.nube, mundo.pid)
+    with mundo.local.fabrica() as s:  # el equipo pierde 30 filas (copia vieja, base dañada…)
+        ids = list(s.scalars(select(RegistroFila.id).where(RegistroFila.estudio > 40)))[:30]
+        s.execute(delete(RegistroCelda).where(RegistroCelda.fila_id.in_(ids)))
+        s.execute(delete(RegistroFila).where(RegistroFila.id.in_(ids)))
+        s.commit()
+    c = mundo.local.sincronizador.pasada(mundo.pid)
+    assert c.estado == "error" and "Se detuvo para no borrar la copia de la nube" in c.detalle
+    assert _manifiesto(mundo.nube, mundo.pid) == antes  # la nube quedó intacta
+    # Se repara bajando de la nube; después ya no hay nada que borrar ni que subir.
+    p = f"/api/v1/proyectos/{mundo.pid}/sincronizacion"
+    plan = mundo.web_local.post(f"{p}/restaurar/plan").json()
+    assert plan["faltan"] == 30 and not plan["hay_conflictos"]
+    mundo.local.agente.restaurar(mundo.pid, reemplazar=False)
+    import time
+
+    for _ in range(100):
+        if mundo.local.agente.estado_de_restauracion(mundo.pid)["estado"] != "restaurando":
+            break
+        time.sleep(0.2)
+    assert mundo.local.agente.estado_de_restauracion(mundo.pid)["estado"] == "ok"
+    assert mundo.local.sincronizador.pasada(mundo.pid).estado == "ok"
+    assert _manifiesto(mundo.local, mundo.pid) == antes
+
+
+def test_borrar_a_proposito_con_reenviar_todo_si_se_permite(mundo: Mundo) -> None:
+    mundo.local.sincronizador.pasada(mundo.pid)
+    with mundo.local.fabrica() as s:
+        ids = list(s.scalars(select(RegistroFila.id).where(RegistroFila.estudio > 40)))[:30]
+        s.execute(delete(RegistroCelda).where(RegistroCelda.fila_id.in_(ids)))
+        s.execute(delete(RegistroFila).where(RegistroFila.id.in_(ids)))
+        s.commit()
+    c = mundo.local.sincronizador.pasada(mundo.pid, todo=True, tomar_control=True)
+    assert c.estado == "ok" and c.eliminados == 30
+    assert _manifiesto(mundo.nube, mundo.pid) == _manifiesto(mundo.local, mundo.pid)

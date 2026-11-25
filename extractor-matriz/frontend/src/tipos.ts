@@ -363,3 +363,26 @@ export type ResultadoProbar = {
   ok: boolean;
   pasos: { nombre: string; ok: boolean; detalle: string }[];
 };
+
+export type PlanRestauracion = {
+  faltan: number;
+  distintos: number;
+  solo_locales: number;
+  archivos_faltan: number;
+  archivos_distintos: number;
+  hay_conflictos: boolean;
+  vacio: boolean;
+  ejemplos_distintos: string[];
+  ejemplos_solo_locales: string[];
+};
+
+export type EstadoRestauracion = {
+  estado: "ninguna" | "restaurando" | "ok" | "error";
+  hechos: number;
+  total: number;
+  fase: string;
+  detalle: string;
+  resultado: { agregados: number; archivos: number; bytes: number; reemplazados: number; solo_locales: number } | null;
+};
+
+export type LectoresNube = { fijos: string[]; agregados: { correo: string; agregado_en: string }[] };

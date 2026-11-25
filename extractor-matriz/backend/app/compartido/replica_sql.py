@@ -68,6 +68,11 @@ def aplicar_registro(sesion: Session, clase: type[Base], datos: dict[str, Any], 
     return True
 
 
+def listar_proyectos(fabrica: Any) -> list[dict[str, str]]:
+    with fabrica() as s:
+        return [{"id": str(p.id), "nombre": p.nombre} for p in s.scalars(select(RegistroProyecto).order_by(RegistroProyecto.nombre))]
+
+
 class ReplicaDeProyecto:
     """El proyecto mismo (tabla compartida `proyectos`): el primer sobre de toda réplica."""
 

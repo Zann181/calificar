@@ -2570,3 +2570,52 @@ button.estado.accionable:focus-visible .accion-extraer {
 .resumen-ext {
   font-size: 13px;
 }
+
+a.enlace-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--azul);
+  text-decoration: none;
+  font-size: 13px;
+}
+a.enlace-boton:hover {
+  background: var(--relleno-2);
+}
+.restaurar-plan,
+.lista-lectores {
+  font-size: 13px;
+}
+.lista-lectores {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+}
+.lista-lectores li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--separador);
+}
+.fila-alta {
+  display: flex;
+  gap: 8px;
+}
+.fila-alta input {
+  flex: 1;
+}
+.barra-restauracion {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--relleno);
+  overflow: hidden;
+  margin: 6px 0;
+}
+.barra-restauracion > div {
+  height: 100%;
+  background: var(--azul);
+  transition: width 0.3s;
+}

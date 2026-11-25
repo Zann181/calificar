@@ -61,7 +61,10 @@ def lector_de(request: Request, ajustes: Settings) -> str | None:
     except BadSignature:
         return None
     correo = str(datos.get("correo", "")).lower()
-    return correo if correo in ajustes.lectores else None
+    if correo in ajustes.lectores:
+        return correo
+    c = getattr(request.app.state, "contenedor", None)  # lectores agregados desde el panel local (Fase 2)
+    return correo if c is not None and correo in c.lectores.correos() else None
 
 
 def instalar(app: FastAPI, ajustes: Settings, intercambiar: IntercambiarCodigo | None = None) -> None:
@@ -124,7 +127,9 @@ def instalar(app: FastAPI, ajustes: Settings, intercambiar: IntercambiarCodigo |
         correo = str(claims.get("email", "")).lower()
         valido = (claims.get("aud") == ajustes.google_client_id and claims.get("iss") in EMISORES
                   and claims.get("email_verified") in (True, "true") and float(claims.get("exp", 0)) > time.time())
-        if not valido or correo not in ajustes.lectores:
+        contenedor = getattr(request.app.state, "contenedor", None)
+        agregados = contenedor.lectores.correos() if contenedor is not None else set()
+        if not valido or (correo not in ajustes.lectores and correo not in agregados):
             return _pagina(403, "Este correo no tiene acceso",
                            "La lista de lectores es cerrada. Pida a quien administra el proyecto que agregue su correo.")
         resp = RedirectResponse("/", status_code=302)

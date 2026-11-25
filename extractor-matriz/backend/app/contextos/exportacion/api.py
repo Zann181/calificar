@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 
 from app.compartido.seguridad import proyecto_valido
@@ -17,6 +17,17 @@ enrutador = APIRouter(prefix="/api/v1/proyectos/{proyecto_id}/exportaciones", ta
 def caso(request: Request) -> ExportarMatriz:
     c: ExportarMatriz = request.app.state.contenedor.exportar
     return c
+
+
+@enrutador.get("/matriz.xlsx")
+def descargar_directo(proyecto_id: uuid.UUID = Depends(proyecto_valido), c: ExportarMatriz = Depends(caso)) -> Response:
+    """Genera y entrega el Excel sin guardarlo: sirve en la nube de solo lectura (ADR 0009, Fase 2) y en local."""
+    try:
+        datos, _, _ = c.generar(proyecto_id)
+    except LookupError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return Response(datos, media_type=TIPO_XLSX, headers={
+        "Content-Disposition": 'attachment; filename="Matriz_de_sintesis.xlsx"', "Cache-Control": "private, no-store"})
 
 
 @enrutador.post("")

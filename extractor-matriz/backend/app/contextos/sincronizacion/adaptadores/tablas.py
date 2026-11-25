@@ -62,6 +62,15 @@ class RegistroEstadoNube(Base):
     actualizado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class RegistroLector(Base):
+    """Solo en la nube: lectores agregados desde el panel local (los fijos están en LECTORES_PERMITIDOS)."""
+
+    __tablename__ = "sync_lectores"
+
+    correo: Mapped[str] = mapped_column(String(200), primary_key=True)
+    agregado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 def _destino(r: RegistroDestino) -> Destino:
     return Destino(proyecto_id=r.proyecto_id, url=r.url, automatico=r.automatico, pausado=r.pausado,
                    agrupar_s=r.agrupar_s, reconciliar_s=r.reconciliar_s, opciones=Opciones.desde_dict(r.opciones),
@@ -143,3 +152,63 @@ class EstadoDeNubeSql:
                 s.rollback()
                 raise
             return estado.revision
+
+
+class TransaccionLocalSql:
+    def __init__(self, fabrica: Callable[[], Session]) -> None:
+        self._fabrica = fabrica
+
+    def ejecutar(self, trabajo: Callable[[Any], None]) -> None:
+        with self._fabrica() as s:
+            try:
+                trabajo(s)
+                s.commit()
+            except Exception:
+                s.rollback()
+                raise
+
+
+class LectoresSql:
+    """Lectores de la nube. Se guarda en memoria `vigencia_s` segundos (el acceso se revisa en cada pedido y no debe
+    despertar la base cada vez); cualquier alta o baja renueva la copia al instante."""
+
+    def __init__(self, fabrica: Callable[[], Session], vigencia_s: float = 30.0,
+                 reloj: Callable[[], float] | None = None) -> None:
+        import time
+
+        self._fabrica, self._vigencia = fabrica, vigencia_s
+        self._reloj = reloj or time.monotonic
+        self._copia: set[str] = set()
+        self._desde = -1e18
+
+    def agregados(self) -> list[tuple[str, datetime]]:
+        with self._fabrica() as s:
+            return [(r.correo, r.agregado_en) for r in s.scalars(select(RegistroLector).order_by(RegistroLector.correo))]
+
+    def correos(self) -> set[str]:
+        if self._reloj() - self._desde > self._vigencia:
+            try:
+                self._copia = {c for c, _ in self.agregados()}
+                self._desde = self._reloj()
+            except Exception:  # base dormida o caída: se sigue con la última copia conocida
+                pass
+        return set(self._copia)
+
+    def agregar(self, correo: str) -> bool:
+        with self._fabrica() as s:
+            if s.get(RegistroLector, correo) is not None:
+                return False
+            s.add(RegistroLector(correo=correo, agregado_en=ahora()))
+            s.commit()
+        self._desde = -1e18
+        return True
+
+    def quitar(self, correo: str) -> bool:
+        with self._fabrica() as s:
+            r = s.get(RegistroLector, correo)
+            if r is None:
+                return False
+            s.delete(r)
+            s.commit()
+        self._desde = -1e18
+        return True

@@ -40,7 +40,20 @@ export function IndicadorVisor() {
   useEffect(() => {
     let vivo = true;
     let ultima: number | null = null;
+    let enVivo = false; // true mientras la conexión de eventos del servidor (SSE) está abierta
+    const recibir = (nueva: number) => {
+      setFallo(false);
+      if (ultima !== null && nueva !== ultima) {
+        setCambioEn(Date.now());
+        // Todo lo que se muestra se vuelve a pedir, salvo las capacidades.
+        qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "capacidades" });
+      }
+      ultima = nueva;
+      setRevision(nueva);
+    };
+    // Respaldo: sondeo de /revision cada 15 s. Solo corre cuando no hay conexión de eventos abierta.
     const sondear = async () => {
+      if (enVivo) return;
       try {
         // El servidor responde con ETag y `no-cache`: el navegador pregunta de forma condicional (304) por su cuenta.
         const r = await fetch("/api/v1/revision", { credentials: "same-origin" });
@@ -50,23 +63,29 @@ export function IndicadorVisor() {
           return;
         }
         if (!r.ok) throw new Error(String(r.status));
-        const { revision: nueva } = (await r.json()) as { revision: number };
-        setFallo(false);
-        if (ultima !== null && nueva !== ultima) {
-          setCambioEn(Date.now());
-          // Todo lo que se muestra se vuelve a pedir, salvo las capacidades.
-          qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "capacidades" });
-        }
-        ultima = nueva;
-        setRevision(nueva);
+        recibir(((await r.json()) as { revision: number }).revision);
       } catch {
         if (vivo) setFallo(true);
       }
     };
+    // Principal: eventos del servidor; la revisión llega al instante, sin consultar la base en cada vuelta.
+    let fuente: EventSource | null = null;
+    if (typeof EventSource !== "undefined") {
+      fuente = new EventSource("/api/v1/eventos", { withCredentials: true });
+      fuente.addEventListener("revision", (ev) => {
+        enVivo = true;
+        recibir((JSON.parse((ev as MessageEvent).data) as { revision: number }).revision);
+      });
+      fuente.onerror = () => {
+        enVivo = false; // el navegador reintenta solo; mientras, manda el sondeo
+        sondear();
+      };
+    }
     sondear();
     const id = setInterval(sondear, SONDEO_MS);
     return () => {
       vivo = false;
+      fuente?.close();
       clearInterval(id);
     };
   }, [qc]);

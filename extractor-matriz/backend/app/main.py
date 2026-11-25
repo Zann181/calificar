@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import api_extracciones, estado, modo_nube
+from app import api_extracciones, estado, eventos_nube, modo_nube
 from app.compartido import registro, seguridad
 from app.compartido.dominio import ErrorDeDominio, NoEncontrado
 from app.config import Settings, settings
@@ -82,6 +82,7 @@ def crear_app(ajustes: Settings | None = None, contenedor: Any = None,
     if ajustes.modo == "nube":
         modo_nube.instalar(app, ajustes, intercambiar_codigo)  # falla cerrada si falta configuración de acceso
         app.include_router(api_sincronizacion.nube)
+        app.include_router(eventos_nube.enrutador())
     else:
         app.include_router(api_sincronizacion.local)
     app.include_router(modo_nube.enrutador_de_capacidades(ajustes))

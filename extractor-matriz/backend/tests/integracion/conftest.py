@@ -76,6 +76,12 @@ def fabrica_nube(tmp_path: Path) -> Iterator[Callable[[], Session]]:
 
 
 @pytest.fixture
+def fabrica_nuevo(tmp_path: Path) -> Iterator[Callable[[], Session]]:
+    """Tercera base, vacía: un equipo nuevo que se restaura desde la nube."""
+    yield from _fabrica_nueva(tmp_path, "nuevo")
+
+
+@pytest.fixture
 def ajustes() -> Settings:
     return Settings(_env_file=None, despachador_en_servidor=False)
 
