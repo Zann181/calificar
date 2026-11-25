@@ -8,6 +8,7 @@
   --rojo: #ff3b30;
   --naranja: #ff9500;
   --amarillo: #ffcc00;
+  --nueva: #af52de; /* columnas agregadas por el libro v2.3 */
   --fondo: #f2f2f7;
   --fondo-2: #ffffff;
   --fondo-3: #f2f2f7;
@@ -44,6 +45,7 @@
     --rojo: #ff453a;
     --naranja: #ff9f0a;
     --amarillo: #ffd60a;
+    --nueva: #bf5af2;
     --fondo: #000000;
     --fondo-2: #1c1c1e;
     --fondo-3: #2c2c2e;
@@ -610,6 +612,28 @@ kbd {
 }
 .celda-verde {
   background: var(--c-verde);
+}
+.ag-cell.col-nueva {
+  border-left: 3px solid var(--nueva);
+  background-image: linear-gradient(color-mix(in srgb, var(--nueva) 11%, transparent), color-mix(in srgb, var(--nueva) 11%, transparent));
+}
+.ag-header-cell.cabecera-nueva {
+  background-color: color-mix(in srgb, var(--nueva) 16%, var(--fondo-2));
+  box-shadow: inset 0 3px 0 0 var(--nueva);
+  color: var(--nueva);
+}
+.marca-nueva {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--nueva);
+  font-weight: 600;
+}
+.marca-nueva i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--nueva);
 }
 .ag-row.fila-extraida .ag-cell[col-id="Estudio"] {
   font-weight: 700;

@@ -74,6 +74,7 @@ from app.contextos.matriz.aplicacion.casos_de_uso import (
     FilasDeExtraccion,
     ImportarMatriz,
     MarcarVersionDeFilas,
+    ReasignarDocumento,
     RevisarCelda,
 )
 from app.contextos.normas.adaptadores.repositorio_sql import UnidadDeTrabajoNormasSql
@@ -263,6 +264,7 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
         importar=ImportarMatriz(udt_mat, columnas_de_normas, LectorExcel(), almacen),
         consultas=consultas_matriz, marcar_version=MarcarVersionDeFilas(udt_mat),
         agregar_columnas=AgregarColumnasDelLibro(udt_mat, columnas_de_normas),
+        reasignar_documento=ReasignarDocumento(udt_mat),
         escribir_extraidas=EscribirFilasExtraidas(udt_mat), revisar=RevisarCelda(udt_mat, columnas_de_normas),
         escribir_extraccion=EscribirFilasDeExtraccion(udt_mat, columnas_de_normas),
     )

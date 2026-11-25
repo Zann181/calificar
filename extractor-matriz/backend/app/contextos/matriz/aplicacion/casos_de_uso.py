@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 from app.compartido.columnas import DefinicionDeColumna
-from app.compartido.dominio import ErrorDeDominio
+from app.compartido.dominio import ErrorDeDominio, ahora
 from app.compartido.normalizacion import norm
 from app.contextos.matriz.dominio import derivadas
 from app.contextos.matriz.dominio.fila import (
+    REVISADAS,
+    CambioDeCelda,
     Celda,
     EstadoRevision,
     Evidencia,
@@ -52,6 +55,19 @@ def _entero(valor: Any, que: str, fila_excel: int) -> int:
     return int(valor)
 
 
+def _muestras_provisionales(columnas: list[DefinicionDeColumna], filas: list[dict[str, Any]]) -> dict[int, int]:
+    """Número de muestra provisional por Estudio para las filas heredadas (ver derivadas.asignar_muestras)."""
+    col = next((c for c in columnas if c.es_derivada and (c.derivada or {}).get("muestra_provisional_por")), None)
+    if col is None or col.derivada is None:
+        return {}
+    datos = []
+    for v in filas:
+        e, d = v.get(CLAVE_ESTUDIO), v.get(CLAVE_DOCUMENTO)
+        if isinstance(e, int | float) and isinstance(d, int | float):
+            datos.append((int(e), int(d), v))
+    return derivadas.asignar_muestras(col.derivada, datos)
+
+
 class ImportarMatriz:
     """Importa la matriz actual como filas HEREDADAS, sin depurar valores (ida y vuelta exacta)."""
 
@@ -81,6 +97,8 @@ class ImportarMatriz:
             documentos: set[int] = set()
             fuera: list[dict[str, Any]] = []
             notas = 0
+            muestras = _muestras_provisionales(columnas, [
+                {c.clave: f.valores.get(c.posicion) for c in columnas} for f in leida.filas])
             for f in leida.filas:
                 valores = {c.clave: f.valores.get(c.posicion) for c in columnas}
                 estudio = _entero(valores[CLAVE_ESTUDIO], CLAVE_ESTUDIO, f.fila_excel)
@@ -98,7 +116,7 @@ class ImportarMatriz:
                 for col in columnas:  # las que calcula el programa (libro v2.3): provisionales en filas heredadas
                     if col.es_derivada:
                         fila.celdas[col.clave] = _celda_derivada(col, valores, {}, documento=documento,
-                                                                 provisional=True)
+                                                                 provisional=True, muestra=muestras.get(estudio, 1))
                         valores[col.clave] = fila.celdas[col.clave].valor
                 fuera_fila = [c.clave for c in columnas if not valor_permitido(c, valores[c.clave])]
                 if fuera_fila:
@@ -222,9 +240,9 @@ def _sin_anclas(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def _celda_derivada(col: DefinicionDeColumna, valores: dict[str, Any], trazabilidad: dict[str, Any], *,
-                    documento: int | None, provisional: bool = False) -> Celda:
+                    documento: int | None, provisional: bool = False, muestra: int = 1) -> Celda:
     """Celda de una columna que calcula el programa (libro v2.3): inferida, con el porqué; sin valor, pendiente."""
-    d = derivadas.calcular(col, valores, trazabilidad, documento=documento, provisional=provisional)
+    d = derivadas.calcular(col, valores, trazabilidad, documento=documento, provisional=provisional, muestra=muestra)
     if d.valor is None:
         return Celda.extraida(clave=col.clave, valor=None, estado_dato=None, tipo_valor=TipoValor.FALTANTE, evidencias=[])
     return Celda.extraida(clave=col.clave, valor=d.valor, estado_dato=None, tipo_valor=TipoValor.INFERIDO,
@@ -239,11 +257,16 @@ class ResultadoDeMigracion:
     calculadas: int
 
 
+def _es_provisional(celda: Celda) -> bool:
+    return celda.inferencia is not None and celda.inferencia.razonamiento.startswith("Provisional")
+
+
 class AgregarColumnasDelLibro:
     """Agrega a las filas ya guardadas las columnas que el libro activo trae y la fila no tiene (libro v2.3).
 
     Las derivables se calculan (ID muestra provisional, Cultura Hofstede, y las que salgan de la trazabilidad);
-    el resto queda pendiente. No lee PDF ni llama al modelo. Es idempotente.
+    el resto queda pendiente. También recalcula las celdas provisionales de las filas heredadas (por ejemplo, el
+    número de muestra por país y población). No lee PDF ni llama al modelo. Es idempotente.
     """
 
     def __init__(self, udt: FabricaUdT, columnas: ConsultaDeColumnas) -> None:
@@ -254,27 +277,93 @@ class AgregarColumnasDelLibro:
         version_id = self._columnas.version_activa_id(proyecto_id)
         agregadas = calculadas = filas_tocadas = 0
         with self._udt() as u:
-            for f in u.filas.todas(proyecto_id):
+            filas = u.filas.todas(proyecto_id)
+            muestras = _muestras_provisionales(columnas, [
+                {**f.valores(), CLAVE_ESTUDIO: f.estudio, CLAVE_DOCUMENTO: f.documento}
+                for f in filas if f.origen.value == "HEREDADA"])
+            for f in filas:
+                heredada = f.origen.value == "HEREDADA"
                 faltan = [c for c in columnas if c.clave not in f.celdas]
-                if not faltan:
+                # Se recalculan las derivadas provisionales (heredadas) y las de filas extraídas que nadie revisó.
+                refrescar = [c for c in columnas if c.es_derivada and c.clave in f.celdas
+                             and (_es_provisional(f.celdas[c.clave]) if heredada
+                                  else f.celdas[c.clave].estado_revision not in REVISADAS)]
+                if not faltan and not refrescar:
                     continue
-                filas_tocadas += 1
-                traz = ((f.trazabilidad.get("salida") or {}).get("trazabilidad") or {})                     if f.origen.value == "EXTRAIDA" else {}
+                traz = ((f.trazabilidad.get("salida") or {}).get("trazabilidad") or {}) if not heredada else {}
                 valores = f.valores()
-                for col in faltan:
+                cambio = False
+                for col in faltan + refrescar:
                     if col.es_derivada:
-                        celda = _celda_derivada(col, valores, traz, documento=f.documento,
-                                                provisional=f.origen.value == "HEREDADA")
-                        calculadas += celda.valor is not None
+                        celda = _celda_derivada(col, valores, traz, documento=f.documento, provisional=heredada,
+                                                muestra=muestras.get(f.estudio, 1))
                     else:
                         celda = Celda(clave=col.clave, valor=None, tipo_valor=TipoValor.FALTANTE,
                                       estado_revision=EstadoRevision.SIN_EVIDENCIA)
+                    if col in refrescar and celda.valor == f.celdas[col.clave].valor:
+                        continue
+                    nueva = col in faltan
                     f.celdas[col.clave] = celda
-                    agregadas += 1
-                f.version_libro_id = version_id
-                u.filas.agregar(f)
+                    cambio = True
+                    agregadas += nueva
+                    calculadas += celda.valor is not None
+                if cambio:
+                    filas_tocadas += 1
+                    f.version_libro_id = version_id
+                    u.filas.agregar(f)
             u.confirmar()
         return ResultadoDeMigracion(filas=filas_tocadas, celdas_agregadas=agregadas, calculadas=calculadas)
+
+
+class ReasignarDocumento:
+    """Cambia el Documento de un artículo (dato del equipo) y lo que de él depende: la celda Documento, la fila
+    de la salida guardada y el ID muestra (D<Documento>-M<n>) en la celda y en la trazabilidad.
+
+    Existe porque dos artículos con el mismo Documento comparten ID muestra y el metaanálisis de tres niveles los
+    tomaría por la misma muestra. Rechaza un Documento que ya usa otro artículo.
+    """
+
+    def __init__(self, udt: FabricaUdT) -> None:
+        self._udt = udt
+
+    def ejecutar(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID, documento: int, *, autor: str,
+                 motivo: str) -> int:
+        if documento < 1:
+            raise ErrorDeDominio("El Documento es un entero positivo")
+        with self._udt() as u:
+            filas = u.filas.todas(proyecto_id)
+            propias = [f for f in filas if f.articulo_id == articulo_id]
+            if not propias:
+                raise ErrorDeDominio("Ese artículo no tiene filas en la matriz")
+            ajeno = next((f for f in filas if f.documento == documento and f.articulo_id != articulo_id), None)
+            if ajeno is not None:
+                raise ErrorDeDominio(f"El Documento {documento} ya lo usa otro artículo (Estudio {ajeno.estudio})")
+            for f in propias:
+                anterior = f.documento
+                f.documento = documento
+                celda = f.celdas.get(CLAVE_DOCUMENTO)
+                if celda is not None:
+                    celda.historial.append(CambioDeCelda(autor=autor, fecha=ahora(), accion="REASIGNAR_DOCUMENTO",
+                                                         valor_anterior=celda.valor, valor_nuevo=documento,
+                                                         motivo=motivo))
+                    celda.valor = documento
+                salida = f.trazabilidad.get("salida") or {}
+                if isinstance(salida.get("fila"), dict):
+                    salida["fila"][CLAVE_DOCUMENTO] = documento
+                traz = salida.get("trazabilidad") or {}
+                if isinstance(traz.get("id_muestra"), str):
+                    traz["id_muestra"] = re.sub(r"^D\d+-", f"D{documento}-", traz["id_muestra"])
+                id_celda = f.celdas.get("ID muestra")
+                if id_celda is not None and isinstance(id_celda.valor, str):
+                    nuevo = re.sub(r"^D\d+-", f"D{documento}-", id_celda.valor)
+                    id_celda.historial.append(CambioDeCelda(
+                        autor=autor, fecha=ahora(), accion="REASIGNAR_DOCUMENTO", valor_anterior=id_celda.valor,
+                        valor_nuevo=nuevo, motivo=f"Documento {anterior} → {documento}: {motivo}"))
+                    id_celda.valor = nuevo
+                f.trazabilidad = {**f.trazabilidad, "salida": salida}
+                u.filas.agregar(f)
+            u.confirmar()
+            return len(propias)
 
 
 class EscribirFilasDeExtraccion:
@@ -383,6 +472,7 @@ class CasosDeMatriz:
     consultas: ConsultasDeMatriz
     marcar_version: MarcarVersionDeFilas
     agregar_columnas: AgregarColumnasDelLibro
+    reasignar_documento: ReasignarDocumento
     escribir_extraidas: EscribirFilasExtraidas
     revisar: RevisarCelda
     escribir_extraccion: EscribirFilasDeExtraccion

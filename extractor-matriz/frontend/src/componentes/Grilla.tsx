@@ -112,10 +112,13 @@ export function Grilla({ pid, columnas, filas, articulosMarcados }: Props) {
         },
         cellClass: (p: CellClassParams<Fila>) => {
           const color = colorDe(p.data?.celdas[c.clave]);
-          if (marcas.size === 0) return `celda-${color}`;
-          return marcas.has(color) ? `celda-${color} neon neon-${color}` : `celda-${color} atenuada`;
+          const nueva = c.agregada_en_version ? " col-nueva" : "";
+          if (marcas.size === 0) return `celda-${color}${nueva}`;
+          return marcas.has(color) ? `celda-${color} neon neon-${color}${nueva}` : `celda-${color} atenuada${nueva}`;
         },
-        headerClass: columnasMarcadas.has(c.clave) ? "cabecera-neon" : undefined,
+        headerClass: [columnasMarcadas.has(c.clave) ? "cabecera-neon" : "", c.agregada_en_version ? "cabecera-nueva" : ""]
+          .filter(Boolean)
+          .join(" ") || undefined,
         sortable: false,
       })),
     [columnas, marcas, columnasMarcadas],
@@ -291,6 +294,14 @@ export function Grilla({ pid, columnas, filas, articulosMarcados }: Props) {
             +
           </button>
         </div>
+        {columnas.some((c) => c.agregada_en_version) && (
+          <span
+            className="marca-nueva"
+            title="Columnas que agregó el libro de códigos v2.3 (BC a BG). Las derivadas las calcula el programa."
+          >
+            <i /> {columnas.filter((c) => c.agregada_en_version).length} columnas nuevas (v2.3)
+          </span>
+        )}
         <div className="leyenda" role="group" aria-label="Filtrar y resaltar por marca">
           {LEYENDA.map(([color, texto]) => (
             <button

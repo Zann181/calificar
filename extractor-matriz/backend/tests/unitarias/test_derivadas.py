@@ -90,3 +90,55 @@ def test_compatibilidad_desempeno_y_constructo_cubre_ambos_vocabularios(libro: d
     constructos = libro["columnas"]["Constructo desempeño"]["instruccion_operativa"]["valores_permitidos"]
     assert set(comp) == set(desempenos)
     assert {x for v in comp.values() for x in v} == set(constructos)
+
+
+def test_migrar_recalcula_derivadas_de_filas_extraidas_sin_revisar_y_respeta_las_corregidas(
+        columnas: list[DefinicionDeColumna]) -> None:
+    import uuid
+
+    from app.contextos.matriz.aplicacion.casos_de_uso import AgregarColumnasDelLibro
+    from app.contextos.matriz.dominio.fila import Celda, EstadoRevision, FilaDeEfecto, TipoValor
+
+    pid = uuid.uuid4()
+
+    class Columnas:
+        def columnas(self, _: uuid.UUID) -> list[DefinicionDeColumna]:
+            return columnas
+
+        def version_activa_id(self, _: uuid.UUID) -> uuid.UUID:
+            return uuid.uuid4()
+
+    celdas = {c.clave: Celda(clave=c.clave, valor=None, tipo_valor=TipoValor.FALTANTE) for c in columnas}
+    celdas["Pais"].valor = "Sri Lanka"
+    celdas["Cultura Hofstede"].valor = "No indica"  # calculada antes de que la tabla tuviera Sri Lanka
+    celdas["Conjunto MA"].valor = "Principal_Mixto"
+    celdas["Conjunto MA"].estado_revision = EstadoRevision.CORREGIDA  # decisión humana: no se pisa
+    f = FilaDeEfecto.extraida(proyecto_id=pid, estudio=1, documento=1, articulo_id=uuid.uuid4(),
+                              version_libro_id=uuid.uuid4(), celdas=celdas,
+                              trazabilidad={"salida": {"trazabilidad": {"motivo_decision_inclusion": "Condición 8: x"}}})
+
+    class Filas:
+        def todas(self, _: uuid.UUID) -> list[FilaDeEfecto]:
+            return [f]
+
+        def agregar(self, _: FilaDeEfecto) -> None:
+            pass
+
+    class Udt:
+        filas = Filas()
+
+        def __enter__(self) -> Udt:
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            pass
+
+        def confirmar(self) -> None:
+            pass
+
+    caso = AgregarColumnasDelLibro(lambda: Udt(), Columnas())  # type: ignore[arg-type,return-value]
+    r = caso.ejecutar(pid)
+    assert f.celdas["Cultura Hofstede"].valor == "Colectivista"  # IDV 35
+    assert f.celdas["Conjunto MA"].valor == "Principal_Mixto"  # corregida: intacta
+    assert r.filas == 1
+    assert caso.ejecutar(pid).filas == 0  # idempotente

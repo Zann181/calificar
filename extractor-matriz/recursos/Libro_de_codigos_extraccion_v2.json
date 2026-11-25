@@ -48,7 +48,9 @@
       "Tabla IDV de Hofstede agregada (pendiente de confirmar por el responsable).",
       "Refuerzos del manual de codificación a las columnas existentes (T1–T1, beta ≠ r, N de personas en diarios, rangos de fiabilidad, siglas canónicas, equivalencias de nombres).",
       "motivo_decision_inclusion: el árbol tiene 11 condiciones (el texto decía 1 a 6).",
-      "Validaciones V30 a V32 propuestas; no las implementa validar_extraccion.py."
+      "Validaciones V30 a V32 propuestas; no las implementa validar_extraccion.py.",
+      "Ajuste del 2026-11-22: ID muestra provisional agrupa por Pais y Población (V20) dentro de cada Documento; Sri Lanka (IDV 35, pendiente de confirmar) se agrega a la tabla.",
+    "Ajuste del 2026-11-24 (ADR 0010): Pais usa la afiliación de los autores cuando el artículo no declara dónde se recolectaron los datos, anotado como inferencia; Cultura Hofstede sigue ese país."
     ]
   },
   "prompt_para_el_extractor": "Eres el extractor de datos de una revisión sistemática con metaanálisis sobre felicidad en el trabajo y desempeño laboral. Recibes un artículo en PDF y este libro de códigos en JSON. Solo son normativos protocolo_de_extraccion, vocabularios_controlados, columnas[*].instruccion_operativa, trazabilidad_por_fila, validaciones_automaticas y esquema_de_salida; lo demás es contexto. Sigue protocolo_de_extraccion.flujo_por_documento paso a paso. Cumple los principios_de_veracidad sin excepción: no escribas ningún dato que no puedas señalar en el artículo con página del PDF, ubicación y cita textual literal; no completes datos con conocimiento externo (ni siglas, ni años de teorías, ni número de ítems); registra toda inferencia y toda contradicción del artículo en la trazabilidad; usa solo los códigos de faltante No indica, No indica (no significativo) y No aplica. Si una tabla o página no es legible, detente en ese dato y repórtalo. Abre filas según como_se_construye_cada_fila.regla_para_abrir_una_fila_nueva, con la excepción de varias_oleadas en reglas_de_desempate. Revisa tu salida contra validaciones_automaticas, sin afirmar que ejecutaste comprobaciones que no ejecutaste: la validación formal la hace validar_extraccion.py. Entrega únicamente un arreglo JSON que cumpla esquema_de_salida.json_schema, con el mismo formato que ejemplo_verificado.salida; tus observaciones van dentro de trazabilidad.advertencias_pendientes. Antes de leer cualquier tabla, decide si el artículo reporta una tabla bivariada de puntajes de escala: si existe, esa es tu fuente de r aunque el modelo final sea SEM. Una fila por cada par felicidad–desempeño y por cada subescala de desempeño; cada fila lleva su id_muestra. No copies valores de la diagonal: un valor mayor que 0.80 entre felicidad y desempeño se vuelve a verificar contra la tabla (puede ser un alfa). Llena Constructo desempeño con la lista cerrada. No llenes ID muestra, Método obtención r, Cultura Hofstede ni Conjunto MA en fila: las deriva el programa de la trazabilidad y de Pais. Datos que te entrega el equipo para este artículo: Documento = <n>, Estudio inicial = <n>, Covidence # = <n o vacío>, Vía de identificación = <texto>.",
@@ -1232,14 +1234,14 @@
       },
       "como_se_extrae": [
         "Buscar en el método (participantes o procedimiento) dónde se aplicó el cuestionario.",
-        "Registrar el país de la muestra, no el de la afiliación de los autores.",
+        "Registrar el país de la muestra. Si el artículo no declara dónde se recolectaron los datos, usar el país de la afiliación de los autores y anotarlo como país inferido en trazabilidad.inferencias (ADR 0010).",
         "Si el artículo reporta efectos separados por país, abrir una fila por país."
       ],
       "reglas_de_codificacion": [
         "Nombre en español, forma corta oficial.",
         "Un solo nombre por país (Reino Unido, no Gran Bretaña)."
       ],
-      "tratamiento_del_dato_faltante": "No indica si el artículo no lo informa.",
+      "tratamiento_del_dato_faltante": "No indica si el artículo no informa ni el país de recolección ni la afiliación de los autores (por ejemplo, una revisión sin datos propios).",
       "ejemplo": {
         "estudio": 59,
         "cita_en_matriz": "Magnier-Watanabe et al., (2020)",
@@ -1259,7 +1261,7 @@
         "valores_permitidos": "Nombre corto oficial en español (Colombia, Estados Unidos, Reino Unido, Países Bajos, Corea del Sur...) o Multinacional cuando el coeficiente combina varios países.",
         "donde_buscar": "Método: participantes o procedimiento.",
         "regla_de_decision": [
-          "País donde se recolectaron los datos, no el de afiliación de los autores. Efectos separados por país abren filas.",
+          "País donde se recolectaron los datos. Si el artículo no lo declara, el país de la afiliación de los autores, anotado en trazabilidad.inferencias como país inferido (ADR 0010). Efectos separados por país abren filas.",
           "Cultura Hofstede (58) se calcula desde este país con la tabla IDV del libro; Gran Bretaña se normaliza a Reino Unido."
         ],
         "codigo_si_falta": "No indica",
@@ -4103,8 +4105,15 @@
         "derivada": {
           "tipo": "trazabilidad",
           "campo": "id_muestra",
-          "provisional_heredada": "D{documento}-M1",
-          "nota": "La hoja refleja trazabilidad.id_muestra, que es la fuente de verdad. La evidencia, si el extractor la da, va en trazabilidad.evidencia con la clave ID muestra."
+          "provisional_heredada": "D{documento}-M{muestra}",
+          "nota": "La hoja refleja trazabilidad.id_muestra, que es la fuente de verdad. La evidencia, si el extractor la da, va en trazabilidad.evidencia con la clave ID muestra. En filas heredadas el número de muestra es provisional: dentro de un Documento, las filas con el mismo Pais y Población (V20) comparten muestra y cada combinación nueva abre la siguiente (M2, M3…).",
+          "muestra_provisional_por": [
+            "Pais",
+            "Población"
+          ],
+          "alias": {
+            "Gran Bretaña": "Reino Unido"
+          }
         }
       }
     },
@@ -4230,7 +4239,7 @@
       ],
       "reglas_de_codificacion": [
         "Individualista: IDV > 50. Colectivista: IDV ≤ 50.",
-        "El país es el de la recolección de datos (columna I), no el de los autores.",
+        "El país es el de la recolección de datos (columna I); si el artículo no lo declara, el de la afiliación de los autores (ADR 0010).",
         "Multinacional o país fuera de la tabla → No indica y se avisa para revisión humana."
       ],
       "tratamiento_del_dato_faltante": "No indica.",
@@ -4280,6 +4289,7 @@
             "Países Bajos": 80,
             "Portugal": 27,
             "Reino Unido": 89,
+            "Sri Lanka": 35,
             "Taiwán": 17,
             "Turquía": 37
           }

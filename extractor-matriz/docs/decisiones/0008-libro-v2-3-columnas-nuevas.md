@@ -64,3 +64,24 @@ derecha de BB.
   desde su trazabilidad). Copias previas: `datos/*.antes-libro-v2.3.db`.
 - Las filas extraídas con el libro v2.2 no traen `Constructo desempeño` (queda pendiente hasta una reextracción).
 - **No se lanzó ninguna extracción.** El paso siguiente es la prueba con Kumar y Singh (cuesta dinero: se pregunta antes).
+
+## Adenda 2026-11-22 · congruencia de las 5 columnas (decisiones delegadas por el responsable)
+
+Tras auditar las 5 columnas (ver `docs/AUDITORIA_columnas_nuevas.md`) el responsable delegó las decisiones. Se tomaron estas:
+
+- **ID muestra repetido entre artículos.** Documentos duplicados: `1` (Kumar, Oswald, Psychological Well-Being, Santoso, derkinderen) y `47` (Singh, Ilker Met).
+  Se conservaron los de la matriz original (Kumar 1, Singh 47) y los demás pasaron a **48 Oswald, 49 Psychological Well-Being, 50 Santoso,
+  51 derkinderen y 52 Ilker Met**. Nuevo caso de uso `ReasignarDocumento` (`python -m app.cli reasignar-documento <articulo_id> <n> --motivo …`):
+  cambia el Documento, la celda, la salida guardada y el ID muestra; rechaza un número que ya usa otro artículo. Vatsa (Documento 500) no
+  choca con nadie y no se tocó. **Pendiente de prevención:** la extracción debería avisar cuando el Documento ya lo usa otro artículo.
+- **ID muestra provisional en filas heredadas:** deja de ser siempre `-M1`. Dentro de un Documento, las filas con igual `Pais` y `Población`
+  (V20; «Gran Bretaña» = «Reino Unido») son la misma muestra y cada combinación nueva abre la siguiente. Efecto: Documento 28 (trabajadores
+  sociales / oficiales de libertad condicional) y 36 (Francia / Japón) pasan a tener `M1` y `M2`.
+- **Cultura Hofstede:** `Sri Lanka` se agrega a la tabla con IDV 35 (valor de Hofstede según el asistente; **por confirmar**). La fila 145 (sin país)
+  queda «No indica». `migrar-libro` ahora recalcula también las derivadas de filas extraídas que nadie revisó (las corregidas a mano no se pisan).
+- **Método obtención r.** Criterio: solo se cambia cuando el propio artículo respalda el cambio de forma explícita (P1/P8); si no, se mantiene y se
+  señala. **Salas-Vallina (Estudio 77) pasa a «Pearson observado»**: la Tabla 4 dice «Cronbach's alphas are shown on the diagonal» y trae medias y DE
+  (regla 1). Efecto: `Incluir` SEM latente → SI (condición 6), `Conjunto MA` Sensibilidad → `Principal_Mixto`, `conjunto_sugerido` → Principal y
+  `motivo_decision_inclusion` actualizado; las tres celdas quedan `CORREGIDAS` con el motivo. **Se mantienen** Kumar (PLS: leyenda «latent
+  variables»), Bibi 4 y 5 (la diagonal de raíz de AVE apunta a latentes pero el artículo no lo dice), Wu (la Tabla II llegó sin rótulos de fila, la r
+  sería una lectura inferida) y Magnier-Watanabe (no hay r global). Todos siguen señalados para el verificador.

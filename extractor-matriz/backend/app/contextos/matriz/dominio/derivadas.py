@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.compartido.columnas import DefinicionDeColumna
+from app.compartido.normalizacion import norm
 
 Json = Any
 _CONDICION = re.compile(r"^\s*Condición\s+(\d+)\s*:")
@@ -26,16 +27,35 @@ class Derivada:
     razon: str
 
 
+def asignar_muestras(spec: dict[str, Any], filas: list[tuple[int, int, dict[str, Json]]]) -> dict[int, int]:
+    """Número de muestra provisional (1, 2…) de cada fila heredada, por Estudio.
+
+    Dentro de un Documento, las filas que comparten los campos de `muestra_provisional_por` (V20: mismo país y
+    población) son la misma muestra; cada combinación nueva abre la siguiente. El País se normaliza con `alias`.
+    `filas` son (estudio, documento, valores).
+    """
+    campos: list[str] = list(spec.get("muestra_provisional_por") or [])
+    alias: dict[str, str] = spec.get("alias") or {}
+    vistas: dict[int, dict[tuple[str, ...], int]] = {}
+    resultado: dict[int, int] = {}
+    for estudio, documento, valores in sorted(filas, key=lambda x: x[0]):
+        clave = tuple(norm(str(alias.get(str(valores.get(c)), valores.get(c)) or "")) for c in campos)
+        por_doc = vistas.setdefault(documento, {})
+        resultado[estudio] = por_doc.setdefault(clave, len(por_doc) + 1)
+    return resultado
+
+
 def _de_trazabilidad(spec: dict[str, Any], valores: dict[str, Json], trazabilidad: dict[str, Any],
-                     documento: int | None, provisional: bool) -> Derivada:
+                     documento: int | None, provisional: bool, muestra: int) -> Derivada:
     campo = str(spec["campo"])
     valor = trazabilidad.get(campo)
     if valor is not None:
         return Derivada(valor, f"Refleja trazabilidad.{campo}.")
     modelo = spec.get("provisional_heredada")
     if provisional and modelo and documento is not None:
-        return Derivada(str(modelo).format(documento=documento),
-                        f"Provisional: la fila no tiene trazabilidad.{campo}; se asume una sola muestra por documento.")
+        return Derivada(str(modelo).format(documento=documento, muestra=muestra),
+                        f"Provisional: la fila no tiene trazabilidad.{campo}; la muestra se agrupa por "
+                        f"{' y '.join(spec.get('muestra_provisional_por') or ['documento'])} (V20). Confirmar al leer el artículo.")
     return Derivada(None, f"La fila no tiene trazabilidad.{campo}.")
 
 
@@ -71,17 +91,18 @@ def _por_condicion(spec: dict[str, Any], valores: dict[str, Json], trazabilidad:
 
 
 def calcular(definicion: DefinicionDeColumna, valores: dict[str, Json], trazabilidad: dict[str, Any], *,
-             documento: int | None = None, provisional: bool = False) -> Derivada:
+             documento: int | None = None, provisional: bool = False, muestra: int = 1) -> Derivada:
     """Valor de una columna derivada. `valores` trae las demás celdas de la fila por clave.
 
     `provisional`: la fila es heredada; se admiten los valores provisionales que el libro prevé para ella.
+    `muestra`: número de muestra provisional dentro del Documento (ver `asignar_muestras`).
     """
     spec = definicion.derivada
     if spec is None:
         raise ValueError(f"'{definicion.clave}' no es una columna derivada")
     tipo = spec.get("tipo")
     if tipo == "trazabilidad":
-        return _de_trazabilidad(spec, valores, trazabilidad, documento, provisional)
+        return _de_trazabilidad(spec, valores, trazabilidad, documento, provisional, muestra)
     if tipo == "tabla":
         return _por_tabla(spec, valores)
     if tipo == "por_condicion":

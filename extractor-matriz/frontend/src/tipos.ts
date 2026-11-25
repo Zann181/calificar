@@ -14,6 +14,10 @@ export type Columna = {
   nivel_de_registro: string;
   nota_encabezado: string;
   es_numerica: boolean;
+  /** La calcula el programa, no el extractor (libro v2.3). */
+  es_derivada?: boolean;
+  /** Versión del libro que agregó la columna (null en las 54 originales). */
+  agregada_en_version?: string | null;
   guia?: GuiaDeColumna;
 };
 

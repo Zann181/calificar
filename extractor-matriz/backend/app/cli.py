@@ -68,6 +68,14 @@ def migrar_libro(c: Contenedor, _: argparse.Namespace) -> None:
     print(f"{r.filas} filas actualizadas · {r.celdas_agregadas} celdas agregadas · {r.calculadas} calculadas sin leer PDF")
 
 
+def reasignar_documento(c: Contenedor, a: argparse.Namespace) -> None:
+    """Cambia el Documento de un artículo y su ID muestra. Rechaza un número que ya usa otro artículo."""
+    pid = _proyecto(c)
+    n = c.matriz.reasignar_documento.ejecutar(pid, uuid.UUID(a.articulo_id), a.documento,
+                                              autor=c.ajustes.admin_correo, motivo=a.motivo)
+    print(f"{n} filas actualizadas al Documento {a.documento}")
+
+
 def cargar_carpeta(c: Contenedor, a: argparse.Namespace) -> None:
     pid = _proyecto(c)
     nuevos = duplicados = errores = 0
@@ -133,6 +141,11 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--reemplazar", action="store_true")
     x.set_defaults(f=importar_matriz)
     sub.add_parser("migrar-libro").set_defaults(f=migrar_libro)
+    x = sub.add_parser("reasignar-documento")
+    x.add_argument("articulo_id")
+    x.add_argument("documento", type=int)
+    x.add_argument("--motivo", required=True)
+    x.set_defaults(f=reasignar_documento)
     x = sub.add_parser("cargar-carpeta")
     x.add_argument("carpeta")
     x.set_defaults(f=cargar_carpeta)

@@ -96,7 +96,10 @@ def test_migrar_al_libro_nuevo_agrega_las_5_columnas_a_filas_ya_guardadas(conten
     filas = contenedor.matriz.consultas.todas(pid)
     for f in filas:
         v = f.valores()
-        assert v["ID muestra"] == f"D{f.documento}-M1"
+        # Provisional por V20: en un Documento, mismo País y Población = misma muestra. Documento 28 (dos poblaciones)
+        # y 36 (Francia y Japón) tienen dos muestras; 12 (Reino Unido y Gran Bretaña) una sola.
+        esperado = 2 if f.estudio in (41, 43, 59) else 1
+        assert v["ID muestra"] == f"D{f.documento}-M{esperado}", f.estudio
         assert v["Cultura Hofstede"] in ("Individualista", "Colectivista")
         assert v["Método obtención r"] is None and v["Constructo desempeño"] is None and v["Conjunto MA"] is None
     kumar = contenedor.matriz.consultas.fila(pid, 1)
