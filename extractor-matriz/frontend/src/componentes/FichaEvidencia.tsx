@@ -5,6 +5,7 @@ import { api } from "../api";
 import { colorDe, mostrarValor } from "../colores";
 import { Icono } from "./Icono";
 import { useNavegacion } from "../navegacion";
+import { useEscritura } from "../capacidades";
 import { usePedirRevision } from "../revision";
 import type { CeldaDetalle, CeldaResumen, Columna, Evidencia } from "../tipos";
 
@@ -48,6 +49,7 @@ export function FichaEvidencia({ pid, estudio, columna, resumen, posicion, fija,
   });
   const ir = useNavegacion((s) => s.ir);
   const pedir = usePedirRevision(pid);
+  const escritura = useEscritura();
 
   const irAlPdf = (d: CeldaDetalle, e: Evidencia) => {
     if (!d.articulo_id) return;
@@ -177,17 +179,19 @@ export function FichaEvidencia({ pid, estudio, columna, resumen, posicion, fija,
           )}
         </div>
       )}
-      <footer className="botones">
-        <button className="aprobar" onClick={() => pedir("aprobar", estudio, columna, resumen)}>
-          <Icono nombre="check" tam={16} /> Aprobar <kbd>A</kbd>
-        </button>
-        <button className="corregir" onClick={() => pedir("corregir", estudio, columna, resumen)}>
-          <Icono nombre="lapiz" tam={16} /> Corregir <kbd>E</kbd>
-        </button>
-        <button className="rechazar" onClick={() => pedir("rechazar", estudio, columna, resumen)}>
-          <Icono nombre="rechazo" tam={16} /> Rechazar <kbd>R</kbd>
-        </button>
-      </footer>
+      {escritura && (
+  <footer className="botones">
+          <button className="aprobar" onClick={() => pedir("aprobar", estudio, columna, resumen)}>
+            <Icono nombre="check" tam={16} /> Aprobar <kbd>A</kbd>
+          </button>
+          <button className="corregir" onClick={() => pedir("corregir", estudio, columna, resumen)}>
+            <Icono nombre="lapiz" tam={16} /> Corregir <kbd>E</kbd>
+          </button>
+          <button className="rechazar" onClick={() => pedir("rechazar", estudio, columna, resumen)}>
+            <Icono nombre="rechazo" tam={16} /> Rechazar <kbd>R</kbd>
+          </button>
+        </footer>
+      )}
     </aside>
   );
 }

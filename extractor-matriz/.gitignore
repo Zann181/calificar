@@ -16,3 +16,6 @@ docs/decisiones/f0/extraccion/*/pag-*.png
 datos/
 # generado por herramientas/crear_icono_y_acceso.py: lleva rutas del equipo
 Extractor.vbs
+
+# salida de graphify-rs (se regenera con `graphify-rs build`)
+graphify-out/

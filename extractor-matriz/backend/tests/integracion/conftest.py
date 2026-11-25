@@ -37,13 +37,12 @@ def migrar(url: str) -> None:
     command.upgrade(cfg, "head")
 
 
-@pytest.fixture
-def fabrica(tmp_path: Path) -> Iterator[Callable[[], Session]]:
+def _fabrica_nueva(tmp_path: Path, nombre: str) -> Iterator[Callable[[], Session]]:
     """SQLite por defecto. Con PRUEBAS_POSTGRES_URL corre sobre PostgreSQL (ADR 0009, compuerta 0.1):
-    cada prueba usa un esquema propio, migrado con Alembic y borrado al terminar."""
+    cada base usa un esquema propio, migrado con Alembic y borrado al terminar."""
     base = os.environ.get("PRUEBAS_POSTGRES_URL")
     if not base:
-        url = f"sqlite:///{(tmp_path / 'prueba.db').as_posix()}"
+        url = f"sqlite:///{(tmp_path / (nombre + '.db')).as_posix()}"
         migrar(url)
         motor = crear_motor(url)
         yield fabrica_de_sesiones(motor)
@@ -63,6 +62,17 @@ def fabrica(tmp_path: Path) -> Iterator[Callable[[], Session]]:
         with admin.connect() as c:
             c.execute(text(f'DROP SCHEMA IF EXISTS "{esquema}" CASCADE'))
         admin.dispose()
+
+
+@pytest.fixture
+def fabrica(tmp_path: Path) -> Iterator[Callable[[], Session]]:
+    yield from _fabrica_nueva(tmp_path, "prueba")
+
+
+@pytest.fixture
+def fabrica_nube(tmp_path: Path) -> Iterator[Callable[[], Session]]:
+    """Segunda base, vacía: la de la nube en las pruebas de sincronización."""
+    yield from _fabrica_nueva(tmp_path, "nube")
 
 
 @pytest.fixture

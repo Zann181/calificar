@@ -534,6 +534,10 @@ class ConsultasDeExtraccion:
         with self._udt() as u:
             return u.extracciones.recientes(proyecto_id, ahora() - timedelta(minutes=minutos))
 
+    def todas(self, proyecto_id: uuid.UUID) -> list[Extraccion]:
+        with self._udt() as u:
+            return u.extracciones.recientes(proyecto_id, datetime(1970, 1, 1, tzinfo=UTC))
+
     def ultimas_por_articulo(self, proyecto_id: uuid.UUID) -> dict[uuid.UUID, Extraccion]:
         """La extracción más reciente de cada artículo, cualquiera sea su estado."""
         with self._udt() as u:

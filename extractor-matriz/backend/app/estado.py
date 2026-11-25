@@ -127,6 +127,8 @@ def _despachador(c: Contenedor) -> dict[str, str]:
 @enrutador.get("/estado")
 def estado(request: Request, _: Usuario = Depends(usuario_actual)) -> dict[str, Any]:
     c: Contenedor = request.app.state.contenedor
+    if c.ajustes.modo == "nube":  # sin MinerU, Claude ni despachador: solo el servidor
+        return {"componentes": [_pieza("servidor", "Servidor", "ok", "Copia de solo lectura")], "cuenta": None}
     return {"componentes": [
         _pieza("servidor", "Servidor", "ok", "API en marcha"),
         _despachador(c),

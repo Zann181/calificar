@@ -14,6 +14,13 @@ import type {
   ResultadoCarga,
   ResultadoContinuar,
   ResultadoEncolado,
+  AjustesNube,
+  Capacidades,
+  CorridaSync,
+  EstadoSync,
+  ExtraccionCompleta,
+  ResultadoProbar,
+  ResumenExtraccion,
 } from "./tipos";
 
 export class ErrorApi extends Error {
@@ -51,9 +58,38 @@ const json = (cuerpo: unknown): RequestInit => ({
   body: JSON.stringify(cuerpo),
 });
 
+const poner = (cuerpo: unknown): RequestInit => ({
+  method: "PUT",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(cuerpo),
+});
+
 const p = (pid: string) => `/proyectos/${pid}`;
+const sync = (pid: string) => `${p(pid)}/sincronizacion`;
 
 export const api = {
+  capacidades: () => pedir<Capacidades>("/capacidades"),
+  salir: () => pedir<{ salio: boolean }>("/auth/salir", { method: "POST" }),
+  // Todas las extracciones de un artículo (más recientes primero) y una completa, con las 25 columnas.
+  extracciones: (pid: string, articulo: string) =>
+    pedir<ResumenExtraccion[]>(`${p(pid)}/extracciones?articulo=${articulo}`),
+  extraccion: (pid: string, id: string) => pedir<ExtraccionCompleta>(`${p(pid)}/extracciones/${id}`),
+  // Panel «Configuración › Nube» (solo en el equipo local).
+  nube: {
+    ajustes: (pid: string) => pedir<AjustesNube>(`${sync(pid)}/ajustes`),
+    guardar: (pid: string, cambios: Partial<Omit<AjustesNube, "token_guardado" | "sede">> & { token?: string }) =>
+      pedir<AjustesNube>(`${sync(pid)}/ajustes`, poner(cambios)),
+    probar: (pid: string) => pedir<ResultadoProbar>(`${sync(pid)}/probar`, { method: "POST" }),
+    ahora: (pid: string) => pedir<{ aceptado: boolean }>(`${sync(pid)}/ahora`, { method: "POST" }),
+    reenviar: (pid: string) => pedir<{ aceptado: boolean }>(`${sync(pid)}/reenviar`, { method: "POST" }),
+    verificar: (pid: string) =>
+      pedir<{ ok: boolean; por_subir: number; por_eliminar: number; archivos: number; detalle: string }>(
+        `${sync(pid)}/verificar`,
+        { method: "POST" },
+      ),
+    estado: (pid: string) => pedir<EstadoSync>(`${sync(pid)}/estado`),
+    corridas: (pid: string) => pedir<CorridaSync[]>(`${sync(pid)}/corridas`),
+  },
   proyectos: () => pedir<Proyecto[]>("/proyectos"),
   columnas: (pid: string) => pedir<Columna[]>(`${p(pid)}/normas/columnas`),
   protocolo: (pid: string) => pedir<Protocolo>(`${p(pid)}/normas/protocolo`),

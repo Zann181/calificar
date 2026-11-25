@@ -8,6 +8,7 @@
                       [--reextraer [--motivo <texto>]]   cuatro roles con Claude Code CLI (ADR 0002)
     python -m app.cli despachar                  corre el despachador de la outbox
     python -m app.cli exportar <salida.xlsx>
+    python -m app.cli token-sync                 token de servicio del agente (ADR 0009) y su hash para la nube
 """
 
 from __future__ import annotations
@@ -165,7 +166,19 @@ def main(argv: list[str] | None = None) -> None:
     x = sub.add_parser("exportar")
     x.add_argument("salida")
     x.set_defaults(f=exportar)
+    sub.add_parser("token-sync")
     a = p.parse_args(argv)
+    if a.comando == "token-sync":
+        import secrets
+
+        from app.contextos.sincronizacion.api import hash_de_token
+
+        token = secrets.token_urlsafe(32)
+        print("Token (péguelo en «Configuración › Nube»; no se vuelve a mostrar):")
+        print("  " + token)
+        print("Hash (variable SYNC_TOKEN_HASH de la nube):")
+        print("  " + hash_de_token(token))
+        return
     registro.instalar(settings().registro_ruta)
     a.f(construir(settings()), a)
 

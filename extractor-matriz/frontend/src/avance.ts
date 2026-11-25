@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { api } from "./api";
+import { useEscritura } from "./capacidades";
 import type { AvanceExtraccion, AvanceRespuesta } from "./tipos";
 
 const RAPIDO_MS = 1500; // hay algo corriendo
@@ -46,10 +47,11 @@ export function formatoTiempo(segundos: number): string {
 
 export function useAvance(pid: string) {
   const qc = useQueryClient();
+  const escritura = useEscritura();
   const consulta = useQuery({
     queryKey: ["avance", pid],
     queryFn: () => api.avance(pid),
-    enabled: !!pid,
+    enabled: !!pid && escritura,
     refetchInterval: (q) => {
       const d = q.state.data as AvanceRespuesta | undefined;
       if (Date.now() < rapidoHasta) return RAPIDO_MS;

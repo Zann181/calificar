@@ -13,6 +13,7 @@ from collections.abc import Callable, Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -60,10 +61,14 @@ def test_sesenta_megas_de_archivos(fabrica: Callable[[], Session]) -> None:
 
 @pytest.fixture
 def cliente_nube(fabrica: Callable[[], Session]) -> Iterator[tuple[TestClient, Contenedor]]:
-    ajustes = Settings(_env_file=None, modo="nube", despachador_en_servidor=True)
+    ajustes = Settings(_env_file=None, modo="nube", despachador_en_servidor=True, lectores_permitidos="lector@ejemplo.co",
+                       google_client_id="id", google_client_secret="secreto", secreto_sesion="s" * 48,
+                       sync_token_hash="0" * 64, url_publica="https://nube.test")
     c = construir(ajustes, fabrica=fabrica, conversor=ConversorFijo(FIXTURES / "mineru"))
     assert isinstance(c.almacen, AlmacenEnBase)  # en modo nube los archivos van a la base sin configurar nada más
-    with TestClient(crear_app(ajustes, c)) as cliente:
+    with TestClient(crear_app(ajustes, c), base_url="https://nube.test") as cliente:
+        # La nube exige sesión (ADR 0009, sección 8): un lector de la lista.
+        cliente.cookies.set("sesion", URLSafeTimedSerializer("s" * 48, salt="sesion").dumps({"correo": "lector@ejemplo.co"}))
         yield cliente, c
 
 

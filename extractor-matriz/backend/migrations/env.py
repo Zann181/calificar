@@ -12,6 +12,7 @@ import app.contextos.biblioteca.adaptadores.tablas  # noqa: F401
 import app.contextos.extraccion.adaptadores.repositorio_sql  # noqa: F401
 import app.contextos.matriz.adaptadores.repositorio_sql  # noqa: F401
 import app.contextos.normas.adaptadores.repositorio_sql  # noqa: F401
+import app.contextos.sincronizacion.adaptadores.tablas  # noqa: F401
 from app.compartido.db import Base
 from app.config import settings
 

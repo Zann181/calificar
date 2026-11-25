@@ -22,6 +22,18 @@ class Settings(BaseSettings):
     # True: los archivos van a la tabla biblioteca_archivos (bytea) en lugar de disco o S3. En modo nube siempre.
     almacen_en_base: bool = False
 
+    # --- Solo MODO=nube (ADR 0009, sección 8). Falla cerrada: sin estos cuatro datos la nube no arranca. ---
+    # Correos (separados por coma) que pueden entrar al visor con su cuenta de Google.
+    lectores_permitidos: str = ""
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    # Firma la cookie de sesión de los lectores (cadena larga y aleatoria).
+    secreto_sesion: str = ""
+    # SHA-256 (hex) del token de servicio del agente local: `python -m app.cli token-sync` lo genera.
+    sync_token_hash: str = ""
+    # URL pública de la nube (https://….onrender.com): el retorno de Google vuelve a ella.
+    url_publica: str = ""
+
     database_url: str = "postgresql+psycopg://extractor:extractor@localhost:5432/extractor"
     redis_url: str = "redis://localhost:6379/0"
 
@@ -79,6 +91,20 @@ class Settings(BaseSettings):
             if v.startswith(prefijo):
                 return "postgresql+psycopg://" + v[len(prefijo):]
         return v
+
+    @property
+    def lectores(self) -> set[str]:
+        return {c.strip().lower() for c in self.lectores_permitidos.split(",") if c.strip()}
+
+    def faltantes_de_nube(self) -> list[str]:
+        """Variables que MODO=nube exige y no están (vacío si todo está o si el modo es local)."""
+        if self.modo != "nube":
+            return []
+        pedidas = {"LECTORES_PERMITIDOS": bool(self.lectores), "GOOGLE_CLIENT_ID": bool(self.google_client_id),
+                   "GOOGLE_CLIENT_SECRET": bool(self.google_client_secret),
+                   "SECRETO_SESION": len(self.secreto_sesion) >= 32, "SYNC_TOKEN_HASH": bool(self.sync_token_hash),
+                   "URL_PUBLICA": bool(self.url_publica)}
+        return [k for k, ok in pedidas.items() if not ok]
 
     @property
     def libro_de_codigos(self) -> Path:

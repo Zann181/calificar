@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 
 import { api } from "./api";
+import { useEscritura } from "./capacidades";
 import { aprobarExigeMotivo, mostrarValor } from "./colores";
 import type { CeldaResumen, Columna } from "./tipos";
 
@@ -36,7 +37,9 @@ export function useRevisar(pid: string) {
 export function usePedirRevision(pid: string) {
   const revisar = useRevisar(pid);
   const abrir = useDialogo((s) => s.abrir);
+  const escritura = useEscritura();
   return (accion: Accion, estudio: number, columna: Columna, celda: CeldaResumen) => {
+    if (!escritura) return; // la nube es de solo lectura: los atajos A, E y R no hacen nada
     if (accion === "aprobar" && !aprobarExigeMotivo(celda)) {
       revisar.mutate({ accion, estudio, clave: columna.clave });
       return;

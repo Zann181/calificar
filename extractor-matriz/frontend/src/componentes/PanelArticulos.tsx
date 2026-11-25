@@ -10,6 +10,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { api } from "../api";
+import { useEscritura } from "../capacidades";
 import {
   acelerarAvance,
   enCurso,
@@ -18,6 +19,7 @@ import {
 } from "../avance";
 import { useNavegacion } from "../navegacion";
 import { BarraAvance } from "./BarraAvance";
+import { useFichaExtraccion } from "./FichaExtraccion";
 import { Icono } from "./Icono";
 import type {
   Articulo,
@@ -156,6 +158,8 @@ export function PanelArticulos({
     ya: Articulo[];
     elegidos: Set<string>;
   } | null>(null);
+  const escritura = useEscritura();
+  const abrirExtraccion = useFichaExtraccion((s) => s.abrir);
   const { porArticulo, enCola, detenidos, ahora } = useAvance(pid);
   const modelos = useQuery({
     queryKey: ["modelos", pid],
@@ -451,6 +455,7 @@ export function PanelArticulos({
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
+        if (!escritura) return;
         const pdfs = Array.from(e.dataTransfer.files).filter((f) =>
           f.name.toLowerCase().endsWith(".pdf"),
         );
@@ -470,25 +475,29 @@ export function PanelArticulos({
             ‹
           </button>
         )}
-        <button
-          className="primario"
-          onClick={() => archivo.current?.click()}
-          disabled={cargar.isPending}
-          title="Añadir PDF (también puede arrastrarlos aquí)"
-        >
-          <Icono nombre="subir" tam={16} />
-          {cargar.isPending ? "Cargando…" : "Añadir PDF"}
-        </button>
-        <input
-          ref={archivo}
-          type="file"
-          accept="application/pdf"
-          multiple
-          hidden
-          onChange={(e) =>
-            e.target.files && cargar.mutate(Array.from(e.target.files))
-          }
-        />
+        {escritura && (
+          <>
+            <button
+              className="primario"
+              onClick={() => archivo.current?.click()}
+              disabled={cargar.isPending}
+              title="Añadir PDF (también puede arrastrarlos aquí)"
+            >
+              <Icono nombre="subir" tam={16} />
+              {cargar.isPending ? "Cargando…" : "Añadir PDF"}
+            </button>
+            <input
+              ref={archivo}
+              type="file"
+              accept="application/pdf"
+              multiple
+              hidden
+              onChange={(e) =>
+                e.target.files && cargar.mutate(Array.from(e.target.files))
+              }
+            />
+          </>
+        )}
       </div>
       <label className="buscar">
         <Icono nombre="buscar" tam={16} />
@@ -557,7 +566,7 @@ export function PanelArticulos({
           />
           Seleccionar todo
         </label>
-        {parados.length > 0 && (
+        {escritura && parados.length > 0 && (
           <button
             className="continuar"
             disabled={continuar.isPending}
@@ -582,7 +591,7 @@ export function PanelArticulos({
               : `Continuar detenidos (${parados.length})`}
           </button>
         )}
-        {conError.length > 0 && (
+        {escritura && conError.length > 0 && (
           <button
             className="restablecer"
             disabled={restablecer.isPending}
@@ -601,21 +610,25 @@ export function PanelArticulos({
               : `Restablecer errores (${conError.length})`}
           </button>
         )}
-        <label title="Los artículos sin Covidence # se extraen con la vía «Otros métodos: experto», sin preguntar">
-          <input
-            type="checkbox"
-            checked={todoExperto}
-            onChange={(e) => setTodoExperto(e.target.checked)}
-          />
-          Sin Covidence → experto
-        </label>
-        <button
-          disabled={extraibles.length === 0 || lanzar.isPending}
-          onClick={extraerSeleccionados}
-        >
-          Extraer seleccionados{" "}
-          {extraibles.length ? `(${extraibles.length})` : ""}
-        </button>
+        {escritura && (
+          <>
+            <label title="Los artículos sin Covidence # se extraen con la vía «Otros métodos: experto», sin preguntar">
+              <input
+                type="checkbox"
+                checked={todoExperto}
+                onChange={(e) => setTodoExperto(e.target.checked)}
+              />
+              Sin Covidence → experto
+            </label>
+            <button
+              disabled={extraibles.length === 0 || lanzar.isPending}
+              onClick={extraerSeleccionados}
+            >
+              Extraer seleccionados{" "}
+              {extraibles.length ? `(${extraibles.length})` : ""}
+            </button>
+          </>
+        )}
       </div>
       <ul className="lista">
         {visibles.map((a) => (
@@ -648,7 +661,19 @@ export function PanelArticulos({
                 </span>
               )}
             </button>
-            {DIRECTAS.includes(a.estado) &&
+            {modelos.data?.[a.id] && (
+              <button
+                type="button"
+                className="sin-borde ver-extraccion"
+                onClick={() => abrirExtraccion(a.id, a.nombre_archivo)}
+                title="Ver la extracción completa: salida, codificación ciega, anclas, hallazgos, validador y uso"
+                aria-label={`Ver la extracción de ${a.nombre_archivo}`}
+              >
+                <Icono nombre="info" tam={16} />
+              </button>
+            )}
+            {escritura &&
+            DIRECTAS.includes(a.estado) &&
             !enCola.has(a.id) &&
             !(porArticulo.has(a.id) && enCurso(porArticulo.get(a.id)!)) ? (
               <button

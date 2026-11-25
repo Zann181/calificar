@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import api_extracciones, estado
+from app import api_extracciones, estado, modo_nube
 from app.compartido import registro, seguridad
 from app.compartido.dominio import ErrorDeDominio, NoEncontrado
 from app.config import Settings, settings
@@ -20,9 +20,11 @@ from app.contextos.biblioteca import api as api_biblioteca
 from app.contextos.exportacion import api as api_exportacion
 from app.contextos.matriz import api as api_matriz
 from app.contextos.normas import api as api_normas
+from app.contextos.sincronizacion import api as api_sincronizacion
 
 
-def crear_app(ajustes: Settings | None = None, contenedor: Any = None) -> FastAPI:
+def crear_app(ajustes: Settings | None = None, contenedor: Any = None,
+              intercambiar_codigo: modo_nube.IntercambiarCodigo | None = None) -> FastAPI:
     ajustes = ajustes or settings()
     registro.instalar(ajustes.registro_ruta)
 
@@ -48,7 +50,10 @@ def crear_app(ajustes: Settings | None = None, contenedor: Any = None) -> FastAP
             c.ejecutor.reanudar(api_extracciones.SIN_ACTIVIDAD_S)
         except Exception:
             servidor.exception("No se pudieron retomar las extracciones pendientes")
+        if ajustes.despachador_en_servidor:
+            c.agente.iniciar()  # sincronización con la nube (ADR 0009); sin destino configurado no hace nada
         yield
+        c.agente.detener()
         c.ejecutor.cerrar()
         c.despachador.detener()
 
@@ -74,6 +79,12 @@ def crear_app(ajustes: Settings | None = None, contenedor: Any = None) -> FastAP
     def salud() -> dict[str, str]:
         return {"estado": "ok"}
 
+    if ajustes.modo == "nube":
+        modo_nube.instalar(app, ajustes, intercambiar_codigo)  # falla cerrada si falta configuración de acceso
+        app.include_router(api_sincronizacion.nube)
+    else:
+        app.include_router(api_sincronizacion.local)
+    app.include_router(modo_nube.enrutador_de_capacidades(ajustes))
     for r in (seguridad.enrutador, api_biblioteca.enrutador, api_normas.enrutador, api_matriz.enrutador,
               api_exportacion.enrutador, registro.enrutador, estado.enrutador,
               api_extracciones.enrutador):

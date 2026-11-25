@@ -236,3 +236,130 @@ export type ModelosDeArticulo = {
   registrado: boolean; // false: extracción anterior al portero, sin modelo por llamada
   roles: Record<RolDelModelo, Record<string, number> | null>;
 };
+
+// ---- Nube de solo lectura (ADR 0009) ----
+export type Capacidades = {
+  modo: "local" | "nube";
+  escritura: boolean;
+  autenticado: boolean;
+  lector: string | null;
+  acceso: string | null;
+};
+
+export type ResumenExtraccion = {
+  id: string;
+  articulo_id: string;
+  estado: string;
+  estudios: number[];
+  iniciada_en: string;
+  terminada_en: string | null;
+  acuerdo: number | null;
+  iteraciones_validador: number;
+  hallazgos: number;
+  hallazgos_pendientes: number;
+  anclas: number;
+  error: string | null;
+  paso_fallido: string | null;
+  costo_usd: number;
+};
+
+export type AnclaExtraccion = {
+  estudio: number;
+  columna: string;
+  indice_evidencia: number;
+  nivel: string;
+  similitud: number;
+  bloque_id: string | null;
+  pagina: number | null;
+  rect: [number, number, number, number] | null;
+  rango: [number, number] | null;
+  leido_de_figura: boolean;
+  nota: string;
+};
+
+export type HallazgoExtraccion = {
+  estudio: number | null;
+  columna: string;
+  auditor: string;
+  veredicto: string;
+  detalle: string;
+  evidencia_propuesta: unknown;
+  resolucion: string | null;
+  estado: string;
+};
+
+export type ExtraccionCompleta = ResumenExtraccion & {
+  version_libro_id: string;
+  datos_del_equipo: Record<string, unknown>;
+  salida: { fila: Record<string, unknown>; trazabilidad?: Record<string, unknown> }[];
+  codificacion_ciega: Record<string, unknown>[];
+  anclas: AnclaExtraccion[];
+  hallazgos: HallazgoExtraccion[];
+  errores_validador: string[];
+  avisos_validador: string[];
+  uso_tokens: Record<
+    string,
+    {
+      llamadas: number;
+      entrada: number;
+      cache_escritura: number;
+      cache_lectura: number;
+      salida: number;
+      costo_usd: number;
+      segundos: number;
+      modelos?: Record<string, number>;
+    }
+  >;
+};
+
+export type OpcionesNube = {
+  pdf: boolean;
+  documento: boolean;
+  matriz: boolean;
+  historial: boolean;
+  extraccion: boolean;
+  crudo: boolean;
+  excel: boolean;
+};
+
+export type AjustesNube = {
+  url: string;
+  token_guardado: boolean;
+  automatico: boolean;
+  pausado: boolean;
+  agrupar_s: number;
+  reconciliar_s: number;
+  opciones: OpcionesNube;
+  sede: string;
+};
+
+export type EstadoSync = {
+  estado: "sin_configurar" | "pausado" | "sincronizado" | "subiendo" | "sin_conexion" | "error";
+  detalle: string;
+  hace_s: number | null;
+  hechos: number;
+  total: number;
+  fase: string;
+  pendiente: boolean;
+  revision: number | null;
+  cambios_pendientes: number;
+};
+
+export type CorridaSync = {
+  id: string;
+  iniciada_en: string;
+  terminada_en: string | null;
+  motivo: string;
+  estado: string;
+  sobres: number;
+  eliminados: number;
+  archivos: number;
+  bytes_enviados: number;
+  revision: number | null;
+  detalle: string;
+};
+
+export type ResultadoProbar = {
+  ok: boolean;
+  pasos: { nombre: string; ok: boolean; detalle: string }[];
+};

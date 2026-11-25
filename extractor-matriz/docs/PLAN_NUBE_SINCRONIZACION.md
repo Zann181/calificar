@@ -273,6 +273,34 @@ Cambios añadidos por la Fase 0: `MODO` y `ALMACEN_EN_BASE` en `config.py`; `DAT
 | 1.8 | Visor vivo: sondeo de `/revision` y aviso de actualización | S | aprobar una celda en local → visible en la nube en ≤ 30 s |
 | 1.9 | Despliegue continuo desde `main` en Render; publicación inicial | S | manifiestos local y nube idénticos |
 
+**Resultado de la Fase 1 (2026-11-24, en el equipo local; la nube de prueba fue un segundo servidor con SQLite):**
+
+| # | Estado | Evidencia |
+|---|---|---|
+| 1.1 | **Hecha** | `MODO=nube`: toda escritura de dominio → 405 (guardia en `app/modo_nube.py`); `/capacidades`; la interfaz oculta cargar, extraer, restablecer, continuar, aprobar/corregir/rechazar, exportar, registro y monitor de servicios (verificado en el navegador) |
+| 1.2 | **Hecha** | Google OAuth escrito (código → `id_token` por TLS) y probado con un intercambio simulado; lista `LECTORES_PERMITIDOS`; 401 sin sesión, el token de servicio no lee, el lector no usa `/sync`; sin las seis variables de acceso la nube no arranca. **No probado contra Google real** (compuerta 0.4). La contingencia GitHub no se escribió |
+| 1.3 | **Hecha** | `adaptadores/replica.py` en cada contexto + `compartido/sobre.py` (hash canónico, `esquema: 1`). Réplica a nivel de fila SQL con todas las columnas, no de objetos de dominio |
+| 1.4 | **Hecha** | `GET /extracciones` (lista sin cuerpos, filtro `?articulo=`) y `GET /extracciones/{id}` (completa), en ambos modos; ficha «Extracción» con las siete pestañas y enlace al PDF desde cada ancla |
+| 1.5 | **Hecha** | `/sync/{salud,manifiesto,archivos,lote}` + `/revision` con ETag; lote transaccional e idempotente; 426 con esquema mayor; 409 si otra instalación sincroniza |
+| 1.6 | **Hecha, medida con los datos reales** | Copia de `datos/extractor.db`: 1.ª pasada = 248 sobres (79 filas, 59 extracciones, 53 artículos, documentos, libro, base) + 105 archivos (61 MB) en 15 s, con verificación posterior; **2.ª pasada = 0 envíos** (4,5 s) |
+| 1.7 | **Hecha** | Panel «Configuración › Nube» con probar, guardar, qué se sube, pausar, sincronizar ahora, verificar, reenviar todo y tabla de corridas; indicador en la cabecera; el token solo se escribe (la API devuelve `token_guardado`) |
+| 1.8 | **Hecha** | Aprobar una celda en local → visible en la nube a los ~11 s (agrupación de 5 s + pasada). El visor sondea `/revision` cada 15 s y recarga los datos |
+| 1.9 | **Pendiente de ti** | Necesita Render, Neon y las cuentas de la sección 12 |
+
+Pruebas: 321 verdes en SQLite (35 nuevas: réplica bit a bit de las 25 columnas de la extracción, paridad de la API local y nube,
+recuperación, borrado, fila reemplazada, extracción en curso, opciones, 409, 426, seguridad, OAuth, agente con reloj falso).
+**No se corrieron sobre PostgreSQL** en esta sesión (sin servidor disponible); el job de CI sigue sin ejecutarse en GitHub.
+
+Diferencias con lo planeado, todas menores:
+
+- Rutas locales bajo `/api/v1/proyectos/{id}/sincronizacion/*`, como el resto de la API.
+- Los archivos se identifican por su **clave del almacén** (`pdf/…`, `crudo/…`, `matrices/…`) con su SHA-256 verificado, no por el
+  SHA-256 solo; la nube no borra archivos.
+- Un artículo excluido se replica con su estado `EXCLUIDO` (no se envía `eliminado:true`), para que la nube y el equipo sean idénticos.
+- La reconciliación y la agrupación se guardan por proyecto en `sync_destinos`, pero el panel solo muestra sus valores.
+- En teléfono el indicador de la nube sale arriba del contenido, no en la cabecera.
+- `python -m app.cli token-sync` genera el token del agente y el `SYNC_TOKEN_HASH` de la nube.
+
 ### Fase 2 · Resguardo y comodidad (M–L)
 
 - **«Descargar proyecto desde la nube»** (restauración al equipo local). Hasta que exista, la nube **no** es un respaldo

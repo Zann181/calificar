@@ -108,6 +108,49 @@ def modelos(request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido),
     return {str(a): _modelos_de(e) for a, e in c.extraccion.consultas.ultimas_por_articulo(proyecto_id).items()}
 
 
+def _resumen_de(e: Extraccion) -> dict[str, Any]:
+    """Lista de extracciones: lo necesario para elegir una, sin los cuerpos (salida, anclas, hallazgos…)."""
+    return {
+        "id": str(e.id), "articulo_id": str(e.articulo_id), "estado": e.estado.value, "estudios": e.estudios_reservados,
+        "iniciada_en": _aware(e.iniciada_en).isoformat(),
+        "terminada_en": _aware(e.terminada_en).isoformat() if e.terminada_en else None,
+        "acuerdo": e.acuerdo_campos_criticos, "iteraciones_validador": e.iteraciones_validador,
+        "hallazgos": len(e.hallazgos), "hallazgos_pendientes": sum(h.estado.value == "PENDIENTE" for h in e.hallazgos),
+        "anclas": len(e.anclas), "error": e.error, "paso_fallido": e.paso_fallido,
+        "costo_usd": round(sum(float(r.get("costo_usd") or 0) for r in e.uso_tokens.values()), 2),
+        "modelos": _modelos_de(e)["roles"],
+    }
+
+
+def _completa_de(e: Extraccion) -> dict[str, Any]:
+    """Todas las columnas de la extracción (ADR 0009, sección 6.4): lo mismo en local y en la nube."""
+    return {
+        **_resumen_de(e),
+        "version_libro_id": str(e.version_libro_id), "datos_del_equipo": e.datos_del_equipo, "salida": e.salida,
+        "codificacion_ciega": e.codificacion_ciega, "anclas": [a.a_dict() for a in e.anclas],
+        "hallazgos": [h.a_dict() for h in e.hallazgos], "errores_validador": e.errores_validador,
+        "avisos_validador": e.avisos_validador, "uso_tokens": e.uso_tokens,
+    }
+
+
+@enrutador.get("/extracciones")
+def listar_extracciones(request: Request, articulo: uuid.UUID | None = None,
+                        proyecto_id: uuid.UUID = Depends(proyecto_valido),
+                        _: Usuario = Depends(usuario_actual)) -> list[dict[str, Any]]:
+    """Todas las extracciones terminadas o en curso (más recientes primero), sin los cuerpos."""
+    c = _contenedor(request)
+    lista = c.extraccion.consultas.todas(proyecto_id)
+    if articulo is not None:
+        lista = [e for e in lista if e.articulo_id == articulo]
+    return [_resumen_de(e) for e in sorted(lista, key=lambda e: e.iniciada_en, reverse=True)]
+
+
+@enrutador.get("/extracciones/{extraccion_id}")
+def ver_extraccion(extraccion_id: uuid.UUID, request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido),
+                   _: Usuario = Depends(usuario_actual)) -> dict[str, Any]:
+    return _completa_de(_contenedor(request).extraccion.consultas.obtener(proyecto_id, extraccion_id))
+
+
 @enrutador.post("/extracciones")
 def extraer(datos: PedidoDeLote, request: Request, proyecto_id: uuid.UUID = Depends(proyecto_valido),
             _: Usuario = Depends(usuario_actual)) -> list[dict[str, Any]]:

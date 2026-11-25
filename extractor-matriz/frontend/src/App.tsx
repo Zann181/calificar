@@ -4,12 +4,16 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { api } from "./api";
+import { api, ErrorApi } from "./api";
+import { useCapacidades, useEscritura } from "./capacidades";
+import { AccesoNube } from "./componentes/AccesoNube";
 import { BarraGlobal } from "./componentes/BarraGlobal";
 import { Divisor, useAnchoPanel } from "./componentes/Divisor";
 import { EstadoServicios } from "./componentes/EstadoServicios";
+import { FichaExtraccion } from "./componentes/FichaExtraccion";
 import { Grilla } from "./componentes/Grilla";
 import { Icono } from "./componentes/Icono";
+import { IndicadorSync, IndicadorVisor } from "./componentes/IndicadorNube";
 import { PanelArticulos } from "./componentes/PanelArticulos";
 import { PanelRazonamiento } from "./componentes/PanelRazonamiento";
 import { PanelRegistro } from "./componentes/PanelRegistro";
@@ -107,6 +111,7 @@ const TITULOS: Record<Pestana, string> = {
 
 function Espacio({ pid }: { pid: string }) {
   const ancho = useAncho();
+  const escritura = useEscritura();
   const { actual } = useNavegacion();
   // El visor empieza plegado: vacío solo le quitaría ancho a la tabla. Se abre al elegir una celda o un PDF.
   const [visorAbierto, setVisorAbierto] = useState(false);
@@ -220,7 +225,7 @@ function Espacio({ pid }: { pid: string }) {
         filas={filas.data.filas}
         articulosMarcados={marcados}
       />
-      <PanelRegistro />
+      {escritura && <PanelRegistro />}
     </div>
   );
   const visor = actual.visor ? (
@@ -258,6 +263,7 @@ function Espacio({ pid }: { pid: string }) {
             setEnrollado((e.target as HTMLElement).scrollTop > 30)
           }
         >
+          {!escritura && <IndicadorVisor />}
           {pestana !== "visor" && (
             <h1 className="ios-titulo-grande">{TITULOS[pestana]}</h1>
           )}
@@ -432,17 +438,25 @@ function Espacio({ pid }: { pid: string }) {
 
 export function App() {
   const ancho = useAncho();
+  const cap = useCapacidades();
+  const escritura = cap.data?.escritura ?? true;
+  const sinSesion = cap.data?.modo === "nube" && !cap.data.autenticado;
   const proyectos = useQuery({
     queryKey: ["proyectos"],
     queryFn: api.proyectos,
+    enabled: !cap.isLoading && !sinSesion,
+    retry: false,
   });
   const proyecto = proyectos.data?.[0];
 
-  if (proyectos.isLoading) return <p className="centro tenue">Cargando…</p>;
+  if (cap.isLoading || proyectos.isLoading) return <p className="centro tenue">Cargando…</p>;
+  // Nube: sin sesión (o con la sesión vencida) se muestra la pantalla de acceso.
+  if (sinSesion || (proyectos.error instanceof ErrorApi && proyectos.error.estado === 401))
+    return <AccesoNube acceso={cap.data?.acceso ?? null} />;
 
   return (
     <div className="app">
-      {proyecto && <BarraGlobal pid={proyecto.id} />}
+      {proyecto && escritura && <BarraGlobal pid={proyecto.id} />}
       {ancho >= 768 && (
         <header className="herramientas">
           <div className="titulo-app">
@@ -453,9 +467,16 @@ export function App() {
             <span className="tenue">{proyecto?.nombre}</span>
           </div>
           <Migas />
-          <EstadoServicios pid={proyecto?.id ?? ""} />
+          {escritura ? (
+            <>
+              <EstadoServicios pid={proyecto?.id ?? ""} />
+              {proyecto && <IndicadorSync pid={proyecto.id} />}
+            </>
+          ) : (
+            <IndicadorVisor />
+          )}
           <div className="cuenta">
-            {proyecto && <BotonExportar pid={proyecto.id} />}
+            {proyecto && escritura && <BotonExportar pid={proyecto.id} />}
           </div>
         </header>
       )}
@@ -464,7 +485,8 @@ export function App() {
       ) : (
         <p className="centro tenue">Sin proyectos. Ejecute la semilla.</p>
       )}
-      {proyecto && <DialogoRevision pid={proyecto.id} />}
+      {proyecto && escritura && <DialogoRevision pid={proyecto.id} />}
+      {proyecto && <FichaExtraccion pid={proyecto.id} />}
     </div>
   );
 }

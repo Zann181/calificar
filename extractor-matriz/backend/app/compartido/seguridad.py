@@ -47,8 +47,14 @@ def _fabrica(request: Request) -> Callable[[], Session]:
 
 
 def usuario_actual(request: Request) -> Usuario:
-    """El usuario local (se crea la primera vez si falta)."""
+    """El usuario local (se crea la primera vez si falta). En la nube, el lector con sesión; sin él, 401: el
+    «administrador local» no existe allí (ADR 0009, sección 8)."""
     ajustes = request.app.state.contenedor.ajustes
+    if ajustes.modo == "nube":
+        lector = getattr(request.state, "lector", None)
+        if lector is None:
+            raise HTTPException(status_code=401, detail="Inicie sesión con su cuenta de Google")
+        return Usuario(uuid.uuid5(uuid.NAMESPACE_URL, "lector:" + lector), lector, lector, "lector")
     with _fabrica(request)() as s:
         return crear_usuario(s, correo=ajustes.admin_correo, nombre=ajustes.admin_nombre, rol="administrador")
 

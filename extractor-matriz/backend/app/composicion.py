@@ -22,9 +22,11 @@ from sqlalchemy.orm import Session
 from app.compartido.db import RegistroProyecto, crear_motor, fabrica_de_sesiones
 from app.compartido.dominio import ErrorDeDominio
 from app.compartido.outbox import Despachador
+from app.compartido.replica_sql import ReplicaDeProyecto
 from app.config import Settings
 from app.contextos.biblioteca.adaptadores.almacen import AlmacenEnBase, AlmacenEnDisco, AlmacenS3
 from app.contextos.biblioteca.adaptadores.mineru import MineruHttp, _grilla
+from app.contextos.biblioteca.adaptadores.replica import ReplicaDeBiblioteca
 from app.contextos.biblioteca.adaptadores.repositorio_sql import UnidadDeTrabajoBibliotecaSql
 from app.contextos.biblioteca.aplicacion.casos_de_uso import (
     AvanzarExtraccion,
@@ -44,6 +46,7 @@ from app.contextos.exportacion.aplicacion.casos_de_uso import ExportarMatriz
 from app.contextos.exportacion.puertos import FilaExportable, MatrizBase
 from app.contextos.extraccion.adaptadores.claude_cli import ClaudeCli
 from app.contextos.extraccion.adaptadores.pdf import LectorPyMuPdf
+from app.contextos.extraccion.adaptadores.replica import ReplicaDeExtraccion
 from app.contextos.extraccion.adaptadores.repositorio_sql import (
     ColaDeExtraccionesSql,
     UnidadDeTrabajoExtraccionSql,
@@ -64,6 +67,7 @@ from app.contextos.extraccion.aplicacion.ejecutor import (
 from app.contextos.extraccion.dominio.extraccion import Extraccion, Hallazgo
 from app.contextos.extraccion.puertos import ArticuloParaExtraer, LibroVigente, ModeloDeLenguaje
 from app.contextos.matriz.adaptadores.lector_excel import LectorExcel
+from app.contextos.matriz.adaptadores.replica import ReplicaDeMatriz
 from app.contextos.matriz.adaptadores.repositorio_sql import UnidadDeTrabajoMatrizSql
 from app.contextos.matriz.aplicacion.casos_de_uso import (
     AgregarColumnasDelLibro,
@@ -77,8 +81,20 @@ from app.contextos.matriz.aplicacion.casos_de_uso import (
     ReasignarDocumento,
     RevisarCelda,
 )
+from app.contextos.normas.adaptadores.replica import ReplicaDeNormas
 from app.contextos.normas.adaptadores.repositorio_sql import UnidadDeTrabajoNormasSql
 from app.contextos.normas.aplicacion.casos_de_uso import CasosDeNormas, ConsultasDeNormas, PublicarLibro
+from app.contextos.sincronizacion.adaptadores.cliente_http import CredencialesKeyring, fabrica_http
+from app.contextos.sincronizacion.adaptadores.tablas import EstadoDeNubeSql, RepositorioDeDestinosSql
+from app.contextos.sincronizacion.aplicacion.agente import AgenteDeSincronizacion
+from app.contextos.sincronizacion.aplicacion.ingesta import Ingesta
+from app.contextos.sincronizacion.aplicacion.sincronizador import Sincronizador
+from app.contextos.sincronizacion.puertos import (
+    Credenciales,
+    FabricaDeDestino,
+    FuenteDeReplica,
+    RepositorioDeDestinos,
+)
 
 log = logging.getLogger("composicion")
 
@@ -218,11 +234,18 @@ class Contenedor:
     convertir_nuevos: Callable[[], int]
     # Termina en segundo plano la conversión de un artículo detenido en CONVIRTIENDO (botón «Continuar»).
     terminar_conversion: Callable[[uuid.UUID, uuid.UUID], None]
+    # Sincronización (ADR 0009): agente local hacia la nube e ingesta de la nube.
+    destinos: RepositorioDeDestinos
+    credenciales: Credenciales
+    sincronizador: Sincronizador
+    agente: AgenteDeSincronizacion
+    ingesta: Ingesta
 
 
 def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None,
               almacen: AlmacenDeArchivos | None = None, conversor: ConversorPDF | None = None,
-              modelo: ModeloDeLenguaje | None = None) -> Contenedor:
+              modelo: ModeloDeLenguaje | None = None, credenciales: Credenciales | None = None,
+              fabrica_de_destino: FabricaDeDestino | None = None) -> Contenedor:
     if fabrica is None:
         fabrica = fabrica_de_sesiones(crear_motor(ajustes.database_url))
     if almacen is None and (ajustes.modo == "nube" or ajustes.almacen_en_base):
@@ -386,6 +409,21 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
         biblioteca.extraccion.completar(pid, aid)
         log.info("Extracción %s: %d filas escritas", ext.id, len(filas))
 
+    # Sincronización: cada contexto aporta sus agregados replicables; aquí se conectan (ADR 0009, sección 6.1).
+    replica_biblioteca = ReplicaDeBiblioteca(fabrica, almacen)
+    fuentes: list[FuenteDeReplica] = [ReplicaDeProyecto(fabrica), ReplicaDeNormas(fabrica), replica_biblioteca, ReplicaDeMatriz(fabrica),
+               ReplicaDeExtraccion(fabrica)]
+    destinos = RepositorioDeDestinosSql(fabrica)
+    credenciales = credenciales or CredencialesKeyring()
+    sincronizador = Sincronizador(fuentes, almacen, destinos, credenciales, fabrica_de_destino or fabrica_http)
+    agente = AgenteDeSincronizacion(sincronizador, destinos)
+    ingesta = Ingesta(fuentes, EstadoDeNubeSql(fabrica), almacen, replica_biblioteca.archivos_guardados)
+    if ajustes.modo == "local":
+        for evento in ("ArticuloCargado", "ArticuloConvertido", "ConversionFallida", "ArticuloExcluido",
+                       "EstadoDeArticuloCambiado", "ExtraccionCompletada", "ExtraccionFallida", "FilaEscrita",
+                       "CeldaAprobada", "CeldaCorregida", "CeldaRechazada", "FilaAprobada", "LibroPublicado"):
+            despachador.suscribir(evento, lambda _d: agente.notificar())
+
     despachador.suscribir("ArticuloCargado", al_cargar_articulo)
     despachador.suscribir("LibroPublicado", al_publicar_libro)
     despachador.suscribir("ExtraccionCompletada", al_completar_extraccion)
@@ -393,4 +431,6 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
     return Contenedor(ajustes=ajustes, fabrica=fabrica, almacen=almacen, biblioteca=biblioteca, normas=normas,
                       matriz=matriz, extraccion=extraccion, exportar=exportar,
                       despachador=despachador, ejecutor=ejecutor, mineru=mineru,
-                      convertir_nuevos=convertir_nuevos, terminar_conversion=terminar_conversion)
+                      convertir_nuevos=convertir_nuevos, terminar_conversion=terminar_conversion,
+                      destinos=destinos, credenciales=credenciales, sincronizador=sincronizador, agente=agente,
+                      ingesta=ingesta)

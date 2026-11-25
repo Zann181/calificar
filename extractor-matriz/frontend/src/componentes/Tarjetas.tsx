@@ -5,6 +5,7 @@ import { api } from "../api";
 import { colorDe, mostrarValor, prioridad, revisada } from "../colores";
 import { Icono } from "./Icono";
 import { useNavegacion } from "../navegacion";
+import { useEscritura } from "../capacidades";
 import { usePedirRevision } from "../revision";
 import type { Columna, Fila } from "../tipos";
 import { etiquetaEvidencia } from "./FichaEvidencia";
@@ -15,6 +16,7 @@ export function Tarjetas({ pid, columnas, filas, onVerPdf }: Props) {
   const qc = useQueryClient();
   const ir = useNavegacion((s) => s.ir);
   const pedir = usePedirRevision(pid);
+  const escritura = useEscritura();
 
   const cola = filas
     .filter((f) => f.origen === "EXTRAIDA")
@@ -71,14 +73,18 @@ export function Tarjetas({ pid, columnas, filas, onVerPdf }: Props) {
               <Icono nombre="visor" tam={18} />
               PDF
             </button>
-            <button className="aprobar" onClick={() => pedir("aprobar", fila.estudio, columna, celda)}>
-              <Icono nombre="check" tam={18} />
-              Aprobar
-            </button>
-            <button className="corregir" onClick={() => pedir("corregir", fila.estudio, columna, celda)}>
-              <Icono nombre="lapiz" tam={18} />
-              Corregir
-            </button>
+            {escritura && (
+              <>
+                <button className="aprobar" onClick={() => pedir("aprobar", fila.estudio, columna, celda)}>
+                  <Icono nombre="check" tam={18} />
+                  Aprobar
+                </button>
+                <button className="corregir" onClick={() => pedir("corregir", fila.estudio, columna, celda)}>
+                  <Icono nombre="lapiz" tam={18} />
+                  Corregir
+                </button>
+              </>
+            )}
           </div>
         </article>
       ))}
