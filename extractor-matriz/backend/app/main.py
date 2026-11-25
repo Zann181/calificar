@@ -17,6 +17,7 @@ from app.compartido import registro, seguridad
 from app.compartido.dominio import ErrorDeDominio, NoEncontrado
 from app.config import Settings, settings
 from app.contextos.biblioteca import api as api_biblioteca
+from app.contextos.descubrimiento import api as api_descubrimiento
 from app.contextos.exportacion import api as api_exportacion
 from app.contextos.matriz import api as api_matriz
 from app.contextos.normas import api as api_normas
@@ -85,6 +86,7 @@ def crear_app(ajustes: Settings | None = None, contenedor: Any = None,
         app.include_router(eventos_nube.enrutador())
     else:
         app.include_router(api_sincronizacion.local)
+        app.include_router(api_descubrimiento.enrutador)  # ADR 0011: la pestaña «Buscar» no existe en la nube
     app.include_router(modo_nube.enrutador_de_capacidades(ajustes))
     for r in (seguridad.enrutador, api_biblioteca.enrutador, api_normas.enrutador, api_matriz.enrutador,
               api_exportacion.enrutador, registro.enrutador, estado.enrutador,

@@ -244,6 +244,7 @@ export type Capacidades = {
   autenticado: boolean;
   lector: string | null;
   acceso: string | null;
+  busqueda?: boolean; // la pestaña «Buscar» solo existe en el equipo local (ADR 0011)
 };
 
 export type ResumenExtraccion = {
@@ -386,3 +387,147 @@ export type EstadoRestauracion = {
 };
 
 export type LectoresNube = { fijos: string[]; agregados: { correo: string; agregado_en: string }[] };
+
+// ---- Pestaña «Buscar» (ADR 0011) ------------------------------------------------------------------------------
+export type ConceptoBusqueda = { nombre: string; terminos: string[]; obligatorio: boolean };
+export type FiltrosBusqueda = { desde: number; hasta: number | null; idiomas: string[]; incluir_preprints: boolean };
+export type ConsultaBusqueda = { conceptos: ConceptoBusqueda[]; filtros: FiltrosBusqueda };
+export type FuenteBusqueda = {
+  id: string;
+  etiqueta: string;
+  sitio_id: string | null;
+  sesion: "NO_CONECTADA" | "VIGENTE" | "VENCIDA" | null;
+  utilizable: boolean;
+  desactivada: string | null; // el motivo, si se apagó sola porque el sitio cambió de forma
+};
+export type FuenteNoDisponible = { id: string; etiqueta: string; motivo: string };
+export type SitioConCredenciales = {
+  id: string;
+  nombre: string;
+  portal_url: string;
+  hosts: string[];
+  acceso: string[];
+  bases: string[];
+  notas: string;
+  sesion: "NO_CONECTADA" | "VIGENTE" | "VENCIDA";
+  limite: { bytes_por_ventana: number; ventana_s: number; pausa_min_s: number; concurrencia: number };
+};
+export type ConfiguracionBusqueda = {
+  consulta_inicial: ConsultaBusqueda;
+  fuentes: FuenteBusqueda[];
+  no_disponibles: FuenteNoDisponible[];
+  sitios: SitioConCredenciales[];
+};
+export type ProgresoFuente = {
+  estado: "PENDIENTE" | "BUSCANDO" | "LISTA" | "ERROR" | "OMITIDA";
+  encontrados: number;
+  nuevos: number;
+  errores: number;
+  ultimo_error: string | null;
+};
+export type Busqueda = {
+  id: string;
+  nombre: string;
+  estado: "EN_CURSO" | "TERMINADA" | "TERMINADA_CON_ERRORES" | "CANCELADA";
+  creada_en: string;
+  terminada_en: string | null;
+  fuentes: string[];
+  consulta: ConsultaBusqueda;
+  cadena: string;
+  progreso: Record<string, ProgresoFuente>;
+  total_unicos: number;
+  errores: number;
+  limite_por_fuente: number;
+};
+export type EstadoCandidato = "NUEVO" | "PRIORIZADO" | "DESCARTADO" | "IMPORTADO";
+export type Candidato = {
+  id: string;
+  titulo: string;
+  doi: string | null;
+  anio: number | null;
+  revista: string;
+  autores: string[];
+  paises: string[];
+  resumen: string;
+  palabras_clave: string[];
+  idioma: string;
+  tipo: string;
+  url_oa: string | null;
+  es_preprint: boolean;
+  fuentes: string[];
+  estado: EstadoCandidato;
+  motivo: string | null;
+  en_matriz: boolean;
+  articulo_id: string | null;
+  evaluacion?: Evaluacion | null;
+};
+export type ListadoCandidatos = {
+  candidatos: Candidato[];
+  total: number;
+  contadores: Record<string, number>;
+  perfil: Perfil;
+};
+// Fase 2: columnas a elección, con prioridad (plan «Buscar», sección 5).
+export type Nivel = "M" | "R" | "T" | "X";
+export type Prioridad = "IMPRESCINDIBLE" | "IMPORTANTE" | "DESEABLE";
+export type EstadoCelda = "METADATO" | "INDICIO" | "PENDIENTE" | "AUSENTE" | "NO_APLICA";
+export type EtiquetaCandidato = "PROBABLE" | "DUDOSO" | "SIN_DATOS" | "INCOMPLETO" | "NO_APLICA";
+export type ColumnaCatalogo = {
+  clave: string;
+  encabezado: string;
+  grupo: string;
+  nivel: Nivel;
+  vocabulario: number;
+  derivada: boolean;
+  elegible: boolean;
+};
+export type CatalogoColumnas = { columnas: ColumnaCatalogo[]; grupos: string[]; niveles: Record<Nivel, string> };
+export type ColumnaElegida = { clave: string; prioridad: Prioridad };
+export type Perfil = { id: string; nombre: string; predeterminado: boolean; columnas: ColumnaElegida[] };
+export type ListaPerfiles = { perfiles: Perfil[]; activo: Perfil; inicial: Perfil };
+export type CeldaPrevia = {
+  columna: string;
+  estado: EstadoCelda;
+  valor: string | null;
+  origen: string;
+  frase: string | null;
+  prioridad: Prioridad;
+};
+export type Evaluacion = {
+  puntaje: number;
+  maximo: number;
+  etiqueta: EtiquetaCandidato;
+  razon: string | null;
+  etapa: "A" | "B"; // A: metadatos y resumen · B: además, el texto completo del PDF
+  peso_total: number;
+  celdas: CeldaPrevia[];
+};
+// Etapa B: leer el texto completo de un PDF abierto (no importa el artículo ni extrae con el modelo).
+export type EstadoAnalisis = "ANALIZADO" | "TEXTO_INSUFICIENTE" | "SIN_COPIA_ABIERTA" | "ERROR";
+export type ResultadoAnalisis = { id: string; titulo: string; estado: EstadoAnalisis; mensaje: string; con_indicio: number };
+export type VistaPreviaRespuesta = { perfil: Perfil; sin_verificar: true; candidatos: Candidato[] };
+export type OrdenCandidatos = "reciente" | "puntaje";
+export type ExigirColumnas = "nada" | "sin_ausentes" | "confirmadas";
+export type FiltroCandidatos = {
+  estado?: EstadoCandidato;
+  busqueda_id?: string;
+  q?: string;
+  orden?: OrdenCandidatos;
+  exigir?: ExigirColumnas;
+  perfil_id?: string;
+  en_matriz?: boolean;
+  desde?: number;
+  cuantos?: number;
+};
+export type AccionCandidatos = "priorizar" | "descartar" | "reactivar";
+export type ResultadoDecision = { cambiados: Candidato[]; rechazados: Record<string, string> };
+// Fase 3: importar el PDF abierto de un candidato al flujo de Artículos (no extrae ni toca la matriz).
+export type EstadoImportacion = "IMPORTADO" | "YA_ESTABA" | "SIN_COPIA_ABIERTA" | "RECHAZADO" | "ERROR";
+export type ResultadoImportacion = {
+  id: string;
+  titulo: string;
+  estado: EstadoImportacion;
+  mensaje: string;
+  articulo_id: string | null;
+};
+export const MAX_IMPORTAR = 10;

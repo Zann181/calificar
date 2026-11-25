@@ -2619,3 +2619,543 @@ a.enlace-boton:hover {
   background: var(--azul);
   transition: width 0.3s;
 }
+
+/* ---------- pestaña «Buscar» (ADR 0011) ---------- */
+.buscar {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr) 380px;
+  background: var(--fondo);
+}
+.buscar-consulta,
+.buscar-ficha {
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--lateral);
+}
+.buscar-consulta {
+  border-right: 1px solid var(--separador);
+}
+.buscar-ficha {
+  display: block;
+  border-left: 1px solid var(--separador);
+  background: var(--fondo-2);
+}
+.buscar-ficha h2 {
+  font-size: 15px;
+  margin: 0 0 6px;
+}
+.buscar-ficha h3 {
+  font-size: 12px;
+  margin: 14px 0 4px;
+  color: var(--texto-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.buscar-ficha.vacia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.buscar-resumen {
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.buscar-aviso {
+  margin-top: 16px;
+  padding: 8px 10px;
+  border-radius: var(--radio);
+  background: var(--c-amarillo);
+  font-size: 12px;
+}
+.buscar-enlaces {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.buscar-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 6px 0;
+}
+.buscar-tarjeta {
+  background: var(--fondo-2);
+  border-radius: var(--radio);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.buscar-tarjeta > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.buscar-tarjeta .fila,
+.buscar .fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.buscar label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+.buscar label.fila {
+  flex-direction: row;
+}
+.buscar .crece {
+  flex: 1;
+  min-width: 120px;
+}
+.buscar textarea,
+.buscar input[type="text"],
+.buscar input[type="search"],
+.buscar input[type="number"],
+.buscar input:not([type]),
+.buscar select {
+  width: 100%;
+  font: inherit;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--separador);
+  background: var(--fondo-2);
+  color: inherit;
+}
+.buscar input[type="number"] {
+  width: 90px;
+}
+.buscar textarea {
+  resize: vertical;
+  line-height: 1.4;
+}
+.buscar-concepto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.buscar-fuentes,
+.buscar-progreso,
+.buscar-historial,
+.buscar-sitios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.buscar-fuentes li,
+.buscar-progreso li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.buscar .nombre {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.buscar-historial button {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  background: transparent;
+}
+.buscar-historial button.activo {
+  background: var(--relleno);
+}
+.buscar-errores {
+  background: var(--rojo);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.buscar-estado {
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  background: var(--relleno);
+  white-space: nowrap;
+}
+.buscar-estado.lista,
+.buscar-estado.priorizado {
+  background: var(--c-verde);
+}
+.buscar-estado.buscando,
+.buscar-estado.en_curso {
+  background: var(--c-amarillo);
+}
+.buscar-estado.error,
+.buscar-estado.omitida,
+.buscar-estado.descartado {
+  background: var(--c-rojo);
+}
+.buscar-lista {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.buscar-barra,
+.buscar-seleccion {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--separador);
+}
+.buscar-barra input[type="search"] {
+  max-width: 280px;
+}
+.buscar-barra select {
+  width: auto;
+}
+.buscar-seleccion {
+  background: var(--c-verde);
+}
+.buscar-seleccion input {
+  max-width: 220px;
+}
+.buscar-tabla-caja {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.buscar-tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+.buscar-tabla th {
+  position: sticky;
+  top: 0;
+  background: var(--fondo-2);
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--separador);
+  font-size: 12px;
+  color: var(--texto-2);
+}
+.buscar-tabla td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--separador);
+  vertical-align: top;
+}
+.buscar-tabla tr:nth-child(even) {
+  background: var(--cebra);
+}
+.buscar-tabla tr.actual {
+  background: var(--relleno);
+}
+.buscar-tabla tr.descartado .titulo {
+  opacity: 0.55;
+}
+.buscar-tabla .titulo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+.buscar-tabla button.enlace {
+  text-align: left;
+  padding: 0;
+  font-weight: 600;
+  background: transparent;
+}
+@media (max-width: 1279px) {
+  .buscar {
+    grid-template-columns: 320px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .buscar-consulta {
+    grid-row: 1 / span 2;
+  }
+  .buscar-ficha {
+    max-height: 40vh;
+    border-left: 0;
+    border-top: 1px solid var(--separador);
+  }
+}
+@media (max-width: 767px) {
+  .buscar {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+  .buscar-consulta,
+  .buscar-ficha {
+    overflow: visible;
+    max-height: none;
+    border: 0;
+  }
+  .buscar-lista {
+    min-height: 60vh;
+  }
+}
+
+/* ---------- pestaña «Buscar»: columnas con prioridad, cobertura y vista previa (Fase 2) ---------- */
+.buscar-consulta[data-izq="columnas"] > .buscar-tarjeta {
+  display: none;
+}
+.buscar-columnas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.buscar-nivel {
+  display: inline-block;
+  min-width: 18px;
+  text-align: center;
+  border-radius: 6px;
+  padding: 0 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: var(--relleno);
+  color: var(--texto-2);
+}
+.buscar-nivel.nivel-M {
+  background: var(--c-verde);
+  color: var(--verde);
+}
+.buscar-nivel.nivel-R {
+  background: var(--c-amarillo);
+}
+.buscar-nivel.nivel-T {
+  background: var(--c-naranja);
+}
+.buscar-nivel.nivel-X {
+  opacity: 0.6;
+}
+.buscar-elegidas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.buscar-elegidas li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  background: var(--relleno-2);
+  border-left: 3px solid transparent;
+}
+.buscar-elegidas li.p-IMPRESCINDIBLE {
+  border-left-color: var(--rojo);
+}
+.buscar-elegidas li.p-IMPORTANTE {
+  border-left-color: var(--naranja);
+}
+.buscar-elegidas li.p-DESEABLE {
+  border-left-color: var(--texto-3);
+}
+.buscar-elegidas .orden {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.buscar-elegidas .orden button {
+  padding: 0 4px;
+  font-size: 9px;
+}
+.buscar-elegidas select {
+  width: auto;
+  max-width: 120px;
+}
+.buscar-catalogo {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0 0 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.buscar-columnas details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+}
+.buscar-etiqueta {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  background: var(--relleno);
+  white-space: nowrap;
+}
+.buscar-etiqueta.et-PROBABLE {
+  background: var(--c-verde);
+}
+.buscar-etiqueta.et-DUDOSO {
+  background: var(--c-amarillo);
+}
+.buscar-etiqueta.et-INCOMPLETO {
+  background: var(--c-rojo);
+}
+.buscar-etiqueta.et-NO_APLICA {
+  opacity: 0.6;
+}
+.buscar-cobertura {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 110px;
+}
+.buscar-cobertura .barra {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--relleno);
+}
+.buscar-cobertura .barra i {
+  display: block;
+  height: 100%;
+}
+.buscar-cobertura .cubierto {
+  background: var(--verde);
+}
+.buscar-cobertura .pendiente {
+  background: repeating-linear-gradient(45deg, var(--texto-3) 0 3px, transparent 3px 6px);
+}
+.buscar-cobertura .ausente {
+  background: var(--rojo);
+}
+.buscar-indicios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.buscar-indicios li {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--relleno-2);
+}
+.buscar-indicios q,
+.buscar-previa q {
+  display: block;
+  font-size: 11.5px;
+  color: var(--texto-2);
+  margin-top: 2px;
+}
+.celda-metadato {
+  background: var(--c-verde) !important;
+}
+.celda-indicio {
+  background: var(--c-amarillo) !important;
+}
+.celda-pendiente {
+  background: var(--c-gris) !important;
+}
+.celda-ausente {
+  background: var(--c-rojo) !important;
+}
+.buscar-previa-caja {
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+}
+.buscar-previa-cabeza {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.buscar-previa {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.buscar-previa th,
+.buscar-previa td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--separador);
+  text-align: left;
+  vertical-align: top;
+}
+.buscar-previa.comparativa .titulo-previa {
+  min-width: 180px;
+  max-width: 260px;
+  font-weight: 600;
+}
+.buscar-previa .estado {
+  display: block;
+  color: var(--texto-2);
+}
+.buscar-previa th.p-IMPRESCINDIBLE {
+  box-shadow: inset 0 -3px 0 var(--rojo);
+}
+.buscar-previa th.p-IMPORTANTE {
+  box-shadow: inset 0 -3px 0 var(--naranja);
+}
+
+/* ---------- pestaña «Buscar»: importación de PDF (Fase 3) ---------- */
+.buscar-importacion {
+  margin: 8px 12px 0;
+  padding: 8px 10px;
+  border-radius: var(--radio);
+  background: var(--relleno-2);
+}
+.buscar-importacion > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.buscar-importacion ul {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.buscar-importacion li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.buscar-estado.imp {
+  min-width: 110px;
+  text-align: center;
+}
+.buscar-estado.importado {
+  background: var(--c-verde);
+}
+
+/* ---------- pestaña «Buscar»: fuentes apagadas y no disponibles (Fase 4) ---------- */
+.buscar-apagada {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+}
+.buscar-fuentes li.no-disponible {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  opacity: 0.8;
+}

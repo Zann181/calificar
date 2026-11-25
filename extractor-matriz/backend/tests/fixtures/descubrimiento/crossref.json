@@ -1,0 +1,66 @@
+{
+ "status": "ok",
+ "message-type": "work-list",
+ "message-version": "1.0.0",
+ "message": {
+  "facets": {},
+  "total-results": 950291,
+  "items": [
+   {
+    "DOI": "10.5861/ijrsm.2023.1080",
+    "title": [
+     "Performance management, job happiness and job performance among Chinese knowledge workers: Inputs to employee productivity model"
+    ],
+    "author": [
+     {
+      "given": "Wang Qi",
+      "family": "Shen",
+      "sequence": "first",
+      "affiliation": [],
+      "role": [
+       {
+        "role": "author",
+        "vocabulary": "crossref"
+       }
+      ]
+     }
+    ],
+    "issued": {
+     "date-parts": [
+      [
+       2023,
+       8,
+       25
+      ]
+     ]
+    },
+    "container-title": [
+     "International Journal of Research Studies in Management"
+    ],
+    "URL": "https://doi.org/10.5861/ijrsm.2023.1080"
+   },
+   {
+    "DOI": "10.52783/jier.v3i2.556",
+    "title": [
+     "A Study on Factors Influencing Workplace Happiness and Its Relationship with Job Satisfaction, Employee Retention and Work Performance"
+    ],
+    "issued": {
+     "date-parts": [
+      [
+       2023
+      ]
+     ]
+    },
+    "container-title": [
+     "Journal of Informatics Education and Research"
+    ],
+    "URL": "https://doi.org/10.52783/jier.v3i2.556"
+   }
+  ],
+  "items-per-page": 2,
+  "query": {
+   "start-index": 0,
+   "search-terms": "happiness job performance"
+  }
+ }
+}

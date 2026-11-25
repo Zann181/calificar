@@ -1,0 +1,1544 @@
+{
+ "meta": {
+  "count": 184,
+  "db_response_time_ms": 538,
+  "page": null,
+  "per_page": 3,
+  "next_cursor": "IlszNi44NjE5NiwgMTY0MDk5NTIwMDAwMCwgJ2h0dHBzOi8vb3BlbmFsZXgub3JnL1c0MjkzMDE2ODcyJ10i",
+  "groups_count": null,
+  "cost_usd": 0.001
+ },
+ "results": [
+  {
+   "id": "https://openalex.org/W3013538668",
+   "doi": "https://doi.org/10.1108/apjba-10-2019-0210",
+   "title": "Organizational virtuousness, subjective well-being, and job performance: Comparing employees in France and Japan",
+   "publication_year": 2020,
+   "language": "en",
+   "type": "article",
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5048824183",
+      "display_name": "Rémy Magnier‐Watanabe",
+      "type": null,
+      "orcid": "https://orcid.org/0000-0001-9375-1900",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-9375-1900"
+      ]
+     },
+     "acted_on_behalf_of": [],
+     "institutions": [
+      {
+       "id": "https://openalex.org/I146399215",
+       "display_name": "University of Tsukuba",
+       "ror": "https://ror.org/02956yf07",
+       "country_code": "JP",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I146399215"
+       ]
+      }
+     ],
+     "countries": [
+      "JP"
+     ],
+     "is_corresponding": true,
+     "contributor_roles": [],
+     "raw_author_name": "Remy Magnier-Watanabe",
+     "raw_affiliation_strings": [
+      "Graduate School of Business Sciences, University of Tsukuba, Tokyo, Japan"
+     ],
+     "raw_orcid": "https://orcid.org/0000-0001-9375-1900",
+     "affiliations": [
+      {
+       "raw_affiliation_string": "Graduate School of Business Sciences, University of Tsukuba, Tokyo, Japan",
+       "institution_ids": [
+        "https://openalex.org/I146399215"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5112085577",
+      "display_name": "Toru Uchida",
+      "type": null,
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "acted_on_behalf_of": [],
+     "institutions": [
+      {
+       "id": "https://openalex.org/I127090209",
+       "display_name": "Niigata University of International and Information Studies",
+       "ror": "https://ror.org/03nskz175",
+       "country_code": "JP",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I127090209"
+       ]
+      }
+     ],
+     "countries": [
+      "JP"
+     ],
+     "is_corresponding": false,
+     "contributor_roles": [],
+     "raw_author_name": "Toru Uchida",
+     "raw_affiliation_strings": [
+      "Niigata University of International and Information Studies, Niigata, Japan"
+     ],
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "raw_affiliation_string": "Niigata University of International and Information Studies, Niigata, Japan",
+       "institution_ids": [
+        "https://openalex.org/I127090209"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5039041153",
+      "display_name": "Philippe Orsini",
+      "type": null,
+      "orcid": "https://orcid.org/0000-0003-1721-0269",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-1721-0269"
+      ]
+     },
+     "acted_on_behalf_of": [],
+     "institutions": [
+      {
+       "id": "https://openalex.org/I104946051",
+       "display_name": "Nihon University",
+       "ror": "https://ror.org/05jk51a88",
+       "country_code": "JP",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I104946051"
+       ]
+      }
+     ],
+     "countries": [
+      "JP"
+     ],
+     "is_corresponding": false,
+     "contributor_roles": [],
+     "raw_author_name": "Philippe Orsini",
+     "raw_affiliation_strings": [
+      "Nihon University, Tokyo, Japan"
+     ],
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "raw_affiliation_string": "Nihon University, Tokyo, Japan",
+       "institution_ids": [
+        "https://openalex.org/I104946051"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "last",
+     "author": {
+      "id": "https://openalex.org/A5052486513",
+      "display_name": "Caroline F. Benton",
+      "type": null,
+      "orcid": "https://orcid.org/0000-0001-7087-3446",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-7087-3446",
+       "https://orcid.org/0000-0002-5273-612X"
+      ]
+     },
+     "acted_on_behalf_of": [],
+     "institutions": [
+      {
+       "id": "https://openalex.org/I146399215",
+       "display_name": "University of Tsukuba",
+       "ror": "https://ror.org/02956yf07",
+       "country_code": "JP",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I146399215"
+       ]
+      }
+     ],
+     "countries": [
+      "JP"
+     ],
+     "is_corresponding": false,
+     "contributor_roles": [],
+     "raw_author_name": "Caroline F. Benton",
+     "raw_affiliation_strings": [
+      "Graduate School of Business Sciences, University of Tsukuba, Tokyo, Japan"
+     ],
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "raw_affiliation_string": "Graduate School of Business Sciences, University of Tsukuba, Tokyo, Japan",
+       "institution_ids": [
+        "https://openalex.org/I146399215"
+       ]
+      }
+     ]
+    }
+   ],
+   "abstract_inverted_index": {
+    "Purpose": [
+     0
+    ],
+    "Past": [
+     1
+    ],
+    "research": [
+     2
+    ],
+    "has": [
+     3
+    ],
+    "convincingly": [
+     4
+    ],
+    "shown": [
+     5
+    ],
+    "that": [
+     6,
+     74,
+     87
+    ],
+    "higher": [
+     7,
+     17
+    ],
+    "employee": [
+     8
+    ],
+    "subjective": [
+     9,
+     31,
+     164,
+     238
+    ],
+    "well-being,": [
+     10,
+     32
+    ],
+    "or": [
+     11,
+     199,
+     209
+    ],
+    "happiness,": [
+     12
+    ],
+    "is": [
+     13,
+     101,
+     137
+    ],
+    "a": [
+     14,
+     128,
+     141,
+     185
+    ],
+    "source": [
+     15,
+     129
+    ],
+    "of": [
+     16,
+     83,
+     130,
+     156,
+     159,
+     197,
+     225,
+     231
+    ],
+    "job": [
+     18,
+     35,
+     118,
+     131,
+     168,
+     241
+    ],
+    "performance": [
+     19,
+     36,
+     169
+    ],
+    "and": [
+     20,
+     33,
+     39,
+     50,
+     53,
+     57,
+     61,
+     77,
+     152,
+     166,
+     174,
+     201,
+     234,
+     240
+    ],
+    "retention.": [
+     21
+    ],
+    "This": [
+     22
+    ],
+    "paper": [
+     23
+    ],
+    "therefore": [
+     24
+    ],
+    "examines": [
+     25
+    ],
+    "the": [
+     26,
+     75,
+     78,
+     96,
+     172,
+     175,
+     193,
+     223,
+     229
+    ],
+    "relationships": [
+     27
+    ],
+    "between": [
+     28
+    ],
+    "organizational": [
+     29,
+     84,
+     113,
+     124,
+     150,
+     160,
+     232
+    ],
+    "virtuousness,": [
+     30,
+     85
+    ],
+    "individual": [
+     34
+    ],
+    "among": [
+     37,
+     48
+    ],
+    "French": [
+     38,
+     51,
+     58,
+     79
+    ],
+    "Japanese": [
+     40,
+     49,
+     56,
+     76,
+     173
+    ],
+    "employees.": [
+     41
+    ],
+    "Design/methodology/approach": [
+     42
+    ],
+    "A": [
+     43
+    ],
+    "questionnaire": [
+     44
+    ],
+    "survey": [
+     45
+    ],
+    "was": [
+     46,
+     65
+    ],
+    "conducted": [
+     47
+    ],
+    "managers": [
+     52
+    ],
+    "staff": [
+     54
+    ],
+    "at": [
+     55
+    ],
+    "domestic": [
+     59
+    ],
+    "companies": [
+     60
+    ],
+    "structural": [
+     62
+    ],
+    "equation": [
+     63
+    ],
+    "modeling": [
+     64
+    ],
+    "employed": [
+     66
+    ],
+    "to": [
+     67,
+     112,
+     115,
+     139,
+     214,
+     222
+    ],
+    "compare": [
+     68
+    ],
+    "those": [
+     69
+    ],
+    "associations.": [
+     70
+    ],
+    "Findings": [
+     71
+    ],
+    "We": [
+     72
+    ],
+    "found": [
+     73
+    ],
+    "have": [
+     80
+    ],
+    "different": [
+     81
+    ],
+    "conceptualizations": [
+     82
+    ],
+    "suggesting": [
+     86
+    ],
+    "firms": [
+     88,
+     202
+    ],
+    "must": [
+     89
+    ],
+    "tailor": [
+     90
+    ],
+    "their": [
+     91,
+     206
+    ],
+    "virtue-building": [
+     92
+    ],
+    "activities": [
+     93
+    ],
+    "based": [
+     94
+    ],
+    "on": [
+     95,
+     192,
+     228,
+     237
+    ],
+    "local": [
+     97
+    ],
+    "culture.": [
+     98
+    ],
+    "Subjective": [
+     99
+    ],
+    "well-being": [
+     100,
+     165,
+     239
+    ],
+    "comparatively": [
+     102
+    ],
+    "more": [
+     103
+    ],
+    "important": [
+     104
+    ],
+    "in": [
+     105,
+     110,
+     121,
+     146
+    ],
+    "Japan": [
+     106
+    ],
+    "since": [
+     107
+    ],
+    "it": [
+     108
+    ],
+    "acts": [
+     109
+    ],
+    "complement": [
+     111
+    ],
+    "virtuousness": [
+     114,
+     125,
+     151,
+     161,
+     180,
+     233
+    ],
+    "positively": [
+     116
+    ],
+    "affect": [
+     117
+    ],
+    "performance,": [
+     119
+    ],
+    "while": [
+     120
+    ],
+    "France,": [
+     122
+    ],
+    "only": [
+     123
+    ],
+    "counts": [
+     126
+    ],
+    "as": [
+     127
+    ],
+    "performance.": [
+     132,
+     242
+    ],
+    "Research": [
+     133
+    ],
+    "implications": [
+     134,
+     178
+    ],
+    "National": [
+     135
+    ],
+    "culture": [
+     136,
+     227
+    ],
+    "revealed": [
+     138
+    ],
+    "be": [
+     140,
+     182
+    ],
+    "new": [
+     142
+    ],
+    "factor": [
+     143
+    ],
+    "explaining": [
+     144
+    ],
+    "differences": [
+     145
+    ],
+    "how": [
+     147
+    ],
+    "employees": [
+     148
+    ],
+    "consider": [
+     149,
+     205
+    ],
+    "we": [
+     153
+    ],
+    "provide": [
+     154
+    ],
+    "evidence": [
+     155
+    ],
+    "positive": [
+     157,
+     163
+    ],
+    "associations": [
+     158
+    ],
+    "with": [
+     162,
+     167
+    ],
+    "for": [
+     170
+    ],
+    "both": [
+     171
+    ],
+    "French.": [
+     176
+    ],
+    "Practical": [
+     177
+    ],
+    "Organizational": [
+     179
+    ],
+    "cannot": [
+     181
+    ],
+    "construed": [
+     183
+    ],
+    "from": [
+     184
+    ],
+    "universalistic": [
+     186
+    ],
+    "perspective": [
+     187
+    ],
+    "where": [
+     188
+    ],
+    "virtues": [
+     189
+    ],
+    "are": [
+     190
+    ],
+    "conceptualized": [
+     191
+    ],
+    "same": [
+     194
+    ],
+    "basis": [
+     195
+    ],
+    "regardless": [
+     196
+    ],
+    "location": [
+     198
+    ],
+    "region,": [
+     200
+    ],
+    "should": [
+     203
+    ],
+    "also": [
+     204
+    ],
+    "employees'": [
+     207
+    ],
+    "individualist": [
+     208
+    ],
+    "collectivist": [
+     210
+    ],
+    "inclination": [
+     211
+    ],
+    "when": [
+     212
+    ],
+    "trying": [
+     213
+    ],
+    "influence": [
+     215
+    ],
+    "work": [
+     216
+    ],
+    "outcomes.": [
+     217
+    ],
+    "Originality/value": [
+     218
+    ],
+    "These": [
+     219
+    ],
+    "findings": [
+     220
+    ],
+    "point": [
+     221
+    ],
+    "role": [
+     224
+    ],
+    "national": [
+     226
+    ],
+    "perception": [
+     230
+    ],
+    "its": [
+     235
+    ],
+    "effect": [
+     236
+    ]
+   },
+   "primary_location": {
+    "id": "doi:10.1108/apjba-10-2019-0210",
+    "doi": "https://doi.org/10.1108/apjba-10-2019-0210",
+    "is_oa": false,
+    "landing_page_url": "https://doi.org/10.1108/apjba-10-2019-0210",
+    "pdf_url": null,
+    "source": {
+     "id": "https://openalex.org/S38196630",
+     "display_name": "Asia-Pacific Journal of Business Administration",
+     "issn_l": "1757-4323",
+     "issn": [
+      "1757-4323",
+      "1757-4331"
+     ],
+     "is_oa": false,
+     "is_in_doaj": false,
+     "is_core": true,
+     "listed_in": [
+      "abdc-b",
+      "cwts-core",
+      "jufo-1",
+      "norway-1",
+      "poland-40",
+      "russia-white-list-1"
+     ],
+     "host_organization": "https://openalex.org/P4310319811",
+     "host_organization_name": "Emerald Publishing Limited",
+     "host_organization_lineage": [
+      "https://openalex.org/P4310319811"
+     ],
+     "host_organization_lineage_names": [
+      "Emerald Publishing Limited"
+     ],
+     "type": "journal"
+    },
+    "license": null,
+    "license_id": null,
+    "version": "publishedVersion",
+    "is_accepted": true,
+    "is_published": true,
+    "raw_source_name": "Asia-Pacific Journal of Business Administration",
+    "raw_type": "journal-article"
+   },
+   "open_access": {
+    "is_oa": true,
+    "oa_status": "green",
+    "oa_url": "https://tsukuba.repo.nii.ac.jp/records/54871",
+    "any_repository_has_fulltext": true
+   },
+   "keywords": [
+    {
+     "id": "https://openalex.org/keywords/organizational-virtuousness",
+     "display_name": "organizational virtuousness",
+     "score": 0.9980000257492065
+    },
+    {
+     "id": "https://openalex.org/keywords/subjective-well-being",
+     "display_name": "subjective well-being",
+     "score": 0.9890000224113464
+    },
+    {
+     "id": "https://openalex.org/keywords/job-performance",
+     "display_name": "employee performance",
+     "score": 0.9739999771118164
+    },
+    {
+     "id": "https://openalex.org/keywords/national-culture",
+     "display_name": "national culture",
+     "score": 0.9679999947547913
+    },
+    {
+     "id": "https://openalex.org/keywords/cross-cultural-comparison",
+     "display_name": "cross-cultural comparison",
+     "score": 0.8100000023841858
+    },
+    {
+     "id": "https://openalex.org/keywords/french-employees",
+     "display_name": "French employees",
+     "score": 0.6869999766349792
+    },
+    {
+     "id": "https://openalex.org/keywords/japanese-workers",
+     "display_name": "Japanese workers",
+     "score": 1.0
+    },
+    {
+     "id": "https://openalex.org/keywords/individualism-collectivism",
+     "display_name": "individualism-collectivism",
+     "score": 0.7590000033378601
+    },
+    {
+     "id": "https://openalex.org/keywords/workplace-happiness",
+     "display_name": "employee happiness",
+     "score": 0.6190000176429749
+    }
+   ]
+  },
+  {
+   "id": "https://openalex.org/W3009208508",
+   "doi": "https://doi.org/10.1016/j.ijhm.2020.102462",
+   "title": "Job insecurity, subjective well-being and job performance: The moderating role of psychological capital",
+   "publication_year": 2020,
+   "language": "en",
+   "type": "article",
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5084514456",
+      "display_name": "Mahlagha Darvishmotevali",
+      "type": null,
+      "orcid": "https://orcid.org/0000-0001-6310-5131",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-6310-5131"
+      ]
+     },
+     "acted_on_behalf_of": [],
+     "institutions": [
+      {
+       "id": "https://openalex.org/I69050122",
+       "display_name": "Near East University",
+       "ror": "https://ror.org/02x8svs93",
+       "country_code": "CY",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I69050122"
+       ]
+      }
+     ],
+     "countries": [
+      "CY"
+     ],
+     "is_corresponding": false,
+     "contributor_roles": [],
+     "raw_author_name": "Mahlagha Darvishmotevali",
+     "raw_affiliation_strings": [
+      "Department of Tourism and Hotel Management, Near East University, 99138 Nicosia, TRNC, Mersin 10, Turkey"
+     ],
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "raw_affiliation_string": "Department of Tourism and Hotel Management, Near East University, 99138 Nicosia, TRNC, Mersin 10, Turkey",
+       "institution_ids": [
+        "https://openalex.org/I69050122"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "last",
+     "author": {
+      "id": "https://openalex.org/A5028677953",
+      "display_name": "Faizan Ali",
+      "type": null,
+      "orcid": "https://orcid.org/0000-0003-4528-3764",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-4528-3764"
+      ]
+     },
+     "acted_on_behalf_of": [],
+     "institutions": [
+      {
+       "id": "https://openalex.org/I59422894",
+       "display_name": "University of South Florida Sarasota–Manatee",
+       "ror": "https://ror.org/0062skg93",
+       "country_code": "US",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I59422894"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": true,
+     "contributor_roles": [],
+     "raw_author_name": "Faizan Ali",
+     "raw_affiliation_strings": [
+      "College of Hospitality & Tourism Leadership, University of South Florida Sarasota, Manatee, USA"
+     ],
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "raw_affiliation_string": "College of Hospitality & Tourism Leadership, University of South Florida Sarasota, Manatee, USA",
+       "institution_ids": [
+        "https://openalex.org/I59422894"
+       ]
+      }
+     ]
+    }
+   ],
+   "abstract_inverted_index": null,
+   "primary_location": {
+    "id": "doi:10.1016/j.ijhm.2020.102462",
+    "doi": "https://doi.org/10.1016/j.ijhm.2020.102462",
+    "is_oa": false,
+    "landing_page_url": "https://doi.org/10.1016/j.ijhm.2020.102462",
+    "pdf_url": null,
+    "source": {
+     "id": "https://openalex.org/S148599315",
+     "display_name": "International Journal of Hospitality Management",
+     "issn_l": "0278-4319",
+     "issn": [
+      "0278-4319",
+      "1873-4693"
+     ],
+     "is_oa": false,
+     "is_in_doaj": false,
+     "is_core": true,
+     "listed_in": [
+      "abdc-a-star",
+      "anvur-class-a",
+      "anvur-scientific",
+      "cwts-core",
+      "erih-plus",
+      "fnege-3",
+      "jufo-2",
+      "norway-1",
+      "poland-140",
+      "russia-white-list-1",
+      "vabb-shw"
+     ],
+     "host_organization": "https://openalex.org/P4310320990",
+     "host_organization_name": "Elsevier BV",
+     "host_organization_lineage": [
+      "https://openalex.org/P4310320990"
+     ],
+     "host_organization_lineage_names": [
+      "Elsevier BV"
+     ],
+     "type": "journal"
+    },
+    "license": null,
+    "license_id": null,
+    "version": "publishedVersion",
+    "is_accepted": true,
+    "is_published": true,
+    "raw_source_name": "International Journal of Hospitality Management",
+    "raw_type": "journal-article"
+   },
+   "open_access": {
+    "is_oa": false,
+    "oa_status": "closed",
+    "oa_url": null,
+    "any_repository_has_fulltext": false
+   },
+   "keywords": [
+    {
+     "id": "https://openalex.org/keywords/job-insecurity",
+     "display_name": "job insecurity",
+     "score": 1.0
+    },
+    {
+     "id": "https://openalex.org/keywords/subjective-well-being",
+     "display_name": "subjective well-being",
+     "score": 0.996999979019165
+    },
+    {
+     "id": "https://openalex.org/keywords/job-performance",
+     "display_name": "employee performance",
+     "score": 1.0
+    },
+    {
+     "id": "https://openalex.org/keywords/psychological-capital",
+     "display_name": "psychological capital",
+     "score": 1.0
+    },
+    {
+     "id": "https://openalex.org/keywords/moderating-effect",
+     "display_name": "moderating effect",
+     "score": 0.7329999804496765
+    },
+    {
+     "id": "https://openalex.org/keywords/coping-with-stress",
+     "display_name": "stress coping",
+     "score": 0.6919999718666077
+    },
+    {
+     "id": "https://openalex.org/keywords/hotel-employees",
+     "display_name": "hotel employees",
+     "score": 0.7839999794960022
+    },
+    {
+     "id": "https://openalex.org/keywords/hospitality-industry",
+     "display_name": "hospitality industry",
+     "score": 0.9279999732971191
+    },
+    {
+     "id": "https://openalex.org/keywords/mediating-role-of-well-being",
+     "display_name": "mediating role of well-being",
+     "score": 0.7620000243186951
+    }
+   ]
+  },
+  {
+   "id": "https://openalex.org/W4293016872",
+   "doi": "https://doi.org/10.16920/jeet/2022/v35is1/22023",
+   "title": "Influence of University teachers’ job satisfaction on subjective well-being and job performance",
+   "publication_year": 2022,
+   "language": "en",
+   "type": "article",
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5036589044",
+      "display_name": "Pavan Kumar Saraf",
+      "type": null,
+      "orcid": "https://orcid.org/0000-0001-7973-1655",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-7973-1655"
+      ]
+     },
+     "acted_on_behalf_of": [],
+     "institutions": [
+      {
+       "id": "https://openalex.org/I11880225",
+       "display_name": "National Institute of Technology Karnataka",
+       "ror": "https://ror.org/01hz4v948",
+       "country_code": "IN",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I11880225"
+       ]
+      }
+     ],
+     "countries": [
+      "IN"
+     ],
+     "is_corresponding": true,
+     "contributor_roles": [],
+     "raw_author_name": "Dr S Pavan Kumar",
+     "raw_affiliation_strings": [
+      "School of Management National Institute of Technology Karnataka (NITK), Surathkal"
+     ],
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "raw_affiliation_string": "School of Management National Institute of Technology Karnataka (NITK), Surathkal",
+       "institution_ids": [
+        "https://openalex.org/I11880225"
+       ]
+      }
+     ]
+    }
+   ],
+   "abstract_inverted_index": {
+    "Research": [
+     0
+    ],
+    "previously": [
+     1
+    ],
+    "found": [
+     2
+    ],
+    "a": [
+     3,
+     48,
+     126
+    ],
+    "direct": [
+     4
+    ],
+    "relationship": [
+     5
+    ],
+    "between": [
+     6,
+     58
+    ],
+    "job": [
+     7,
+     12,
+     36,
+     39,
+     94,
+     97,
+     117,
+     153
+    ],
+    "satisfaction": [
+     8,
+     37,
+     95
+    ],
+    "(JS)": [
+     9
+    ],
+    "and": [
+     10,
+     38,
+     60,
+     78,
+     100,
+     125,
+     134,
+     142,
+     155
+    ],
+    "employee": [
+     11,
+     27
+    ],
+    "performance": [
+     13,
+     40,
+     98,
+     118,
+     154
+    ],
+    "(JP).": [
+     14
+    ],
+    "However,": [
+     15
+    ],
+    "the": [
+     16,
+     20,
+     45,
+     56,
+     66,
+     69,
+     88,
+     138
+    ],
+    "literature": [
+     17
+    ],
+    "reveals": [
+     18
+    ],
+    "that": [
+     19,
+     92,
+     107
+    ],
+    "influence": [
+     21
+    ],
+    "of": [
+     22,
+     65,
+     71,
+     129,
+     140
+    ],
+    "intervening": [
+     23
+    ],
+    "variables": [
+     24
+    ],
+    "such": [
+     25
+    ],
+    "as": [
+     26,
+     44
+    ],
+    "subjective": [
+     28,
+     103,
+     130,
+     151
+    ],
+    "well-being": [
+     29
+    ],
+    "(SWB)": [
+     30
+    ],
+    "might": [
+     31
+    ],
+    "have": [
+     32
+    ],
+    "an": [
+     33
+    ],
+    "impact": [
+     34
+    ],
+    "on": [
+     35
+    ],
+    "relationship.": [
+     41
+    ],
+    "Broaden-and-build": [
+     42
+    ],
+    "model": [
+     43,
+     50
+    ],
+    "theoretical": [
+     46
+    ],
+    "base,": [
+     47
+    ],
+    "conceptual": [
+     49
+    ],
+    "was": [
+     51
+    ],
+    "developed": [
+     52
+    ],
+    "where": [
+     53
+    ],
+    "SWB": [
+     54,
+     143
+    ],
+    "moderates": [
+     55
+    ],
+    "relation": [
+     57
+    ],
+    "JS": [
+     59,
+     141
+    ],
+    "JP.": [
+     61,
+     146
+    ],
+    "One": [
+     62
+    ],
+    "unique": [
+     63
+    ],
+    "addition": [
+     64
+    ],
+    "study": [
+     67
+    ],
+    "is": [
+     68
+    ],
+    "introduction": [
+     70
+    ],
+    "Necessary": [
+     72
+    ],
+    "Condition": [
+     73
+    ],
+    "Analysis": [
+     74
+    ],
+    "(NCA).": [
+     75
+    ],
+    "Three": [
+     76
+    ],
+    "hundred": [
+     77
+    ],
+    "ninety-five": [
+     79
+    ],
+    "teachers": [
+     80,
+     93,
+     110
+    ],
+    "working": [
+     81
+    ],
+    "for": [
+     82
+    ],
+    "private": [
+     83
+    ],
+    "engineering": [
+     84
+    ],
+    "institutions": [
+     85
+    ],
+    "participated": [
+     86
+    ],
+    "in": [
+     87
+    ],
+    "study.": [
+     89
+    ],
+    "Results": [
+     90
+    ],
+    "revealed": [
+     91
+    ],
+    "predicts": [
+     96
+    ],
+    "directly": [
+     99
+    ],
+    "also": [
+     101
+    ],
+    "through": [
+     102
+    ],
+    "well-being.": [
+     104
+    ],
+    "It": [
+     105
+    ],
+    "show": [
+     106,
+     115
+    ],
+    "more": [
+     108,
+     112
+    ],
+    "satisfied": [
+     109
+    ],
+    "are": [
+     111,
+     121
+    ],
+    "likely": [
+     113
+    ],
+    "to": [
+     114,
+     144
+    ],
+    "increased": [
+     116
+    ],
+    "when": [
+     119
+    ],
+    "they": [
+     120
+    ],
+    "experiencing": [
+     122
+    ],
+    "low": [
+     123
+    ],
+    "level": [
+     124,
+     128
+    ],
+    "moderate": [
+     127
+    ],
+    "wellbeing.": [
+     131
+    ],
+    "NCA": [
+     132
+    ],
+    "scatterplots": [
+     133
+    ],
+    "bottleneck": [
+     135
+    ],
+    "analysis": [
+     136
+    ],
+    "prove": [
+     137
+    ],
+    "necessity": [
+     139
+    ],
+    "predict": [
+     145
+    ],
+    "Keywords": [
+     147
+    ],
+    "-": [
+     148
+    ],
+    "Job": [
+     149
+    ],
+    "satisfaction;": [
+     150
+    ],
+    "well-being;": [
+     152
+    ],
+    "necessary": [
+     156
+    ],
+    "condition": [
+     157
+    ],
+    "analysis.": [
+     158
+    ]
+   },
+   "primary_location": {
+    "id": "doi:10.16920/jeet/2022/v35is1/22023",
+    "doi": "https://doi.org/10.16920/jeet/2022/v35is1/22023",
+    "is_oa": true,
+    "landing_page_url": "https://doi.org/10.16920/jeet/2022/v35is1/22023",
+    "pdf_url": "https://sciresol.s3.us-east-2.amazonaws.com/srs-j/jeet/pdf/volume-35/73%20Paper%20Id_73%20-%20Pavan%20Kumar%20SOM%20Dept.pdf",
+    "source": {
+     "id": "https://openalex.org/S2764748117",
+     "display_name": "Journal of Engineering Education Transformations",
+     "issn_l": "0971-5843",
+     "issn": [
+      "0971-5843",
+      "2349-2473",
+      "2394-1707"
+     ],
+     "is_oa": true,
+     "is_in_doaj": false,
+     "is_core": true,
+     "listed_in": [
+      "cwts-core",
+      "poland-20",
+      "russia-white-list-3"
+     ],
+     "host_organization": "https://openalex.org/P4404682555",
+     "host_organization_name": "Rajarambapu Institute of Technology",
+     "host_organization_lineage": [
+      "https://openalex.org/P4404682555"
+     ],
+     "host_organization_lineage_names": [
+      "Rajarambapu Institute of Technology"
+     ],
+     "type": "journal"
+    },
+    "license": "cc-by",
+    "license_id": "https://openalex.org/licenses/cc-by",
+    "version": "publishedVersion",
+    "is_accepted": true,
+    "is_published": true,
+    "raw_source_name": "Journal of Engineering Education Transformations",
+    "raw_type": "journal-article"
+   },
+   "open_access": {
+    "is_oa": true,
+    "oa_status": "diamond",
+    "oa_url": "https://sciresol.s3.us-east-2.amazonaws.com/srs-j/jeet/pdf/volume-35/73%20Paper%20Id_73%20-%20Pavan%20Kumar%20SOM%20Dept.pdf",
+    "any_repository_has_fulltext": false
+   },
+   "keywords": [
+    {
+     "id": "https://openalex.org/keywords/job-satisfaction",
+     "display_name": "job satisfaction",
+     "score": 0.9850000143051147
+    },
+    {
+     "id": "https://openalex.org/keywords/subjective-well-being",
+     "display_name": "subjective well-being",
+     "score": 0.9990000128746033
+    },
+    {
+     "id": "https://openalex.org/keywords/job-performance",
+     "display_name": "employee performance",
+     "score": 0.9990000128746033
+    },
+    {
+     "id": "https://openalex.org/keywords/university-faculty",
+     "display_name": "university faculty",
+     "score": 0.9559999704360962
+    },
+    {
+     "id": "https://openalex.org/keywords/engineering-faculty",
+     "display_name": "engineering faculty",
+     "score": 0.5989999771118164
+    },
+    {
+     "id": "https://openalex.org/keywords/necessary-condition-analysis",
+     "display_name": "necessary condition analysis",
+     "score": 0.9160000085830688
+    },
+    {
+     "id": "https://openalex.org/keywords/moderation",
+     "display_name": "moderation",
+     "score": 0.4729999899864197
+    }
+   ]
+  }
+ ],
+ "group_by": []
+}

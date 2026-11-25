@@ -1,0 +1,1191 @@
+{
+ "_comentario": "Detectores deterministas de la etapa A (sin IA). Las palabras se comparan sin tildes ni mayúsculas. Los valores de vocabulario deben existir en el libro de códigos: una prueba lo verifica. Propuesta inicial, afinable con la medición de la Fase 2 contra los 53 PDF ya verificados. Los detectores con «solo_texto_completo» (etapa B) no se intentan sobre el resumen. «secciones»: en qué partes del cuerpo del texto completo se busca cada columna (método, resultados, discusión, introducción); el título, el resumen y las palabras clave siempre cuentan.",
+ "version": 2,
+ "terminos_felicidad": [
+  "happiness",
+  "happy",
+  "well-being",
+  "wellbeing",
+  "hedonic",
+  "eudaimonic",
+  "felicidad",
+  "bienestar",
+  "felicidade",
+  "bem-estar",
+  "affect",
+  "afecto"
+ ],
+ "terminos_desempeno": [
+  "performance",
+  "productivity",
+  "desempeno",
+  "rendimiento",
+  "productividad",
+  "desempenho",
+  "citizenship"
+ ],
+ "detectores": {
+  "Muestra": {
+   "tipo": "numero_muestra",
+   "secciones": [
+    "método"
+   ]
+  },
+  "Correlación Feli 1 - JP": {
+   "tipo": "regex",
+   "patrones": [
+    "\\br\\s*=\\s*[-−]?\\s*0?\\.\\d+",
+    "\\bcorrelation(?: coefficient)? (?:of|was|=)\\s*[-−]?0?\\.\\d+",
+    "\\bcorrelaci[oó]n (?:de|fue|=)\\s*[-−]?0?[\\.,]\\d+"
+   ],
+   "secciones": [
+    "resultados"
+   ],
+   "ambas": true
+  },
+  "Beta Fel 1- JP": {
+   "tipo": "regex",
+   "patrones": [
+    "[βΒ]\\s*=\\s*[-−]?\\s*0?\\.\\d+",
+    "\\bbeta\\s*(?:=|of|was)\\s*[-−]?0?\\.\\d+",
+    "standardi[sz]ed (?:regression )?coefficients?\\s*(?:of|was|=)\\s*[-−]?0?\\.\\d+"
+   ],
+   "secciones": [
+    "resultados"
+   ],
+   "ambas": true
+  },
+  "Correlacion o Beta felicidad 1 - JP": {
+   "tipo": "regex",
+   "patrones": [
+    "\\br\\s*=\\s*[-−]?\\s*0?\\.\\d+",
+    "[βΒ]\\s*=\\s*[-−]?\\s*0?\\.\\d+",
+    "\\bbeta\\s*(?:=|of|was)\\s*[-−]?0?\\.\\d+"
+   ],
+   "secciones": [
+    "resultados"
+   ],
+   "ambas": true
+  },
+  "Fiabilidad Alfa - Omega (felicidad)": {
+   "tipo": "fiabilidad",
+   "construccion": "felicidad",
+   "solo_texto_completo": false,
+   "secciones": [
+    "método",
+    "resultados"
+   ]
+  },
+  "Fiabilidad Alfa - Omega (desempeño)": {
+   "tipo": "fiabilidad",
+   "construccion": "desempeno",
+   "secciones": [
+    "método",
+    "resultados"
+   ]
+  },
+  "Instrumento felicidad": {
+   "tipo": "lista",
+   "nombres": [
+    "Oxford Happiness Questionnaire",
+    "Oxford Happiness Inventory",
+    "Subjective Happiness Scale",
+    "Satisfaction With Life Scale",
+    "SWLS",
+    "PANAS",
+    "Positive and Negative Affect Schedule",
+    "Psychological Well-Being Scales",
+    "Ryff",
+    "Utrecht Work Engagement Scale",
+    "UWES",
+    "Job-related Affective Well-being Scale",
+    "JAWS",
+    "Warr",
+    "Job Satisfaction Survey",
+    "Minnesota Satisfaction Questionnaire",
+    "Flourishing Scale",
+    "PERMA-Profiler",
+    "PERMA Profiler",
+    "Happiness at Work",
+    "Orientations to Happiness",
+    "Mental Health Continuum",
+    "Positive Mental Health",
+    "Subjective Vitality Scale",
+    "Warwick-Edinburgh Mental Well-being Scale",
+    "WEMWBS",
+    "Psychological Capital Questionnaire",
+    "WHO-5",
+    "Affect Balance Scale"
+   ],
+   "secciones": [
+    "método",
+    "resultados"
+   ]
+  },
+  "Escala de medición: Performance": {
+   "tipo": "lista",
+   "nombres": [
+    "Williams and Anderson",
+    "Williams & Anderson",
+    "In-Role Behavior",
+    "Individual Work Performance Questionnaire",
+    "IWPQ",
+    "Koopmans",
+    "Podsakoff",
+    "Organizational Citizenship Behavior scale",
+    "OCB scale",
+    "Borman and Motowidlo",
+    "Job performance scale",
+    "Tsui",
+    "Goodman and Svyantek",
+    "Heilman",
+    "Contextual performance scale",
+    "supervisor-rated performance",
+    "self-rated performance",
+    "performance appraisal",
+    "sales performance"
+   ],
+   "secciones": [
+    "método",
+    "resultados"
+   ]
+  },
+  "Software": {
+   "tipo": "lista",
+   "nombres": [
+    "SPSS",
+    "AMOS",
+    "Mplus",
+    "Stata",
+    "SmartPLS",
+    "Smart PLS",
+    "LISREL",
+    "JASP",
+    "lavaan",
+    "SAS",
+    "Python",
+    "MATLAB",
+    "PROCESS macro",
+    "HLM",
+    "EQS",
+    "Jamovi"
+   ],
+   "secciones": [
+    "método"
+   ]
+  },
+  "Población": {
+   "tipo": "lista",
+   "nombres": [
+    "employees",
+    "workers",
+    "nurses",
+    "teachers",
+    "physicians",
+    "doctors",
+    "managers",
+    "police officers",
+    "firefighters",
+    "call center",
+    "hotel employees",
+    "bank employees",
+    "healthcare workers",
+    "health care workers",
+    "academics",
+    "university staff",
+    "civil servants",
+    "public servants",
+    "salespeople",
+    "sales representatives",
+    "engineers",
+    "military",
+    "students",
+    "empleados",
+    "trabajadores",
+    "docentes",
+    "enfermeras",
+    "directivos",
+    "funcionarios",
+    "colaboradores",
+    "professores",
+    "funcionarios"
+   ],
+   "secciones": [
+    "método"
+   ]
+  },
+  "Teoría 1": {
+   "tipo": "lista",
+   "nombres": [
+    "self-determination theory",
+    "broaden-and-build",
+    "broaden and build",
+    "conservation of resources",
+    "job demands-resources",
+    "job demands resources",
+    "social exchange theory",
+    "affective events theory",
+    "psychological capital",
+    "positive psychology",
+    "job characteristics model",
+    "expectancy theory",
+    "social cognitive theory",
+    "person-environment fit",
+    "organizational support theory",
+    "teoria de la autodeterminacion",
+    "job embeddedness"
+   ],
+   "omitir_primeros": 0,
+   "secciones": [
+    "introducción",
+    "método"
+   ]
+  },
+  "Teoría 2": {
+   "tipo": "lista",
+   "nombres": [
+    "self-determination theory",
+    "broaden-and-build",
+    "broaden and build",
+    "conservation of resources",
+    "job demands-resources",
+    "job demands resources",
+    "social exchange theory",
+    "affective events theory",
+    "psychological capital",
+    "positive psychology",
+    "job characteristics model",
+    "expectancy theory",
+    "social cognitive theory",
+    "person-environment fit",
+    "organizational support theory",
+    "teoria de la autodeterminacion",
+    "job embeddedness"
+   ],
+   "omitir_primeros": 1,
+   "secciones": [
+    "introducción",
+    "método"
+   ]
+  },
+  "Teoria 3": {
+   "tipo": "lista",
+   "nombres": [
+    "self-determination theory",
+    "broaden-and-build",
+    "broaden and build",
+    "conservation of resources",
+    "job demands-resources",
+    "job demands resources",
+    "social exchange theory",
+    "affective events theory",
+    "psychological capital",
+    "positive psychology",
+    "job characteristics model",
+    "expectancy theory",
+    "social cognitive theory",
+    "person-environment fit",
+    "organizational support theory",
+    "teoria de la autodeterminacion",
+    "job embeddedness"
+   ],
+   "omitir_primeros": 2,
+   "secciones": [
+    "introducción",
+    "método"
+   ]
+  },
+  "Aim of study": {
+   "tipo": "oracion",
+   "posicion": "primera",
+   "pistas": [
+    "this study aims",
+    "this paper aims",
+    "this article aims",
+    "the aim of",
+    "the purpose of",
+    "the objective of",
+    "this study examines",
+    "this study investigates",
+    "this study explores",
+    "this research examines",
+    "this research investigates",
+    "this paper examines",
+    "this paper investigates",
+    "this study analy*",
+    "this study tests",
+    "we examine",
+    "we investigate",
+    "we examined",
+    "we investigated",
+    "este estudio",
+    "el objetivo",
+    "el proposito",
+    "esta investigacion"
+   ]
+  },
+  "Conclusion": {
+   "tipo": "oracion",
+   "posicion": "ultima",
+   "pistas": [
+    "in conclusion",
+    "we conclude",
+    "findings suggest",
+    "findings indicate",
+    "results suggest",
+    "results indicate",
+    "results show",
+    "results revealed",
+    "findings show",
+    "findings revealed",
+    "implications",
+    "conclusions",
+    "these findings",
+    "los resultados muestran",
+    "los resultados indican",
+    "se concluye",
+    "en conclusion"
+   ]
+  },
+  "Sector": {
+   "tipo": "vocabulario",
+   "valores": {
+    "Salud": [
+     "hospital",
+     "health care",
+     "healthcare",
+     "nurses",
+     "nursing",
+     "physician",
+     "medical staff",
+     "salud",
+     "enfermeria"
+    ],
+    "Educación": [
+     "teachers",
+     "university staff",
+     "academics",
+     "school",
+     "faculty members",
+     "docentes",
+     "educacion",
+     "university staff",
+     "university employees",
+     "university lecturers",
+     "professors",
+     "lecturers"
+    ],
+    "Hoteles": [
+     "hotel",
+     "hospitality",
+     "tourism",
+     "restaurant",
+     "hoteles",
+     "turismo"
+    ],
+    "Financiero": [
+     "bank",
+     "banking",
+     "insurance",
+     "financial",
+     "banca",
+     "financiero"
+    ],
+    "Telecomunicaciones": [
+     "telecom*",
+     "telecommunication",
+     "telecomunicaciones"
+    ],
+    "Aviación civil": [
+     "airline",
+     "aviation",
+     "flight attendants",
+     "aviacion"
+    ],
+    "Comercio electrónico": [
+     "e-commerce",
+     "online retail",
+     "comercio electronico"
+    ],
+    "Retail": [
+     "retail",
+     "store employees",
+     "supermarket",
+     "comercio minorista"
+    ],
+    "Industria alimentaria": [
+     "food industry",
+     "food manufacturing",
+     "industria alimentaria"
+    ],
+    "Público": [
+     "public sector",
+     "civil servants",
+     "public servants",
+     "government employees",
+     "sector publico",
+     "funcionarios publicos"
+    ],
+    "Servicios": [
+     "service sector",
+     "service employees",
+     "call center",
+     "customer service",
+     "servicios"
+    ],
+    "Multisectorial": [
+     "multi-sector",
+     "multisector",
+     "various industries",
+     "different industries",
+     "across sectors",
+     "several sectors",
+     "multiples sectores",
+     "varios sectores"
+    ]
+   },
+   "secciones": [
+    "método"
+   ]
+  },
+  "Hedónica/eudaimónica": {
+   "tipo": "vocabulario",
+   "valores": {
+    "Hedónica y eudaimónica": [
+     "hedonic and eudaimonic",
+     "eudaimonic and hedonic",
+     "hedonic or eudaimonic",
+     "hedonica y eudaimonica"
+    ],
+    "Eudaimónica": [
+     "eudaimonic",
+     "eudaimonia",
+     "psychological well-being",
+     "eudaimonica"
+    ],
+    "Hedónica": [
+     "hedonic",
+     "subjective well-being",
+     "life satisfaction",
+     "positive affect",
+     "hedonica"
+    ]
+   },
+   "secciones": [
+    "método"
+   ]
+  },
+  "Tipo de felicidad real": {
+   "tipo": "vocabulario",
+   "valores": {
+    "Satisfacción con la vida": [
+     "life satisfaction",
+     "satisfaction with life",
+     "satisfaccion con la vida"
+    ],
+    "Satisfacción laboral": [
+     "job satisfaction",
+     "work satisfaction",
+     "satisfaccion laboral"
+    ],
+    "Engagement laboral": [
+     "work engagement",
+     "employee engagement",
+     "engagement laboral"
+    ],
+    "Felicidad subjetiva (SHS)": [
+     "subjective happiness scale",
+     "subjective happiness",
+     "felicidad subjetiva"
+    ],
+    "Bienestar psicológico (Ryff)": [
+     "ryff",
+     "psychological well-being scales"
+    ],
+    "Bienestar psicológico en el trabajo": [
+     "psychological well-being at work",
+     "workplace psychological well-being",
+     "work-related well-being",
+     "bienestar psicologico en el trabajo"
+    ],
+    "Bienestar subjetivo compuesto": [
+     "subjective well-being",
+     "bienestar subjetivo"
+    ],
+    "Bienestar eudaimónico": [
+     "eudaimonic well-being",
+     "eudaimonic"
+    ],
+    "Florecimiento": [
+     "flourishing",
+     "florecimiento"
+    ],
+    "Afecto positivo": [
+     "positive affect",
+     "afecto positivo"
+    ],
+    "Balance afectivo": [
+     "affect balance",
+     "balance afectivo"
+    ],
+    "PERMA": [
+     "perma"
+    ],
+    "HAW": [
+     "happiness at work"
+    ],
+    "Orientación a la felicidad (subescala)": [
+     "orientations to happiness",
+     "orientation to happiness"
+    ],
+    "Salud mental positiva (MHC)": [
+     "mental health continuum",
+     "positive mental health"
+    ]
+   },
+   "secciones": [
+    "método"
+   ]
+  },
+  "Study design": {
+   "tipo": "vocabulario",
+   "valores": {
+    "Randomised controlled trial": [
+     "randomi[sz]ed controlled",
+     "randomi[sz]ed trial",
+     "field experiment",
+     "experimental design",
+     "ensayo controlado"
+    ],
+    "Diary study": [
+     "diary study",
+     "daily diary",
+     "experience sampling",
+     "estudio de diario"
+    ],
+    "Panel": [
+     "panel data",
+     "panel study",
+     "panel design"
+    ],
+    "Longitudinal study": [
+     "longitudinal",
+     "time-lagged",
+     "time lagged",
+     "three waves",
+     "two waves",
+     "multi-wave",
+     "multiwave",
+     "estudio longitudinal"
+    ],
+    "Cross sectional study": [
+     "cross-sectional",
+     "cross sectional",
+     "survey",
+     "questionnaire",
+     "transversal",
+     "encuesta"
+    ]
+   },
+   "secciones": [
+    "método"
+   ]
+  },
+  "Nivel": {
+   "tipo": "vocabulario",
+   "valores": {
+    "Multinivel": [
+     "multilevel",
+     "multi-level",
+     "multinivel",
+     "hierarchical linear",
+     "msem"
+    ],
+    "Group": [
+     "team-level",
+     "team level",
+     "group-level",
+     "group level",
+     "unit-level",
+     "business-unit",
+     "nivel de equipo",
+     "nivel grupal"
+    ]
+   },
+   "secciones": [
+    "método"
+   ]
+  },
+  "Analysis method (principal)": {
+   "tipo": "vocabulario",
+   "valores": {
+    "PLS-SEM": [
+     "pls-sem",
+     "partial least squares",
+     "smartpls",
+     "pls sem"
+    ],
+    "MSEM": [
+     "msem",
+     "multilevel structural equation"
+    ],
+    "CB-SEM": [
+     "structural equation model",
+     "structural equation modeling",
+     "structural equation modelling",
+     "cb-sem",
+     "path analysis",
+     "ecuaciones estructurales"
+    ],
+    "Regresión de panel": [
+     "panel regression",
+     "fixed effects",
+     "fixed-effects",
+     "random effects"
+    ],
+    "Regresión probit ordenada": [
+     "ordered probit"
+    ],
+    "ANOVA": [
+     "anova",
+     "analysis of variance"
+    ],
+    "Análisis de conglomerados": [
+     "cluster analysis",
+     "latent profile",
+     "latent class"
+    ],
+    "Correlaciones y regresiones lineales": [
+     "regression",
+     "hierarchical regression",
+     "multiple regression",
+     "mediation analysis",
+     "moderated mediation",
+     "process macro",
+     "regresion"
+    ],
+    "Correlación": [
+     "correlation",
+     "correlational",
+     "correlacion"
+    ]
+   },
+   "secciones": [
+    "método"
+   ]
+  },
+  "Método de aplicación": {
+   "tipo": "vocabulario",
+   "valores": {
+    "Plataforma Web": [
+     "online survey",
+     "web-based",
+     "web based",
+     "online questionnaire",
+     "qualtrics",
+     "google forms",
+     "encuesta en linea",
+     "plataforma web"
+    ],
+    "Mail": [
+     "by mail",
+     "mailed",
+     "postal survey",
+     "mail survey"
+    ],
+    "Teléfono": [
+     "telephone survey",
+     "phone survey",
+     "by telephone",
+     "encuesta telefonica"
+    ],
+    "The paper-and-pencil method": [
+     "paper-and-pencil",
+     "paper and pencil",
+     "paper-based",
+     "papel y lapiz"
+    ],
+    "on-site": [
+     "on-site",
+     "on site",
+     "face-to-face",
+     "in person",
+     "presencial"
+    ]
+   },
+   "secciones": [
+    "método"
+   ]
+  },
+  "Tipo de muestreo": {
+   "tipo": "vocabulario",
+   "valores": {
+    "Bola de nieve": [
+     "snowball",
+     "bola de nieve"
+    ],
+    "Muestreo Aleatorio": [
+     "random sampling",
+     "randomly selected",
+     "random sample",
+     "stratified",
+     "muestreo aleatorio"
+    ],
+    "Conveniencia": [
+     "convenience sampl*",
+     "muestreo por conveniencia"
+    ]
+   },
+   "secciones": [
+    "método"
+   ]
+  },
+  "Constructo desempeño": {
+   "tipo": "vocabulario",
+   "valores": {
+    "OCB-Individual": [
+     "ocb-i",
+     "ocbi",
+     "individual-directed citizenship"
+    ],
+    "OCB-Organization": [
+     "ocb-o",
+     "ocbo",
+     "organization-directed citizenship"
+    ],
+    "Contextual Performance": [
+     "contextual performance"
+    ],
+    "Task Performance": [
+     "task performance"
+    ],
+    "In-Role Behavior": [
+     "in-role behavio*",
+     "in role behavio*"
+    ],
+    "Job Proficiency": [
+     "job proficiency"
+    ],
+    "Helping": [
+     "helping behavio*"
+    ],
+    "Civic Virtue": [
+     "civic virtue"
+    ],
+    "Sales": [
+     "sales performance"
+    ],
+    "Productivity": [
+     "productivity",
+     "productividad"
+    ],
+    "Innovation": [
+     "innovative work",
+     "innovation",
+     "innovacion"
+    ],
+    "Creativity": [
+     "creativity",
+     "creatividad"
+    ],
+    "Job Performance Global": [
+     "job performance",
+     "work performance",
+     "employee performance",
+     "overall performance",
+     "desempeno laboral"
+    ]
+   },
+   "secciones": [
+    "método"
+   ]
+  },
+  "Desempeño": {
+   "tipo": "vocabulario",
+   "valores": {
+    "Contraproductivo": [
+     "counterproductive",
+     "contraproducente"
+    ],
+    "Extra-rol": [
+     "extra-role",
+     "extra role",
+     "citizenship behavio*",
+     "extra-rol"
+    ],
+    "Innovador": [
+     "innovative performance",
+     "innovative work behavio*",
+     "innovador"
+    ],
+    "In-rol": [
+     "in-role",
+     "in role",
+     "task performance",
+     "desempeno en el rol"
+    ],
+    "Organizacional": [
+     "organizational performance",
+     "firm performance",
+     "desempeno organizacional"
+    ],
+    "General": [
+     "job performance",
+     "work performance",
+     "employee performance",
+     "desempeno laboral"
+    ]
+   },
+   "secciones": [
+    "método"
+   ]
+  },
+  "How measure the employee perfomance": {
+   "tipo": "vocabulario",
+   "valores": {
+    "Combinada": [
+     "self-rated and supervisor",
+     "supervisor and self",
+     "multi-source",
+     "multisource"
+    ],
+    "Supervisor/manager": [
+     "supervisor-rated",
+     "supervisor rated",
+     "rated by supervisors",
+     "manager-rated",
+     "supervisor ratings",
+     "supervisors rated",
+     "evaluado por supervisores"
+    ],
+    "Pares": [
+     "peer-rated",
+     "peer ratings",
+     "rated by peers",
+     "coworker"
+    ],
+    "Clientes": [
+     "customer-rated",
+     "customer ratings",
+     "customer evaluations"
+    ],
+    "Cifras organizacionales": [
+     "objective performance",
+     "archival data",
+     "organizational records",
+     "sales figures",
+     "objective measures",
+     "registros organizacionales"
+    ],
+    "Self perception": [
+     "self-rated",
+     "self-reported performance",
+     "self-report performance",
+     "self-assessed",
+     "autoevaluacion"
+    ]
+   },
+   "secciones": [
+    "método"
+   ]
+  },
+  "Direccionalidad de la relación": {
+   "tipo": "vocabulario",
+   "valores": {
+    "No relation": [
+     "no significant relationship",
+     "no significant relation",
+     "not significantly related",
+     "did not predict",
+     "no relationship between",
+     "no se relaciono"
+    ],
+    "Relación negativa": [
+     "negatively related to performance",
+     "negative relationship between happiness",
+     "negative effect on performance"
+    ],
+    "PW": [
+     "performance predicts well-being",
+     "performance predicted well-being",
+     "performance leads to happiness",
+     "job performance influences well-being"
+    ],
+    "HP": [
+     "happiness predicts",
+     "well-being predicts",
+     "happiness leads to",
+     "happiness increases",
+     "positively related to performance",
+     "positively predicted performance",
+     "positive relationship between",
+     "positively associated with performance",
+     "happy workers are",
+     "felicidad predice"
+    ]
+   },
+   "secciones": [
+    "resultados",
+    "discusión"
+   ]
+  },
+  "# Ítems": {
+   "tipo": "regex",
+   "construccion": "desempeno",
+   "grupo": 1,
+   "patrones": [
+    "(\\d{1,3})[\\s-]items?\\b",
+    "(?:consist(?:ed|s|ing) of|comprised|composed of|contain(?:s|ed|ing)) (\\d{1,3}) items?",
+    "(\\d{1,3}) [a-z]+ items?\\b"
+   ],
+   "secciones": [
+    "método",
+    "resultados"
+   ]
+  },
+  "Items instrumento1": {
+   "tipo": "regex",
+   "construccion": "felicidad",
+   "grupo": 1,
+   "patrones": [
+    "(\\d{1,3})[\\s-]items?\\b",
+    "(?:consist(?:ed|s|ing) of|comprised|composed of|contain(?:s|ed|ing)) (\\d{1,3}) items?",
+    "(\\d{1,3}) [a-z]+ items?\\b"
+   ],
+   "secciones": [
+    "método",
+    "resultados"
+   ]
+  },
+  "CFA": {
+   "tipo": "vocabulario",
+   "solo_texto_completo": true,
+   "valores": {
+    "PLS": [
+     "pls-sem",
+     "partial least squares",
+     "smartpls"
+    ],
+    "Si": [
+     "confirmatory factor analys*",
+     "cfa",
+     "rmsea",
+     "cfi",
+     "analisis factorial confirmatorio",
+     "afc"
+    ]
+   },
+   "secciones": [
+    "método",
+    "resultados"
+   ]
+  },
+  "Validez CFA": {
+   "tipo": "vocabulario",
+   "solo_texto_completo": true,
+   "valores": {
+    "PLS": [
+     "pls-sem",
+     "partial least squares",
+     "smartpls"
+    ],
+    "Si": [
+     "confirmatory factor analys*",
+     "cfa",
+     "rmsea",
+     "cfi",
+     "analisis factorial confirmatorio",
+     "afc"
+    ]
+   },
+   "secciones": [
+    "método",
+    "resultados"
+   ]
+  },
+  "Validez?": {
+   "tipo": "vocabulario",
+   "solo_texto_completo": true,
+   "valores": {
+    "Si": [
+     "convergent validity",
+     "discriminant validity",
+     "average variance extracted",
+     "validez convergente",
+     "validez discriminante",
+     "fornell"
+    ]
+   },
+   "secciones": [
+    "método",
+    "resultados"
+   ]
+  },
+  "Inclusion criteria": {
+   "tipo": "oracion",
+   "posicion": "primera",
+   "solo_texto_completo": true,
+   "pistas": [
+    "inclusion criteria",
+    "criteria for inclusion",
+    "were included if",
+    "were eligible",
+    "eligible participants",
+    "criterios de inclusion",
+    "only employees",
+    "participants had to"
+   ],
+   "secciones": [
+    "método"
+   ]
+  },
+  "Exclusion criteria": {
+   "tipo": "oracion",
+   "posicion": "primera",
+   "solo_texto_completo": true,
+   "pistas": [
+    "exclusion criteria",
+    "criteria for exclusion",
+    "were excluded",
+    "were removed from",
+    "criterios de exclusion"
+   ],
+   "secciones": [
+    "método"
+   ]
+  },
+  "Start date": {
+   "tipo": "fechas",
+   "cual": 0,
+   "solo_texto_completo": true,
+   "meses": "january|february|march|april|may|june|july|august|september|october|november|december|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre",
+   "secciones": [
+    "método"
+   ]
+  },
+  "End date": {
+   "tipo": "fechas",
+   "cual": 1,
+   "solo_texto_completo": true,
+   "meses": "january|february|march|april|may|june|july|august|september|october|november|december|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre",
+   "secciones": [
+    "método"
+   ]
+  },
+  "Definition Happiness": {
+   "tipo": "oracion",
+   "construccion": "felicidad",
+   "posicion": "primera",
+   "solo_texto_completo": true,
+   "pistas": [
+    "is defined as",
+    "are defined as",
+    "we define",
+    "refers to",
+    "is conceptuali",
+    "can be defined",
+    "defined by"
+   ],
+   "secciones": [
+    "introducción",
+    "método"
+   ]
+  },
+  "Definition Performance": {
+   "tipo": "oracion",
+   "construccion": "desempeno",
+   "posicion": "primera",
+   "solo_texto_completo": true,
+   "pistas": [
+    "is defined as",
+    "are defined as",
+    "we define",
+    "refers to",
+    "is conceptuali",
+    "can be defined",
+    "defined by"
+   ],
+   "secciones": [
+    "introducción",
+    "método"
+   ]
+  },
+  "Ejemplo ítem felicidad": {
+   "tipo": "oracion",
+   "construccion": "felicidad",
+   "posicion": "primera",
+   "solo_texto_completo": true,
+   "pistas": [
+    "sample item",
+    "example item",
+    "sample items",
+    "example items",
+    "item example",
+    "items include",
+    "e.g.,",
+    "such as \""
+   ],
+   "secciones": [
+    "método",
+    "resultados"
+   ]
+  },
+  "Ejemplo ítem desempeño": {
+   "tipo": "oracion",
+   "construccion": "desempeno",
+   "posicion": "primera",
+   "solo_texto_completo": true,
+   "pistas": [
+    "sample item",
+    "example item",
+    "sample items",
+    "example items",
+    "item example",
+    "items include",
+    "e.g.,",
+    "such as \""
+   ],
+   "secciones": [
+    "método",
+    "resultados"
+   ]
+  },
+  "Analysis method (detalle)": {
+   "tipo": "oracion",
+   "posicion": "primera",
+   "solo_texto_completo": true,
+   "pistas": [
+    "were analy",
+    "was analy",
+    "data analysis",
+    "we used structural equation",
+    "was tested using",
+    "were tested using",
+    "hypotheses were tested",
+    "mediation was",
+    "bootstrap",
+    "se analizaron"
+   ],
+   "secciones": [
+    "método"
+   ]
+  },
+  "Validez de las escalas": {
+   "tipo": "oracion",
+   "posicion": "primera",
+   "solo_texto_completo": true,
+   "pistas": [
+    "convergent validity",
+    "discriminant validity",
+    "construct validity",
+    "average variance extracted",
+    "factor loadings",
+    "validez convergente",
+    "validez discriminante"
+   ],
+   "secciones": [
+    "método"
+   ]
+  }
+ }
+}

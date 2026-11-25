@@ -1,0 +1,25 @@
+{
+  "_comentario": "Sitios a los que solo se entra con la cuenta de la persona. Agregar otro = agregar una entrada aquí (y un adaptador de búsqueda si hace falta). Aquí NUNCA van usuarios, contraseñas ni cookies: las credenciales las escribe siempre el usuario (ADR 0011). Los límites son propios y quedan por debajo de los que publica el sitio.",
+  "sitios": [
+    {
+      "id": "unal",
+      "nombre": "Bibliotecas UNAL",
+      "portal_url": "https://bibliotecas.unal.edu.co/",
+      "hosts": ["unalproxy.elogim.com"],
+      "acceso": ["google_institucional", "usuario_y_clave"],
+      "limite": {
+        "bytes_por_ventana": 100000000,
+        "ventana_s": 900,
+        "pausa_min_s": 8,
+        "concurrencia": 1
+      },
+      "bases": [
+        "Scopus", "Web of Science", "ScienceDirect", "Wiley Online Library", "Springer-Nature Link",
+        "Sage Journals", "Taylor & Francis", "Emerald Insight", "Academic Search Ultimate - EBSCOHost",
+        "Business Source Complete - EBSCOHost", "Psychology & Behavioral Sciences Collection - EBSCOHost",
+        "Sociology Source Ultimate - EBSCOHost"
+      ],
+      "notas": "Observado el 2026-11-25 en la página de acceso del proxy: «Si usted descarga un volumen de información mayor a 250 MB en un periodo de 15 minutos, se restringirá el acceso a su usuario por 8 horas» y «si ingresa sus datos de acceso más de 5 veces de forma errónea en un periodo de 5 minutos, se restringirá el acceso por 15 minutos». Presupuesto propio: 100 MB por 15 min. Entrada con Google (@unal.edu.co) o con usuario y contraseña."
+    }
+  ]
+}

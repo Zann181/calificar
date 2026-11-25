@@ -20,7 +20,8 @@ from app.compartido.seguridad import Usuario, usuario_actual
 
 # Loggers que aparecen en la interfaz. Los de uvicorn y SQLAlchemy quedan fuera a propósito: ruido, y
 # la propia consulta del registro se vería a sí misma.
-ORIGENES = ("biblioteca", "extraccion", "composicion", "outbox", "matriz", "normas", "exportacion", "servidor")
+ORIGENES = ("biblioteca", "extraccion", "composicion", "outbox", "matriz", "normas", "exportacion", "servidor",
+            "descubrimiento")
 MAX_BYTES = 4_000_000
 COLA_AL_ABRIR = 300
 

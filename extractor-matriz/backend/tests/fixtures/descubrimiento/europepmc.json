@@ -1,0 +1,437 @@
+{
+ "version": "6.9",
+ "hitCount": 19,
+ "nextCursorMark": "AoIIQKkbJig1NTA3MTcyNA==",
+ "nextPageUrl": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=%28TITLE_ABS%3A%22happiness%22+AND+TITLE_ABS%3A%22job+performance%22%29+AND+PUB_YEAR%3A%5B2020+TO+2026%5D&cursorMark=AoIIQKkbJig1NTA3MTcyNA%3D%3D&resultType=core&pageSize=2&format=json",
+ "resultList": {
+  "result": [
+   {
+    "id": "42277563",
+    "source": "MED",
+    "pmid": "42277563",
+    "doi": "10.1177/10519815261449929",
+    "title": "Examining the relationship between organizational health, happiness and employee performance: The case of hospital employees.",
+    "authorString": "Kalender S, Kişi M, Özkan O.",
+    "authorList": {
+     "author": [
+      {
+       "fullName": "Kalender S",
+       "lastName": "Kalender",
+       "firstName": "Selin",
+       "initials": "S",
+       "authorId": {
+        "type": "ORCID",
+        "value": "0000-0002-4377-9339"
+       },
+       "authorAffiliationDetailsList": {
+        "authorAffiliation": [
+         {
+          "affiliation": "Gülhane Faculty of Health Sciences, Department of Healthcare Management, University of Health Sciences, Ankara, Türkiye."
+         }
+        ]
+       }
+      },
+      {
+       "fullName": "Kişi M",
+       "lastName": "Kişi",
+       "firstName": "Merve",
+       "initials": "M",
+       "authorId": {
+        "type": "ORCID",
+        "value": "0000-0001-9226-8490"
+       },
+       "authorAffiliationDetailsList": {
+        "authorAffiliation": [
+         {
+          "affiliation": "Faculty of Economics and Administrative Sciences, Department of Healthcare Management, Süleyman Demirel University, Isparta, Türkiye."
+         }
+        ]
+       }
+      },
+      {
+       "fullName": "Özkan O",
+       "lastName": "Özkan",
+       "firstName": "Okan",
+       "initials": "O",
+       "authorId": {
+        "type": "ORCID",
+        "value": "0000-0001-9491-8696"
+       },
+       "authorAffiliationDetailsList": {
+        "authorAffiliation": [
+         {
+          "affiliation": "Faculty of Gülhane Health Sciences, Department of Healthcare Management, University of Health Sciences, Ankara, Türkiye."
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "authorIdList": {
+     "authorId": [
+      {
+       "type": "ORCID",
+       "value": "0000-0001-9226-8490"
+      },
+      {
+       "type": "ORCID",
+       "value": "0000-0001-9491-8696"
+      },
+      {
+       "type": "ORCID",
+       "value": "0000-0002-4377-9339"
+      }
+     ]
+    },
+    "journalInfo": {
+     "journalIssueId": 4204242,
+     "dateOfPublication": "2026 Jun",
+     "monthOfPublication": 6,
+     "yearOfPublication": 2026,
+     "journal": {
+      "medlineAbbreviation": "Work",
+      "title": "Work (Reading, Mass.)",
+      "essn": "1875-9270",
+      "issn": "1051-9815",
+      "nlmid": "9204382",
+      "isoabbreviation": "Work"
+     },
+     "printPublicationDate": "2026-06-01"
+    },
+    "pubYear": "2026",
+    "pageInfo": "10519815261449929",
+    "abstractText": "BackgroundHealthcare workers face challenges such as intense work tempo, irregular working hours and high patient expectations. This situation may affect the happiness and performance of employees, as well as the quality of health services.ObjectiveThe aim of this study is to reveal the relationship between organizational health perceptions, happiness and job performance of health personnel working in a university hospital.MethodThe data were collected from 350 healthcare workers between December 2023 and January 2024 by face-to-face survey method. Organizational Health Scale, Oxford Happiness Scale and Employee Performance Scale were used as measurement tools. Data were analyzed with SPSS 22.0 and AMOS 26.0 programs; descriptive statistics, correlation analysis and Structural Equation Modeling (SEM) were applied.ResultsAccording to the correlation analysis, there was a positive and low level relationship between organizational health and happiness (r = .359) and a very weak but significant relationship with performance (r = .136). A moderately significant relationship was found between happiness and performance (r = .252). According to SEM findings, organizational health significantly predicted happiness (β = 0.98, p < .001), while happiness predicted performance (β = 0.14, p = .002). The direct effect of organizational health on performance was not significant (β = 0.23, p = .077). In subgroup analyses, differences were observed according to occupational groups and length of experience.ConclusionsOrganizational health is a determinant of employee happiness, and happiness increases job performance. Therefore, it is recommended that healthcare organizations develop strategies that focus on employee well-being.",
+    "affiliation": "Gülhane Faculty of Health Sciences, Department of Healthcare Management, University of Health Sciences, Ankara, Türkiye.",
+    "publicationStatus": "aheadofprint",
+    "language": "eng",
+    "pubModel": "Print-Electronic",
+    "pubTypeList": {
+     "pubType": [
+      "Journal Article"
+     ]
+    },
+    "keywordList": {
+     "keyword": [
+      "OCCUPATIONAL HEALTH",
+      "Health Personnel",
+      "Job Satisfaction",
+      "Happiness",
+      "Working Conditions",
+      "Work Performance"
+     ]
+    },
+    "subsetList": {
+     "subset": [
+      {
+       "code": "IM",
+       "name": "Index Medicus"
+      }
+     ]
+    },
+    "fullTextUrlList": {
+     "fullTextUrl": [
+      {
+       "availability": "Subscription required",
+       "availabilityCode": "S",
+       "documentStyle": "doi",
+       "site": "DOI",
+       "url": "https://doi.org/10.1177/10519815261449929"
+      }
+     ]
+    },
+    "isOpenAccess": "N",
+    "inEPMC": "N",
+    "inPMC": "N",
+    "citedByCount": 0,
+    "hasReferences": "Y",
+    "hasTextMinedTerms": "N",
+    "hasDbCrossReferences": "N",
+    "hasPDF": "N",
+    "hasBook": "N",
+    "hasSuppl": "N",
+    "hasLabsLinks": "N",
+    "hasData": "N",
+    "authMan": "N",
+    "epmcAuthMan": "N",
+    "nihAuthMan": "N",
+    "hasTMAccessionNumbers": "N",
+    "dateOfCreation": "2026-06-11",
+    "dateOfRevision": "2026-06-11",
+    "electronicPublicationDate": "2026-06-11",
+    "firstPublicationDate": "2026-06-11",
+    "firstIndexDate": "2026-06-12",
+    "hasEvaluations": "N"
+   },
+   {
+    "id": "41796689",
+    "source": "MED",
+    "pmid": "41796689",
+    "doi": "10.1177/10519815261423150",
+    "title": "Employee job performance through internal corporate social responsibility, happiness at work, and intention to stay.",
+    "authorString": "Umair S, Waqas U, Mrugalska B, Bystrov I.",
+    "authorList": {
+     "author": [
+      {
+       "fullName": "Umair S",
+       "lastName": "Umair",
+       "firstName": "Sonia",
+       "initials": "S",
+       "authorId": {
+        "type": "ORCID",
+        "value": "0000-0003-1207-9310"
+       },
+       "authorAffiliationDetailsList": {
+        "authorAffiliation": [
+         {
+          "affiliation": "College of Commerce and Business Administration, Dhofar University, Salalah, Oman."
+         }
+        ]
+       }
+      },
+      {
+       "fullName": "Waqas U",
+       "lastName": "Waqas",
+       "firstName": "Umair",
+       "initials": "U",
+       "authorId": {
+        "type": "ORCID",
+        "value": "0000-0001-9943-8675"
+       },
+       "authorAffiliationDetailsList": {
+        "authorAffiliation": [
+         {
+          "affiliation": "College of Commerce and Business Administration, Dhofar University, Salalah, Oman."
+         }
+        ]
+       }
+      },
+      {
+       "fullName": "Mrugalska B",
+       "lastName": "Mrugalska",
+       "firstName": "Beata",
+       "initials": "B",
+       "authorId": {
+        "type": "ORCID",
+        "value": "0000-0001-9827-9449"
+       },
+       "authorAffiliationDetailsList": {
+        "authorAffiliation": [
+         {
+          "affiliation": "Faculty of Engineering Management, Poznan University of Technology, Poznan, Poland."
+         }
+        ]
+       }
+      },
+      {
+       "fullName": "Bystrov I",
+       "lastName": "Bystrov",
+       "firstName": "IIya",
+       "initials": "I",
+       "authorId": {
+        "type": "ORCID",
+        "value": "0000-0002-8500-155X"
+       },
+       "authorAffiliationDetailsList": {
+        "authorAffiliation": [
+         {
+          "affiliation": "College of Business, University of Buraimi, Al-Buraimi, Oman."
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "authorIdList": {
+     "authorId": [
+      {
+       "type": "ORCID",
+       "value": "0000-0001-9827-9449"
+      },
+      {
+       "type": "ORCID",
+       "value": "0000-0001-9943-8675"
+      },
+      {
+       "type": "ORCID",
+       "value": "0000-0002-8500-155X"
+      },
+      {
+       "type": "ORCID",
+       "value": "0000-0003-1207-9310"
+      }
+     ]
+    },
+    "journalInfo": {
+     "issue": "4",
+     "volume": "84",
+     "journalIssueId": 4233367,
+     "dateOfPublication": "2026 Aug",
+     "monthOfPublication": 8,
+     "yearOfPublication": 2026,
+     "journal": {
+      "medlineAbbreviation": "Work",
+      "title": "Work (Reading, Mass.)",
+      "essn": "1875-9270",
+      "issn": "1051-9815",
+      "nlmid": "9204382",
+      "isoabbreviation": "Work"
+     },
+     "printPublicationDate": "2026-08-01"
+    },
+    "pubYear": "2026",
+    "pageInfo": "1087-1098",
+    "abstractText": "BackgroundFor any organization, it is crucial to understand that its internal CSR practices should be perceived positively and enhance satisfaction and happiness, ultimately leading to its employees' long-term intention to stay and improved job performance.ObjectiveDrawing on social exchange theory and social identity theory, the study examines the role of internal CSR in promoting employee happiness, intention to stay, and job performance through top management support.MethodsThe data were collected using a self-administered survey and convenience sampling. Initially, 450 questionnaires were distributed among hotel staff at various levels; however, only 293 questionnaires were used for further analysis. Notably, 70.30% of the respondents were male and 29.70% female, with the majority being young adults aged 20-30 (53.24%) and 30-40 (25.94%). PLS-SEM using Smart PLS (4.0) was used to test the proposed hypotheses.ResultsTop management support moderates the relationship between internal CSR and happiness at work. The findings also show that happiness at work mediates the relationship between internal CSR and employee intention to stay. Intention to stay mediates the relationship between happiness at work and employee job performance. Finally, the study results indicate that happiness at work and intention to stay sequentially mediate the relationship between internal CSR and employee job performance.ConclusionsInternal CSR practices such as work-life balance initiatives, fair treatment, employee development, and inclusive policies are essential for promoting well-being. Organizations that focus on these practices are better able to improve employee satisfaction, happiness, their long-term stay, and job performance.",
+    "affiliation": "College of Commerce and Business Administration, Dhofar University, Salalah, Oman.",
+    "publicationStatus": "ppublish",
+    "language": "eng",
+    "pubModel": "Print-Electronic",
+    "pubTypeList": {
+     "pubType": [
+      "Journal Article"
+     ]
+    },
+    "grantsList": {
+     "grant": [
+      {
+       "agency": "Politechnika Poznańska",
+       "grantId": "0811/SBAD/1097",
+       "orderIn": 0
+      }
+     ]
+    },
+    "meshHeadingList": {
+     "meshHeading": [
+      {
+       "majorTopic_YN": "N",
+       "descriptorName": "Humans"
+      },
+      {
+       "majorTopic_YN": "Y",
+       "descriptorName": "Happiness"
+      },
+      {
+       "majorTopic_YN": "Y",
+       "descriptorName": "Intention"
+      },
+      {
+       "majorTopic_YN": "N",
+       "descriptorName": "Job Satisfaction"
+      },
+      {
+       "majorTopic_YN": "Y",
+       "descriptorName": "Social Responsibility"
+      },
+      {
+       "majorTopic_YN": "N",
+       "descriptorName": "Adult"
+      },
+      {
+       "majorTopic_YN": "N",
+       "descriptorName": "Workplace",
+       "meshQualifierList": {
+        "meshQualifier": [
+         {
+          "majorTopic_YN": "N",
+          "abbreviation": "PX",
+          "qualifierName": "psychology"
+         },
+         {
+          "majorTopic_YN": "N",
+          "abbreviation": "ST",
+          "qualifierName": "standards"
+         }
+        ]
+       }
+      },
+      {
+       "majorTopic_YN": "N",
+       "descriptorName": "Organizational Culture"
+      },
+      {
+       "majorTopic_YN": "N",
+       "descriptorName": "Female"
+      },
+      {
+       "majorTopic_YN": "N",
+       "descriptorName": "Male"
+      },
+      {
+       "majorTopic_YN": "N",
+       "descriptorName": "Surveys and Questionnaires"
+      },
+      {
+       "majorTopic_YN": "Y",
+       "descriptorName": "Work Performance",
+       "meshQualifierList": {
+        "meshQualifier": [
+         {
+          "majorTopic_YN": "N",
+          "abbreviation": "ST",
+          "qualifierName": "standards"
+         },
+         {
+          "majorTopic_YN": "N",
+          "abbreviation": "SN",
+          "qualifierName": "statistics & numerical data"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "keywordList": {
+     "keyword": [
+      "Sustainability",
+      "Corporate Social Responsibility",
+      "Job Performance",
+      "Intention To Stay",
+      "Top Management Support",
+      "Employee Happiness"
+     ]
+    },
+    "subsetList": {
+     "subset": [
+      {
+       "code": "IM",
+       "name": "Index Medicus"
+      }
+     ]
+    },
+    "fullTextUrlList": {
+     "fullTextUrl": [
+      {
+       "availability": "Subscription required",
+       "availabilityCode": "S",
+       "documentStyle": "doi",
+       "site": "DOI",
+       "url": "https://doi.org/10.1177/10519815261423150"
+      }
+     ]
+    },
+    "isOpenAccess": "N",
+    "inEPMC": "N",
+    "inPMC": "N",
+    "citedByCount": 0,
+    "hasReferences": "Y",
+    "hasTextMinedTerms": "Y",
+    "hasDbCrossReferences": "N",
+    "hasPDF": "N",
+    "hasBook": "N",
+    "hasSuppl": "N",
+    "hasLabsLinks": "N",
+    "hasData": "N",
+    "authMan": "N",
+    "epmcAuthMan": "N",
+    "nihAuthMan": "N",
+    "hasTMAccessionNumbers": "N",
+    "dateOfCompletion": "2026-07-25",
+    "dateOfCreation": "2026-03-09",
+    "dateOfRevision": "2026-07-25",
+    "electronicPublicationDate": "2026-03-08",
+    "firstPublicationDate": "2026-03-08",
+    "firstIndexDate": "2026-03-10",
+    "hasEvaluations": "N"
+   }
+  ]
+ }
+}

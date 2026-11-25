@@ -71,6 +71,15 @@ class Settings(BaseSettings):
     admin_nombre: str = "Administrador"
     proyecto_nombre: str = "Felicidad y desempeño"
 
+    # Pestaña «Buscar» (ADR 0011). El correo de contacto va solo a las fuentes abiertas que lo piden y solo se define en
+    # el `.env` local: nunca en el repositorio. La llave de OpenAlex es gratuita y la crea la persona.
+    contacto_api: str = ""
+    openalex_api_key: str = ""
+    busqueda_cache_dir: Path = RAIZ_REPO / "datos" / "cache_http"
+    busqueda_pausa_s: float = 1.0
+    # Fuentes de lectura frágil (Redalyc): cuáles se apagaron solas por fallos de estructura seguidos.
+    busqueda_estado_fuentes: Path = RAIZ_REPO / "datos" / "estado_fuentes.json"
+
     recursos_dir: Path = RAIZ_REPO / "recursos"
     # Interfaz compilada (npm run build). Si existe, la API la sirve en "/" y basta un solo proceso.
     interfaz_dir: Path = RAIZ_REPO / "frontend" / "dist"
@@ -105,6 +114,10 @@ class Settings(BaseSettings):
                    "SECRETO_SESION": len(self.secreto_sesion) >= 32, "SYNC_TOKEN_HASH": bool(self.sync_token_hash),
                    "URL_PUBLICA": bool(self.url_publica)}
         return [k for k, ok in pedidas.items() if not ok]
+
+    @property
+    def sitios_con_credenciales(self) -> Path:
+        return self.recursos_dir / "sitios_con_credenciales.json"
 
     @property
     def libro_de_codigos(self) -> Path:

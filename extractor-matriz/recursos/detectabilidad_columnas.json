@@ -1,0 +1,249 @@
+{
+ "_comentario": "Detectabilidad de cada columna del libro de códigos (ADR 0011, plan sección 5.2). M = viene de los metadatos de la fuente; R = puede aparecer en título, resumen o palabras clave; T = solo el texto completo; X = la asigna el equipo o la deriva el programa (no depende del artículo, no se elige). Propuesta aprobada por el responsable el 2026-11-25 con la corrección de que Pais es M solo si la fuente trae afiliaciones con país y de que X cubre las columnas internas. Una prueba exige que cubra exactamente las columnas del libro.",
+ "version": 1,
+ "niveles": {
+  "M": "Metadato de la fuente",
+  "R": "Título, resumen o palabras clave",
+  "T": "Solo el texto completo (PDF)",
+  "X": "Interna: la asigna el equipo o la deriva el programa"
+ },
+ "columnas": {
+  "Documento": {
+   "nivel": "X",
+   "grupo": "Identificación y decisiones del equipo"
+  },
+  "Estudio": {
+   "nivel": "X",
+   "grupo": "Identificación y decisiones del equipo"
+  },
+  "Covidence #": {
+   "nivel": "X",
+   "grupo": "Identificación y decisiones del equipo"
+  },
+  "ID muestra": {
+   "nivel": "X",
+   "grupo": "Identificación y decisiones del equipo"
+  },
+  "Incluir en meta análisi": {
+   "nivel": "X",
+   "grupo": "Identificación y decisiones del equipo"
+  },
+  "Cultura Hofstede": {
+   "nivel": "X",
+   "grupo": "Identificación y decisiones del equipo"
+  },
+  "Método obtención r": {
+   "nivel": "X",
+   "grupo": "Identificación y decisiones del equipo"
+  },
+  "Conjunto MA": {
+   "nivel": "X",
+   "grupo": "Identificación y decisiones del equipo"
+  },
+  "Cita": {
+   "nivel": "M",
+   "grupo": "Datos bibliográficos"
+  },
+  "Title": {
+   "nivel": "M",
+   "grupo": "Datos bibliográficos"
+  },
+  "Author": {
+   "nivel": "M",
+   "grupo": "Datos bibliográficos"
+  },
+  "Año": {
+   "nivel": "M",
+   "grupo": "Datos bibliográficos"
+  },
+  "Pais": {
+   "nivel": "M",
+   "grupo": "Datos bibliográficos",
+   "si_falta": "pendiente"
+  },
+  "Población": {
+   "nivel": "R",
+   "grupo": "Muestra y contexto"
+  },
+  "Sector": {
+   "nivel": "R",
+   "grupo": "Muestra y contexto"
+  },
+  "Muestra": {
+   "nivel": "R",
+   "grupo": "Muestra y contexto"
+  },
+  "Tipo de muestreo": {
+   "nivel": "R",
+   "grupo": "Muestra y contexto"
+  },
+  "Nivel": {
+   "nivel": "R",
+   "grupo": "Muestra y contexto"
+  },
+  "Método de aplicación": {
+   "nivel": "R",
+   "grupo": "Muestra y contexto"
+  },
+  "Inclusion criteria": {
+   "nivel": "T",
+   "grupo": "Muestra y contexto"
+  },
+  "Exclusion criteria": {
+   "nivel": "T",
+   "grupo": "Muestra y contexto"
+  },
+  "Start date": {
+   "nivel": "T",
+   "grupo": "Muestra y contexto"
+  },
+  "End date": {
+   "nivel": "T",
+   "grupo": "Muestra y contexto"
+  },
+  "Desempeño": {
+   "nivel": "R",
+   "grupo": "Desempeño"
+  },
+  "Tipo de desempeño": {
+   "nivel": "R",
+   "grupo": "Desempeño"
+  },
+  "Constructo desempeño": {
+   "nivel": "R",
+   "grupo": "Desempeño"
+  },
+  "Escala de medición: Performance": {
+   "nivel": "R",
+   "grupo": "Desempeño"
+  },
+  "How measure the employee perfomance": {
+   "nivel": "R",
+   "grupo": "Desempeño"
+  },
+  "cómo lo llaman (desempeño)": {
+   "nivel": "T",
+   "grupo": "Desempeño"
+  },
+  "Fiabilidad Alfa - Omega (desempeño)": {
+   "nivel": "T",
+   "grupo": "Desempeño"
+  },
+  "Validez CFA": {
+   "nivel": "T",
+   "grupo": "Desempeño"
+  },
+  "# Ítems": {
+   "nivel": "T",
+   "grupo": "Desempeño"
+  },
+  "Ejemplo ítem desempeño": {
+   "nivel": "T",
+   "grupo": "Desempeño"
+  },
+  "Definition Performance": {
+   "nivel": "T",
+   "grupo": "Desempeño"
+  },
+  "Hedónica/eudaimónica": {
+   "nivel": "R",
+   "grupo": "Felicidad"
+  },
+  "Tipo de felicidad real": {
+   "nivel": "R",
+   "grupo": "Felicidad"
+  },
+  "Instrumento felicidad": {
+   "nivel": "R",
+   "grupo": "Felicidad"
+  },
+  "cómo lo llaman (felicidad)": {
+   "nivel": "T",
+   "grupo": "Felicidad"
+  },
+  "Items instrumento1": {
+   "nivel": "T",
+   "grupo": "Felicidad"
+  },
+  "Fiabilidad Alfa - Omega (felicidad)": {
+   "nivel": "T",
+   "grupo": "Felicidad"
+  },
+  "CFA": {
+   "nivel": "T",
+   "grupo": "Felicidad"
+  },
+  "Validez?": {
+   "nivel": "T",
+   "grupo": "Felicidad"
+  },
+  "Adaptado al trabajo": {
+   "nivel": "T",
+   "grupo": "Felicidad"
+  },
+  "Ejemplo ítem felicidad": {
+   "nivel": "T",
+   "grupo": "Felicidad"
+  },
+  "Definition Happiness": {
+   "nivel": "T",
+   "grupo": "Felicidad"
+  },
+  "Correlacion o Beta felicidad 1 - JP": {
+   "nivel": "T",
+   "grupo": "Efecto felicidad–desempeño"
+  },
+  "Correlación Feli 1 - JP": {
+   "nivel": "T",
+   "grupo": "Efecto felicidad–desempeño"
+  },
+  "Beta Fel 1- JP": {
+   "nivel": "T",
+   "grupo": "Efecto felicidad–desempeño"
+  },
+  "Direccionalidad de la relación": {
+   "nivel": "R",
+   "grupo": "Efecto felicidad–desempeño"
+  },
+  "Conclusion": {
+   "nivel": "R",
+   "grupo": "Efecto felicidad–desempeño"
+  },
+  "Study design": {
+   "nivel": "R",
+   "grupo": "Método y análisis"
+  },
+  "Aim of study": {
+   "nivel": "R",
+   "grupo": "Método y análisis"
+  },
+  "Analysis method (principal)": {
+   "nivel": "R",
+   "grupo": "Método y análisis"
+  },
+  "Analysis method (detalle)": {
+   "nivel": "T",
+   "grupo": "Método y análisis"
+  },
+  "Software": {
+   "nivel": "R",
+   "grupo": "Método y análisis"
+  },
+  "Validez de las escalas": {
+   "nivel": "T",
+   "grupo": "Método y análisis"
+  },
+  "Teoría 1": {
+   "nivel": "R",
+   "grupo": "Teoría"
+  },
+  "Teoría 2": {
+   "nivel": "R",
+   "grupo": "Teoría"
+  },
+  "Teoria 3": {
+   "nivel": "R",
+   "grupo": "Teoría"
+  }
+ }
+}

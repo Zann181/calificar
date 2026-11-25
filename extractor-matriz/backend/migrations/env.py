@@ -9,6 +9,7 @@ from sqlalchemy import engine_from_config, pool
 
 # Importar los módulos que declaran tablas registra cada tabla en Base.metadata.
 import app.contextos.biblioteca.adaptadores.tablas  # noqa: F401
+import app.contextos.descubrimiento.adaptadores.tablas  # noqa: F401
 import app.contextos.extraccion.adaptadores.repositorio_sql  # noqa: F401
 import app.contextos.matriz.adaptadores.repositorio_sql  # noqa: F401
 import app.contextos.normas.adaptadores.repositorio_sql  # noqa: F401
@@ -18,7 +19,8 @@ from app.config import settings
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False: la migración no debe apagar los registros de la aplicación (p. ej. «descubrimiento»).
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 url = context.get_x_argument(as_dictionary=True).get("url") or settings().database_url
 # configparser interpreta «%»: una URL con contraseña codificada (p. ej. la de Neon) lo necesita escapado.

@@ -169,7 +169,8 @@ def enrutador_de_capacidades(ajustes: Settings) -> APIRouter:
         nube = ajustes.modo == "nube"
         lector = getattr(request.state, "lector", None)
         return {"modo": ajustes.modo, "escritura": not nube, "autenticado": (lector is not None) if nube else True,
-                "lector": lector, "acceso": "/api/v1/auth/google/entrar" if nube else None}
+                "lector": lector, "acceso": "/api/v1/auth/google/entrar" if nube else None,
+                "busqueda": not nube}  # la pestaña «Buscar» solo existe en el equipo local (ADR 0011)
 
     @r.get("/revision")
     def revision(request: Request) -> Response:

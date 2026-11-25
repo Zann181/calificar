@@ -15,6 +15,7 @@ import { Grilla } from "./componentes/Grilla";
 import { Icono } from "./componentes/Icono";
 import { IndicadorSync, IndicadorVisor } from "./componentes/IndicadorNube";
 import { PanelArticulos } from "./componentes/PanelArticulos";
+import { PanelBusqueda } from "./componentes/PanelBusqueda";
 import { PanelRazonamiento } from "./componentes/PanelRazonamiento";
 import { PanelRegistro } from "./componentes/PanelRegistro";
 import { Tarjetas } from "./componentes/Tarjetas";
@@ -102,16 +103,18 @@ function BotonExportar({ pid }: { pid: string }) {
   );
 }
 
-type Pestana = "articulos" | "revision" | "visor";
+type Pestana = "articulos" | "revision" | "visor" | "buscar";
 const TITULOS: Record<Pestana, string> = {
   articulos: "Artículos",
   revision: "Revisión",
   visor: "Visor",
+  buscar: "Buscar",
 };
 
 function Espacio({ pid }: { pid: string }) {
   const ancho = useAncho();
   const escritura = useEscritura();
+  const hayBusqueda = useCapacidades().data?.busqueda ?? false;
   const { actual } = useNavegacion();
   // El visor empieza plegado: vacío solo le quitaría ancho a la tabla. Se abre al elegir una celda o un PDF.
   const [visorAbierto, setVisorAbierto] = useState(false);
@@ -277,16 +280,17 @@ function Espacio({ pid }: { pid: string }) {
             />
           )}
           {pestana === "visor" && visor}
+          {pestana === "buscar" && hayBusqueda && <PanelBusqueda pid={pid} />}
         </div>
         <nav className="ios-pestanas">
-          {(["articulos", "revision", "visor"] as Pestana[]).map((p) => (
+          {(["articulos", "revision", "visor", ...(hayBusqueda ? ["buscar"] : [])] as Pestana[]).map((p) => (
             <button
               key={p}
               className={pestana === p ? "activo" : ""}
               onClick={() => setPestana(p)}
             >
               <Icono
-                nombre={p === "articulos" ? "documentos" : p}
+                nombre={p === "articulos" ? "documentos" : p === "buscar" ? "tabla" : p}
                 tam={24}
                 grosor={pestana === p ? 2.1 : 1.7}
               />
@@ -448,6 +452,10 @@ export function App() {
     retry: false,
   });
   const proyecto = proyectos.data?.[0];
+  // Pestaña «Buscar» (ADR 0011): solo en el equipo local. En teléfono vive en la barra inferior de Espacio.
+  const [seccion, setSeccion] = useState<"matriz" | "buscar">("matriz");
+  const hayBusqueda = cap.data?.busqueda ?? false;
+  const enBuscar = hayBusqueda && seccion === "buscar" && ancho >= 768;
 
   if (cap.isLoading || proyectos.isLoading) return <p className="centro tenue">Cargando…</p>;
   // Nube: sin sesión (o con la sesión vencida) se muestra la pantalla de acceso.
@@ -466,7 +474,19 @@ export function App() {
             <strong>Extractor de matriz</strong>
             <span className="tenue">{proyecto?.nombre}</span>
           </div>
-          <Migas />
+          {hayBusqueda ? (
+            <div className="segmentado" role="tablist" aria-label="Sección">
+              <button role="tab" aria-selected={seccion === "matriz"} className={seccion === "matriz" ? "activo" : ""}
+                onClick={() => setSeccion("matriz")}>
+                Matriz
+              </button>
+              <button role="tab" aria-selected={seccion === "buscar"} className={seccion === "buscar" ? "activo" : ""}
+                onClick={() => setSeccion("buscar")}>
+                Buscar
+              </button>
+            </div>
+          ) : null}
+          {enBuscar ? <span className="migas" /> : <Migas />}
           {escritura ? (
             <>
               <EstadoServicios pid={proyecto?.id ?? ""} />
@@ -486,7 +506,7 @@ export function App() {
         </header>
       )}
       {proyecto ? (
-        <Espacio pid={proyecto.id} />
+        enBuscar ? <PanelBusqueda pid={proyecto.id} /> : <Espacio pid={proyecto.id} />
       ) : (
         <p className="centro tenue">Sin proyectos. Ejecute la semilla.</p>
       )}

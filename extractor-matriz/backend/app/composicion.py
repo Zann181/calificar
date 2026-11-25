@@ -12,7 +12,7 @@ import logging
 import threading
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -41,6 +41,40 @@ from app.contextos.biblioteca.aplicacion.casos_de_uso import (
 )
 from app.contextos.biblioteca.dominio.articulo import EstadoArticulo
 from app.contextos.biblioteca.puertos import AlmacenDeArchivos, ConversorPDF
+from app.contextos.descubrimiento.adaptadores.cliente_http import ClienteCortes
+from app.contextos.descubrimiento.adaptadores.detectores_json import cargar_config
+from app.contextos.descubrimiento.adaptadores.fuentes.registro import construir_fuentes
+from app.contextos.descubrimiento.adaptadores.obtencion_pdf import ObtenerPdfAbierto
+from app.contextos.descubrimiento.adaptadores.salud_fuentes import SaludDeFuentes as SaludDeFuentesArchivo
+from app.contextos.descubrimiento.adaptadores.sitios import CatalogoDeSitiosJson, SesionesNoConectadas
+from app.contextos.descubrimiento.adaptadores.tablas import (
+    RepositorioDeAnalisisSql,
+    RepositorioDeBusquedasSql,
+    RepositorioDeCandidatosSql,
+    RepositorioDePerfilesSql,
+)
+from app.contextos.descubrimiento.adaptadores.texto_pdf import LectorDeTextoPymupdf
+from app.contextos.descubrimiento.aplicacion.analizar import AnalizarTextoCompleto
+from app.contextos.descubrimiento.aplicacion.casos_de_uso import (
+    CasosDeDescubrimiento,
+    ConsultasDeDescubrimiento,
+    DecidirSobreCandidatos,
+    EjecutarBusqueda,
+    FuenteNoDisponible,
+    Lanzador,
+    lanzar_en_hilo,
+)
+from app.contextos.descubrimiento.aplicacion.columnas import EvaluarCandidatos, GestionarPerfiles
+from app.contextos.descubrimiento.aplicacion.importar import ImportarCandidatos
+from app.contextos.descubrimiento.dominio.completitud import ColumnaDelLibro
+from app.contextos.descubrimiento.dominio.detectores import MotorDeDetectores
+from app.contextos.descubrimiento.puertos import (
+    ExtraerTexto,
+    FuenteDeLiteratura,
+    ObtenerPdf,
+    ResultadoDeCarga,
+    SaludDeFuentes,
+)
 from app.contextos.exportacion.adaptadores.escritores import EscritorHeredadasOpenpyxl, ScriptEscritor
 from app.contextos.exportacion.aplicacion.casos_de_uso import ExportarMatriz
 from app.contextos.exportacion.puertos import FilaExportable, MatrizBase
@@ -224,6 +258,59 @@ def filas_de_extraccion(ext: Extraccion, umbral_acuerdo: float) -> FilasDeExtrac
                              auditoria=[hallazgo_para_excel(h) for h in ext.hallazgos], trazabilidad_extra=extra)
 
 
+class TitulosDesdeMatriz:
+    """Puente: los títulos que ya tiene la matriz, para marcar «ya está en la matriz» en la pestaña Buscar."""
+
+    def __init__(self, matriz: ConsultasDeMatriz) -> None:
+        self._matriz = matriz
+
+    def titulos(self, proyecto_id: uuid.UUID) -> list[str]:
+        vistos: dict[str, None] = {}
+        for fila in self._matriz.todas(proyecto_id):
+            celda = fila.celdas.get("Title")
+            if celda is not None and isinstance(celda.valor, str) and celda.valor.strip():
+                vistos[celda.valor.strip()] = None
+        return list(vistos)
+
+
+class ColumnasDesdeNormasParaBuscar:
+    """Puente: las columnas del libro vigente, con sus vocabularios, para el selector de la pestaña Buscar."""
+
+    def __init__(self, normas: ConsultasDeNormas) -> None:
+        self._normas = normas
+
+    def columnas(self, proyecto_id: uuid.UUID) -> list[ColumnaDelLibro]:
+        return [ColumnaDelLibro(clave=c.clave, encabezado=c.encabezado_excel,
+                                valores_permitidos=tuple(c.valores_permitidos or ()), derivada=c.derivada is not None)
+                for c in self._normas.columnas(proyecto_id)]
+
+
+class CargadorDesdeBiblioteca:
+    """Puente: entrega el PDF a Biblioteca con su caso de uso CargarPDF (mismo rechazo de duplicados por SHA-256)."""
+
+    def __init__(self, biblioteca: CasosDeBiblioteca) -> None:
+        self._biblioteca = biblioteca
+
+    def cargar(self, proyecto_id: uuid.UUID, nombre_archivo: str, datos: bytes) -> ResultadoDeCarga:
+        r = self._biblioteca.cargar.ejecutar(proyecto_id, nombre_archivo, datos)
+        return ResultadoDeCarga(articulo_id=r.articulo_id, duplicado=r.duplicado, duplicado_de=r.duplicado_de,
+                                error=r.error)
+
+
+class PdfsDesdeBiblioteca:
+    """Puente: el PDF de un artículo ya importado, para analizarlo sin bajarlo otra vez."""
+
+    def __init__(self, biblioteca: CasosDeBiblioteca) -> None:
+        self._biblioteca = biblioteca
+
+    def leer(self, proyecto_id: uuid.UUID, articulo_id: uuid.UUID) -> bytes | None:
+        try:
+            articulo = self._biblioteca.consultas.articulo(proyecto_id, articulo_id)
+            return self._biblioteca.almacen.leer(articulo.clave_almacen)
+        except Exception:  # el artículo se borró o el archivo falta: se vuelve a la copia abierta
+            return None
+
+
 @dataclass
 class Contenedor:
     ajustes: Settings
@@ -250,12 +337,19 @@ class Contenedor:
     restaurador: Restaurador
     lectores: LectoresSql
     difusor: Difusor
+    # Pestaña «Buscar» (ADR 0011): solo en el equipo local; sin llamadas a modelos.
+    descubrimiento: CasosDeDescubrimiento
+    cliente_busqueda: ClienteCortes
 
 
 def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None,
               almacen: AlmacenDeArchivos | None = None, conversor: ConversorPDF | None = None,
               modelo: ModeloDeLenguaje | None = None, credenciales: Credenciales | None = None,
-              fabrica_de_destino: FabricaDeDestino | None = None) -> Contenedor:
+              fabrica_de_destino: FabricaDeDestino | None = None,
+              fuentes_de_busqueda: Mapping[str, FuenteDeLiteratura] | None = None,
+              lanzar_busqueda: Lanzador | None = None, obtener_pdf: ObtenerPdf | None = None,
+              extraer_texto: ExtraerTexto | None = None,
+              salud_de_fuentes: SaludDeFuentes | None = None) -> Contenedor:
     if fabrica is None:
         fabrica = fabrica_de_sesiones(crear_motor(ajustes.database_url))
     if almacen is None and (ajustes.modo == "nube" or ajustes.almacen_en_base):
@@ -441,9 +535,43 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
     despachador.suscribir("LibroPublicado", al_publicar_libro)
     despachador.suscribir("ExtraccionCompletada", al_completar_extraccion)
 
+    # Descubrimiento de literatura (ADR 0011). El catálogo de sitios con credenciales es una lista abierta de datos.
+    catalogo_sitios = CatalogoDeSitiosJson(ajustes.sitios_con_credenciales)
+    cliente_busqueda = ClienteCortes(contacto=ajustes.contacto_api, sitios=catalogo_sitios.todos(),
+                                     cache_dir=ajustes.busqueda_cache_dir, pausa_min_s=ajustes.busqueda_pausa_s)
+    fuentes_busqueda = dict(fuentes_de_busqueda) if fuentes_de_busqueda is not None else construir_fuentes(
+        cliente_busqueda, ajustes)
+    repo_busquedas, repo_candidatos = RepositorioDeBusquedasSql(fabrica), RepositorioDeCandidatosSql(fabrica)
+    sesiones_busqueda = SesionesNoConectadas()
+    salud_fuentes = salud_de_fuentes or SaludDeFuentesArchivo(ajustes.busqueda_estado_fuentes)
+    no_disponibles = (
+        FuenteNoDisponible("scielo", "SciELO (su buscador)", "El robots.txt de search.scielo.org prohíbe la lectura automatizada "
+                           "de todo el sitio. Sus artículos con DOI llegan por OpenAlex y Crossref."),
+        FuenteNoDisponible("dialnet", "Dialnet", "El robots.txt de Dialnet prohíbe leer /buscar/ y no tiene API. Sus artículos con "
+                           "DOI llegan por OpenAlex y Crossref; los demás, súbalos a mano desde Artículos."),
+    )
+    repo_analisis = RepositorioDeAnalisisSql(fabrica)
+    pdf_abierto = obtener_pdf or ObtenerPdfAbierto(cliente_busqueda, contacto=ajustes.contacto_api)
+    motor_detectores = MotorDeDetectores(cargar_config(ajustes.recursos_dir))
+    perfiles_busqueda = GestionarPerfiles(RepositorioDePerfilesSql(fabrica),
+                                          ColumnasDesdeNormasParaBuscar(consultas_normas), motor_detectores)
+    descubrimiento = CasosDeDescubrimiento(
+        buscar=EjecutarBusqueda(repo_busquedas, repo_candidatos, fuentes_busqueda, TitulosDesdeMatriz(consultas_matriz),
+                                sesiones_busqueda, lanzar_busqueda or lanzar_en_hilo, salud=salud_fuentes),
+        consultas=ConsultasDeDescubrimiento(repo_busquedas, repo_candidatos, fuentes_busqueda, catalogo_sitios,
+                                            sesiones_busqueda, salud_fuentes, no_disponibles),
+        decidir=DecidirSobreCandidatos(repo_candidatos), perfiles=perfiles_busqueda,
+        evaluar=EvaluarCandidatos(repo_candidatos, perfiles_busqueda, motor_detectores, repo_analisis),
+        analizar=AnalizarTextoCompleto(repo_candidatos, pdf_abierto, PdfsDesdeBiblioteca(biblioteca),
+                                       extraer_texto or LectorDeTextoPymupdf(), repo_analisis, motor_detectores),
+        importar=ImportarCandidatos(
+            repo_candidatos, pdf_abierto,
+            CargadorDesdeBiblioteca(biblioteca)))
+
     return Contenedor(ajustes=ajustes, fabrica=fabrica, almacen=almacen, biblioteca=biblioteca, normas=normas,
                       matriz=matriz, extraccion=extraccion, exportar=exportar,
                       despachador=despachador, ejecutor=ejecutor, mineru=mineru,
                       convertir_nuevos=convertir_nuevos, terminar_conversion=terminar_conversion,
                       destinos=destinos, credenciales=credenciales, sincronizador=sincronizador, agente=agente,
-                      ingesta=ingesta, restaurador=restaurador, lectores=LectoresSql(fabrica), difusor=difusor)
+                      ingesta=ingesta, restaurador=restaurador, lectores=LectoresSql(fabrica), difusor=difusor,
+                      descubrimiento=descubrimiento, cliente_busqueda=cliente_busqueda)

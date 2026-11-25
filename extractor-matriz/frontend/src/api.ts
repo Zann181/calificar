@@ -14,8 +14,22 @@ import type {
   ResultadoCarga,
   ResultadoContinuar,
   ResultadoEncolado,
+  AccionCandidatos,
   AjustesNube,
+  Busqueda,
   Capacidades,
+  CatalogoColumnas,
+  ColumnaElegida,
+  ListaPerfiles,
+  Perfil,
+  ResultadoAnalisis,
+  ResultadoImportacion,
+  VistaPreviaRespuesta,
+  ConfiguracionBusqueda,
+  ConsultaBusqueda,
+  FiltroCandidatos,
+  ListadoCandidatos,
+  ResultadoDecision,
   CorridaSync,
   EstadoSync,
   ExtraccionCompleta,
@@ -72,6 +86,43 @@ const sync = (pid: string) => `${p(pid)}/sincronizacion`;
 
 export const api = {
   capacidades: () => pedir<Capacidades>("/capacidades"),
+  // Pestaña «Buscar» (ADR 0011): solo en el equipo local.
+  busquedaConfiguracion: (pid: string) => pedir<ConfiguracionBusqueda>(`${p(pid)}/busqueda/configuracion`),
+  iniciarBusqueda: (
+    pid: string,
+    datos: { nombre: string; fuentes: string[]; limite_por_fuente: number } & Partial<ConsultaBusqueda>,
+  ) => pedir<Busqueda>(`${p(pid)}/busquedas`, json(datos)),
+  busquedas: (pid: string) => pedir<{ busquedas: Busqueda[] }>(`${p(pid)}/busquedas`),
+  busqueda: (pid: string, id: string) => pedir<Busqueda>(`${p(pid)}/busquedas/${id}`),
+  cancelarBusqueda: (pid: string, id: string) =>
+    pedir<{ cancelando: boolean }>(`${p(pid)}/busquedas/${id}/cancelar`, { method: "POST" }),
+  candidatos: (pid: string, f: FiltroCandidatos = {}) => {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(f)) if (v !== undefined && v !== "") q.set(k, String(v));
+    return pedir<ListadoCandidatos>(`${p(pid)}/candidatos?${q}`);
+  },
+  decidirCandidatos: (pid: string, ids: string[], accion: AccionCandidatos, motivo?: string) =>
+    pedir<ResultadoDecision>(`${p(pid)}/candidatos/decision`, json({ ids, accion, motivo })),
+  reactivarFuente: (pid: string, fuente: string) =>
+    pedir<{ reactivada: boolean }>(`${p(pid)}/busqueda/fuentes/${fuente}/reactivar`, { method: "POST" }),
+  analizarCandidatos: (pid: string, ids: string[]) =>
+    pedir<{ resultados: ResultadoAnalisis[] }>(`${p(pid)}/candidatos/analizar`, json({ ids })),
+  importarCandidatos: (pid: string, ids: string[]) =>
+    pedir<{ resultados: ResultadoImportacion[] }>(`${p(pid)}/candidatos/importar`, json({ ids })),
+  // Columnas a elección, perfiles guardados, vista previa y exportación de la selección.
+  busquedaColumnas: (pid: string) => pedir<CatalogoColumnas>(`${p(pid)}/busqueda/columnas`),
+  perfiles: (pid: string) => pedir<ListaPerfiles>(`${p(pid)}/busqueda/perfiles`),
+  guardarPerfil: (pid: string, nombre: string, columnas: ColumnaElegida[], predeterminado: boolean) =>
+    pedir<Perfil>(`${p(pid)}/busqueda/perfiles`, poner({ nombre, columnas, predeterminado })),
+  borrarPerfil: (pid: string, id: string) =>
+    pedir<{ borrado: boolean }>(`${p(pid)}/busqueda/perfiles/${id}`, { method: "DELETE" }),
+  vistaPrevia: (pid: string, ids: string[]) =>
+    pedir<VistaPreviaRespuesta>(`${p(pid)}/candidatos/vista-previa`, json({ ids })),
+  exportarCandidatos: async (pid: string, ids: string[], formato: "csv" | "ris") => {
+    const r = await fetch(`/api/v1${p(pid)}/candidatos/exportar`, { ...json({ ids, formato }), credentials: "same-origin" });
+    if (!r.ok) throw new ErrorApi(r.status, r.statusText);
+    return { blob: await r.blob(), nombre: `candidatos.${formato}` };
+  },
   salir: () => pedir<{ salio: boolean }>("/auth/salir", { method: "POST" }),
   // Todas las extracciones de un artículo (más recientes primero) y una completa, con las 25 columnas.
   extracciones: (pid: string, articulo: string) =>
