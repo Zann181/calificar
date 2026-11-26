@@ -45,6 +45,7 @@ y 15 minutos a quien falle 5 inicios de sesión en 5 minutos.
 9. **Correo de contacto:** solo en `CONTACTO_API` del `.env` local y solo hacia fuentes abiertas que lo piden; nunca a la
    Biblioteca ni a editoriales; nunca en el repositorio.
 10. **Solo local.** En `MODO=nube` la pestaña se oculta y sus rutas devuelven 405; los candidatos no se replican.
+    *Modificado por el ADR 0012: en la nube también se busca, y las búsquedas van y vuelven entre la nube y el equipo.*
 
 ## Alternativas descartadas
 

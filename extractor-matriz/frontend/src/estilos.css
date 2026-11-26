@@ -2621,7 +2621,7 @@ a.enlace-boton:hover {
 }
 
 /* ---------- pestaña «Buscar» (ADR 0011) ---------- */
-.buscar {
+.buscador {
   flex: 1;
   min-height: 0;
   display: grid;
@@ -2699,31 +2699,31 @@ a.enlace-boton:hover {
   gap: 8px;
 }
 .buscar-tarjeta .fila,
-.buscar .fila {
+.buscador .fila {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
-.buscar label {
+.buscador label {
   display: flex;
   flex-direction: column;
   gap: 2px;
   font-size: 12px;
 }
-.buscar label.fila {
+.buscador label.fila {
   flex-direction: row;
 }
-.buscar .crece {
+.buscador .crece {
   flex: 1;
   min-width: 120px;
 }
-.buscar textarea,
-.buscar input[type="text"],
-.buscar input[type="search"],
-.buscar input[type="number"],
-.buscar input:not([type]),
-.buscar select {
+.buscador textarea,
+.buscador input[type="text"],
+.buscador input[type="search"],
+.buscador input[type="number"],
+.buscador input:not([type]),
+.buscador select {
   width: 100%;
   font: inherit;
   padding: 5px 8px;
@@ -2732,10 +2732,10 @@ a.enlace-boton:hover {
   background: var(--fondo-2);
   color: inherit;
 }
-.buscar input[type="number"] {
+.buscador input[type="number"] {
   width: 90px;
 }
-.buscar textarea {
+.buscador textarea {
   resize: vertical;
   line-height: 1.4;
 }
@@ -2762,7 +2762,7 @@ a.enlace-boton:hover {
   align-items: center;
   flex-wrap: wrap;
 }
-.buscar .nombre {
+.buscador .nombre {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -2771,6 +2771,7 @@ a.enlace-boton:hover {
 .buscar-historial button {
   width: 100%;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   text-align: left;
@@ -2880,7 +2881,7 @@ a.enlace-boton:hover {
   background: transparent;
 }
 @media (max-width: 1279px) {
-  .buscar {
+  .buscador {
     grid-template-columns: 320px minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;
   }
@@ -2894,7 +2895,7 @@ a.enlace-boton:hover {
   }
 }
 @media (max-width: 767px) {
-  .buscar {
+  .buscador {
     display: flex;
     flex-direction: column;
     overflow: auto;

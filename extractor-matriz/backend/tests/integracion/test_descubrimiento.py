@@ -217,20 +217,22 @@ def test_api_cancelar_una_busqueda_que_existe(cliente: TestClient, pid: uuid.UUI
     assert cliente.post(f"{base}/busquedas/{uuid.uuid4()}/cancelar").status_code == 404
 
 
-def test_capacidades_dicen_que_la_busqueda_es_local(cliente: TestClient) -> None:
+def test_capacidades_ofrecen_la_busqueda(cliente: TestClient) -> None:
     assert cliente.get("/api/v1/capacidades").json()["busqueda"] is True
 
 
-def test_en_la_nube_la_pestana_no_existe(fabrica, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+def test_en_la_nube_la_pestana_existe_pero_pide_sesion(fabrica, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """ADR 0012. El detalle (paridad, 405, réplica, buscar en la web) está en `test_descubrimiento_nube.py`."""
     ajustes = Settings(_env_file=None, modo="nube", despachador_en_servidor=False, lectores_permitidos="l@ejemplo.co",
                        google_client_id="id", google_client_secret="s", secreto_sesion="x" * 40,
                        sync_token_hash="h", url_publica="https://nube.ejemplo.co")
     c = construir(ajustes, fabrica=fabrica, almacen=AlmacenEnMemoria(), conversor=ConversorFijo(FIXTURES / "mineru"))
     with TestClient(crear_app(ajustes, c)) as cli:
-        assert cli.get("/api/v1/capacidades").json()["busqueda"] is False
-        r = cli.post(f"/api/v1/proyectos/{uuid.uuid4()}/busquedas", json={})
-        assert r.status_code in (401, 405)  # nunca llega a una ruta de búsqueda
-        assert cli.get(f"/api/v1/proyectos/{uuid.uuid4()}/candidatos").status_code in (401, 404)
+        capacidades = cli.get("/api/v1/capacidades").json()
+        assert capacidades["busqueda"] is True and capacidades["puede_buscar"] is True
+        assert capacidades["escritura"] is False
+        assert cli.post(f"/api/v1/proyectos/{uuid.uuid4()}/busquedas", json={}).status_code == 401
+        assert cli.get(f"/api/v1/proyectos/{uuid.uuid4()}/candidatos").status_code == 401
 
 
 # ---- «sin IA» y «sin credenciales» ----------------------------------------------------------------------------------

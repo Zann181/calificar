@@ -244,7 +244,9 @@ export type Capacidades = {
   autenticado: boolean;
   lector: string | null;
   acceso: string | null;
-  busqueda?: boolean; // la pestaña «Buscar» solo existe en el equipo local (ADR 0011)
+  busqueda?: boolean; // la pestaña «Buscar» (falta en servidores antiguos)
+  /** Se pueden lanzar búsquedas (también en la web, ADR 0012). */
+  puede_buscar?: boolean;
 };
 
 export type ResumenExtraccion = {
@@ -321,6 +323,7 @@ export type OpcionesNube = {
   extraccion: boolean;
   crudo: boolean;
   excel: boolean;
+  busqueda: boolean;
 };
 
 export type AjustesNube = {
@@ -428,6 +431,8 @@ export type ProgresoFuente = {
 export type Busqueda = {
   id: string;
   nombre: string;
+  /** «nube»: lanzada en la web y todavía sin llegar al equipo. */
+  origen: "equipo" | "nube";
   estado: "EN_CURSO" | "TERMINADA" | "TERMINADA_CON_ERRORES" | "CANCELADA";
   creada_en: string;
   terminada_en: string | null;

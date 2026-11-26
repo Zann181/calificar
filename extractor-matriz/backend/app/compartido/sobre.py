@@ -11,11 +11,13 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-ESQUEMA = 1  # versión del formato del sobre; la nube rechaza (426) uno mayor que el suyo
+# Versión del formato del sobre; la nube rechaza (426) uno mayor que el suyo. 2: pestaña «Buscar» (ADR 0012).
+ESQUEMA = 2
 
 # Orden en que se aplican los sobres nuevos o cambiados (cada tipo solo apunta a los anteriores).
 # Los eliminados se aplican antes y en el orden inverso.
-ORDEN_DE_TIPOS = ("proyecto", "libro", "articulo", "documento", "fila", "extraccion", "base")
+ORDEN_DE_TIPOS = ("proyecto", "libro", "articulo", "documento", "fila", "extraccion", "base",
+                  "busqueda", "candidato", "perfil")
 
 
 def json_canonico(datos: Any) -> str:

@@ -3,18 +3,20 @@
 Lo que hace la guardia, en orden, con cada pedido a /api:
   - /api/v1/salud, /api/v1/auth/* y /api/v1/capacidades: públicos (la pantalla de acceso los necesita).
   - /api/v1/sync/*: solo el agente, con su token de servicio (lo verifica la ruta); el token NO lee lo demás.
-  - todo lo demás: exige sesión de un lector permitido (401) y solo admite lecturas (405).
+  - todo lo demás: exige sesión de un lector permitido (401) y solo admite lecturas (405), salvo **buscar** en la
+    pestaña «Buscar» (ADR 0012), que además exige que el pedido venga de la propia página (403).
 """
 
 from __future__ import annotations
 
 import base64
 import json
+import re
 import secrets
 import time
 from collections.abc import Awaitable, Callable
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 import httpx
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Response
@@ -27,6 +29,10 @@ COOKIE_SESION = "sesion"
 COOKIE_ESTADO = "estado_oauth"
 VIGENCIA_SESION_S = 7 * 24 * 3600
 LECTURAS = {"GET", "HEAD", "OPTIONS"}
+# Lecturas que se piden por POST porque llevan una lista de candidatos (pestaña «Buscar»): no escriben nada.
+LECTURAS_POR_POST = re.compile(r"^/api/v1/proyectos/[^/]+/candidatos/(?:vista-previa|exportar)/?$")
+# Lo único que se escribe desde la web (ADR 0012): lanzar y cancelar búsquedas, y reactivar una fuente apagada.
+BUSCAR = re.compile(r"^/api/v1/proyectos/[^/]+/(?:busquedas(?:/[^/]+/cancelar)?|busqueda/fuentes/[^/]+/reactivar)/?$")
 GOOGLE_AUTORIZAR = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN = "https://oauth2.googleapis.com/token"
 EMISORES = {"https://accounts.google.com", "accounts.google.com"}
@@ -67,6 +73,12 @@ def lector_de(request: Request, ajustes: Settings) -> str | None:
     return correo if c is not None and correo in c.lectores.correos() else None
 
 
+def _de_esta_pagina(request: Request, ajustes: Settings) -> bool:
+    """La cookie es SameSite=Lax; esto lo refuerza: si el navegador dice de dónde viene, tiene que ser de aquí."""
+    origen = request.headers.get("origin")
+    return origen is None or urlsplit(origen).netloc == urlsplit(ajustes.url_publica).netloc
+
+
 def instalar(app: FastAPI, ajustes: Settings, intercambiar: IntercambiarCodigo | None = None) -> None:
     faltan = ajustes.faltantes_de_nube()
     if faltan:
@@ -88,7 +100,11 @@ def instalar(app: FastAPI, ajustes: Settings, intercambiar: IntercambiarCodigo |
         lector = lector_de(request, ajustes)
         if lector is None:
             return JSONResponse(status_code=401, content={"detail": "Inicie sesión con su cuenta de Google"})
-        if request.method not in LECTURAS:
+        es_post = request.method == "POST"
+        busca = es_post and BUSCAR.match(ruta) is not None
+        if busca and not _de_esta_pagina(request, ajustes):
+            return JSONResponse(status_code=403, content={"detail": "El pedido no viene de esta página"})
+        if not (busca or request.method in LECTURAS or (es_post and LECTURAS_POR_POST.match(ruta))):
             return JSONResponse(status_code=405, headers={"Allow": "GET, HEAD"}, content={
                 "detail": "Esta es una copia de solo lectura: los cambios se hacen en el equipo local"})
         request.state.lector = lector
@@ -170,7 +186,7 @@ def enrutador_de_capacidades(ajustes: Settings) -> APIRouter:
         lector = getattr(request.state, "lector", None)
         return {"modo": ajustes.modo, "escritura": not nube, "autenticado": (lector is not None) if nube else True,
                 "lector": lector, "acceso": "/api/v1/auth/google/entrar" if nube else None,
-                "busqueda": not nube}  # la pestaña «Buscar» solo existe en el equipo local (ADR 0011)
+                "busqueda": True, "puede_buscar": True}  # «Buscar» está y funciona en los dos modos (ADR 0012)
 
     @r.get("/revision")
     def revision(request: Request) -> Response:

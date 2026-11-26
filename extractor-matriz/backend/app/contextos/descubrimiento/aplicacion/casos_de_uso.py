@@ -21,6 +21,7 @@ from app.contextos.descubrimiento.dominio.busqueda import (
     Busqueda,
     ConsultaDeBusqueda,
     EstadoDeFuente,
+    Origen,
     consulta_inicial,
 )
 from app.contextos.descubrimiento.dominio.candidato import (
@@ -90,11 +91,16 @@ class EjecutarBusqueda:
     def __init__(self, busquedas: RepositorioDeBusquedas, candidatos: RepositorioDeCandidatos,
                  fuentes: Mapping[str, FuenteDeLiteratura], titulos: TitulosEnMatriz, sesiones: EstadoDeSesiones,
                  lanzar: Lanzador = lanzar_en_hilo, hoy: Callable[[], date] = date.today,
-                 salud: SaludDeFuentes | None = None) -> None:
+                 salud: SaludDeFuentes | None = None,
+                 al_cambiar: Callable[[uuid.UUID], None] = lambda _pid: None,
+                 origen: Origen = Origen.EQUIPO) -> None:
         self._busquedas, self._candidatos, self._fuentes = busquedas, candidatos, fuentes
         self._titulos, self._sesiones, self._lanzar, self._hoy = titulos, sesiones, lanzar, hoy
         self._salud = salud
+        self._al_cambiar = al_cambiar
         self._canceladas: set[uuid.UUID] = set()
+        self._origen = origen
+        self._cerrojo = threading.Lock()
 
     def iniciar(self, proyecto_id: uuid.UUID, nombre: str, consulta: ConsultaDeBusqueda, fuentes: tuple[str, ...],
                 limite_por_fuente: int = 200) -> Busqueda:
@@ -102,8 +108,12 @@ class EjecutarBusqueda:
         if desconocidas:
             raise ErrorDeDominio(f"Fuente desconocida: {', '.join(desconocidas)}")
         b = Busqueda.crear(proyecto_id=proyecto_id, nombre=nombre, consulta=consulta, fuentes=fuentes,
-                           limite_por_fuente=limite_por_fuente)
-        self._busquedas.guardar(b)
+                           limite_por_fuente=limite_por_fuente, origen=self._origen)
+        with self._cerrojo:
+            # En la web hay varios lectores y un servidor pequeño: una búsqueda a la vez (ADR 0012).
+            if self._origen == Origen.NUBE and any(o.proyecto_id == proyecto_id for o in self._busquedas.en_curso()):
+                raise ErrorDeDominio("Ya hay una búsqueda en curso: espere a que termine o cancélela")
+            self._busquedas.guardar(b)
         log.info("Búsqueda «%s» iniciada en %s (%d–%s)", b.nombre, ", ".join(fuentes), consulta.filtros.desde,
                  consulta.filtros.hasta or "hoy")
         self._lanzar(lambda: self.correr(proyecto_id, b.id))
@@ -112,6 +122,23 @@ class EjecutarBusqueda:
     def cancelar(self, busqueda_id: uuid.UUID) -> None:
         self._canceladas.add(busqueda_id)
 
+    def cerrar_interrumpidas(self) -> int:
+        """Al arrancar la aplicación: una búsqueda que sigue «en curso» se cortó al cerrarla y nadie la va a terminar.
+
+        Queda terminada con errores, conserva lo que alcanzó a encontrar y así también puede viajar a la nube."""
+        cortadas = self._busquedas.en_curso()
+        for b in cortadas:
+            for p in b.progreso.values():
+                if p.estado in (EstadoDeFuente.PENDIENTE, EstadoDeFuente.BUSCANDO):
+                    p.estado, p.errores = EstadoDeFuente.ERROR, p.errores + 1
+                    p.ultimo_error = "Interrumpida: la aplicación se cerró o el servidor se reinició durante la búsqueda"
+            b.total_unicos = len(self._busquedas.candidatos_de(b.id))
+            b.terminar(cuando=ahora())
+            self._busquedas.guardar(b)
+            log.error("Búsqueda «%s» interrumpida al cerrar la aplicación; quedan %d candidatos. Repítala para completarla",
+                      b.nombre, b.total_unicos)
+        return len(cortadas)
+
     def correr(self, proyecto_id: uuid.UUID, busqueda_id: uuid.UUID) -> None:
         b = self._busquedas.obtener(proyecto_id, busqueda_id)
         hoy = self._hoy()
@@ -119,6 +146,8 @@ class EjecutarBusqueda:
         planos = {titulo_plano(t) for t in titulos_matriz}
         indice = self._candidatos.indice(proyecto_id)
         por_clave = {clave: cid for cid, clave, _t, _a in indice}
+        # Lo que el equipo ya tiene no se toca desde la web: así el próximo envío no encuentra diferencias que pisar.
+        intocables = self._busquedas.candidatos_del_equipo(proyecto_id) if b.origen == Origen.NUBE else set()
         vistos: set[uuid.UUID] = set()
         cancelada = False
         for nombre in b.fuentes:
@@ -154,7 +183,7 @@ class EjecutarBusqueda:
                     if not self._admite(b.consulta, r, hoy):
                         continue
                     progreso.encontrados += 1
-                    c, nuevo = self._incorporar(proyecto_id, r, por_clave, indice, planos, titulos_matriz)
+                    c, nuevo = self._incorporar(proyecto_id, r, por_clave, indice, planos, titulos_matriz, intocables)
                     progreso.nuevos += 1 if nuevo else 0
                     vistos.add(c.id)
                     self._busquedas.registrar_hallazgo(b.id, c.id, nombre, r.posicion)
@@ -186,6 +215,7 @@ class EjecutarBusqueda:
                       b.total_unicos, resumen)
         else:
             log.info("Búsqueda «%s» terminada: %d candidatos únicos (%s)", b.nombre, b.total_unicos, resumen)
+        self._al_cambiar(proyecto_id)
 
     @staticmethod
     def _admite(consulta: ConsultaDeBusqueda, r: RegistroBibliografico, hoy: date) -> bool:
@@ -199,7 +229,7 @@ class EjecutarBusqueda:
 
     def _incorporar(self, proyecto_id: uuid.UUID, r: RegistroBibliografico, por_clave: dict[str, uuid.UUID],
                     indice: list[tuple[uuid.UUID, str, str, int | None]], planos: set[str],
-                    titulos_matriz: list[str]) -> tuple[Candidato, bool]:
+                    titulos_matriz: list[str], intocables: set[uuid.UUID]) -> tuple[Candidato, bool]:
         clave = clave_del_registro(r)
         existente_id = por_clave.get(clave)
         if existente_id is None:
@@ -210,7 +240,7 @@ class EjecutarBusqueda:
             ahora_en_matriz = esta_en_matriz(c.titulo, planos, titulos_matriz)
             if ahora_en_matriz != c.en_matriz:
                 c.en_matriz, cambio = ahora_en_matriz, True
-            if cambio:
+            if cambio and c.id not in intocables:
                 self._candidatos.guardar(c)
             por_clave.setdefault(c.clave, c.id)
             return c, False
@@ -326,3 +356,5 @@ class CasosDeDescubrimiento:
     evaluar: EvaluarCandidatos
     importar: ImportarCandidatos
     analizar: AnalizarTextoCompleto
+    # Aviso de que algo cambió (lo conecta `app/composicion.py` con el agente de sincronización).
+    al_cambiar: Callable[[uuid.UUID], None] = lambda _pid: None

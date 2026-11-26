@@ -145,6 +145,14 @@ class Candidato(Entidad):
                     vistos.append(p)
         return vistos
 
+    def como_registro(self, fuente: str) -> RegistroBibliografico:
+        """Lo que este candidato sabe, en forma de registro: para unirlo con otro que sea el mismo trabajo."""
+        return RegistroBibliografico(
+            fuente=fuente, id_externo=self.clave, posicion=0, titulo=self.titulo, doi=self.doi,
+            autores=tuple(self.autores), anio=self.anio, revista=self.revista, resumen=self.resumen,
+            palabras_clave=tuple(self.palabras_clave), idioma=self.idioma, tipo=self.tipo, url_oa=self.url_oa,
+            es_preprint=self.es_preprint)
+
     def absorber(self, r: RegistroBibliografico) -> bool:
         """Suma lo que otra fuente sabe del mismo trabajo, sin pisar lo que ya había. True si cambió algo."""
         antes = (self.doi, self.resumen, self.url_oa, len(self.autores), self.anio, self.revista,

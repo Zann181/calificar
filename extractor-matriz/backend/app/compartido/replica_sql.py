@@ -47,6 +47,15 @@ def a_datos(registro: Base, excluir: Iterable[str] = ()) -> dict[str, Any]:
     return {k: _a_json(getattr(registro, k)) for k, _ in _columnas(type(registro), excluir)}
 
 
+def registro_de[T: Base](clase: type[T], datos: dict[str, Any]) -> T:
+    """El registro que describen esos datos, suelto (sin guardarlo en ninguna base)."""
+    registro = clase()
+    for k, columna in _columnas(clase, ()):
+        if k in datos:
+            setattr(registro, k, _de_json(columna, datos[k]))
+    return registro
+
+
 def _llave(clase: type[Base], datos: dict[str, Any]) -> Any:
     mapeador = inspect(clase)
     partes = [_de_json(c, datos[str(c.key)]) for c in mapeador.primary_key]

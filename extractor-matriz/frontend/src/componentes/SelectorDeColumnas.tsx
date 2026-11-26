@@ -17,6 +17,78 @@ export function InsigniaNivel({ nivel }: { nivel: ColumnaCatalogo["nivel"] }) {
   );
 }
 
+// Dos columnas del libro pueden compartir encabezado de Excel («Fiabilidad Alfa - Omega»): ahí se muestra la clave.
+function rotulador(columnas: ColumnaCatalogo[]) {
+  const cuenta = new Map<string, number>();
+  for (const c of columnas) cuenta.set(c.encabezado, (cuenta.get(c.encabezado) ?? 0) + 1);
+  return (c: ColumnaCatalogo) => ((cuenta.get(c.encabezado) ?? 0) > 1 ? c.clave : c.encabezado);
+}
+
+type PropsDeLectura = { pid: string; perfilId?: string; onPerfil: (id: string | undefined) => void };
+
+/** Copia en la nube (solo lectura): se mira la lista con cualquiera de los perfiles guardados en el equipo, sin tocarlos. */
+export function ColumnasEnLectura({ pid, perfilId, onPerfil }: PropsDeLectura) {
+  const catalogo = useQuery({ queryKey: ["busqueda-columnas", pid], queryFn: () => api.busquedaColumnas(pid), staleTime: 300_000 });
+  const perfiles = useQuery({ queryKey: ["perfiles", pid], queryFn: () => api.perfiles(pid) });
+  if (catalogo.error || perfiles.error) return <p className="error">{((catalogo.error || perfiles.error) as Error).message}</p>;
+  if (!catalogo.data || !perfiles.data) return <p className="centro tenue">Cargando columnas…</p>;
+  const { perfiles: guardados, activo } = perfiles.data;
+  const visto = guardados.find((p) => p.id === perfilId) ?? activo;
+  const activoGuardado = guardados.some((p) => p.id === activo.id);
+  const porClave = new Map(catalogo.data.columnas.map((c) => [c.clave, c]));
+  const rotulo = rotulador(catalogo.data.columnas);
+
+  return (
+    <div className="buscar-columnas">
+      <section className="buscar-tarjeta">
+        <header>
+          <strong>Perfil de columnas</strong>
+        </header>
+        {guardados.length ? (
+          <select
+            aria-label="Perfil con el que se mira la lista"
+            value={guardados.some((p) => p.id === visto.id) ? visto.id : ""}
+            onChange={(e) => onPerfil(e.target.value || undefined)}
+          >
+            {!activoGuardado && <option value="">Propuesta inicial</option>}
+            {guardados.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p className="tenue">Se usa la propuesta inicial: en el equipo no se ha guardado ningún perfil.</p>
+        )}
+        <p className="tenue">Los perfiles se crean y se cambian en el equipo local.</p>
+      </section>
+
+      <section className="buscar-tarjeta">
+        <header>
+          <strong>Elegidas · {visto.columnas.length}</strong>
+          <span className="tenue">en este orden</span>
+        </header>
+        <ol className="buscar-elegidas">
+          {visto.columnas.map((c) => {
+            const det = porClave.get(c.clave);
+            return (
+              <li key={c.clave} className={`p-${c.prioridad}`}>
+                <span className="nombre" title={c.clave}>{det ? rotulo(det) : c.clave}</span>
+                {det && <InsigniaNivel nivel={det.nivel} />}
+                <small className="tenue">{PRIORIDADES.find(([v]) => v === c.prioridad)?.[1] ?? c.prioridad}</small>
+              </li>
+            );
+          })}
+        </ol>
+        <p className="tenue">
+          M metadato · R resumen · T solo el PDF. Una columna que solo el PDF puede juzgar queda «pendiente»: no cuenta
+          como ausente.
+        </p>
+      </section>
+    </div>
+  );
+}
+
 export function SelectorDeColumnas({ pid }: { pid: string }) {
   const cliente = useQueryClient();
   const catalogo = useQuery({ queryKey: ["busqueda-columnas", pid], queryFn: () => api.busquedaColumnas(pid), staleTime: 300_000 });
@@ -55,13 +127,7 @@ export function SelectorDeColumnas({ pid }: { pid: string }) {
   }, [borrador, tocado]);
 
   const porClave = useMemo(() => new Map((catalogo.data?.columnas ?? []).map((c) => [c.clave, c])), [catalogo.data]);
-  // Dos columnas del libro pueden compartir encabezado de Excel («Fiabilidad Alfa - Omega»): ahí se muestra la clave.
-  const repetidos = useMemo(() => {
-    const cuenta = new Map<string, number>();
-    for (const c of catalogo.data?.columnas ?? []) cuenta.set(c.encabezado, (cuenta.get(c.encabezado) ?? 0) + 1);
-    return new Set([...cuenta].filter(([, n]) => n > 1).map(([e]) => e));
-  }, [catalogo.data]);
-  const rotulo = (c: ColumnaCatalogo) => (repetidos.has(c.encabezado) ? c.clave : c.encabezado);
+  const rotulo = useMemo(() => rotulador(catalogo.data?.columnas ?? []), [catalogo.data]);
   const grupos = useMemo(() => {
     const q = filtro.trim().toLowerCase();
     return (catalogo.data?.grupos ?? []).map((g) => ({

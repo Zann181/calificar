@@ -116,10 +116,14 @@ export const api = {
     pedir<Perfil>(`${p(pid)}/busqueda/perfiles`, poner({ nombre, columnas, predeterminado })),
   borrarPerfil: (pid: string, id: string) =>
     pedir<{ borrado: boolean }>(`${p(pid)}/busqueda/perfiles/${id}`, { method: "DELETE" }),
-  vistaPrevia: (pid: string, ids: string[]) =>
-    pedir<VistaPreviaRespuesta>(`${p(pid)}/candidatos/vista-previa`, json({ ids })),
-  exportarCandidatos: async (pid: string, ids: string[], formato: "csv" | "ris") => {
-    const r = await fetch(`/api/v1${p(pid)}/candidatos/exportar`, { ...json({ ids, formato }), credentials: "same-origin" });
+  // Son lecturas (la nube las admite): sin `perfil_id` se usa el perfil predeterminado.
+  vistaPrevia: (pid: string, ids: string[], perfil_id?: string) =>
+    pedir<VistaPreviaRespuesta>(`${p(pid)}/candidatos/vista-previa`, json({ ids, perfil_id })),
+  exportarCandidatos: async (pid: string, ids: string[], formato: "csv" | "ris", perfil_id?: string) => {
+    const r = await fetch(`/api/v1${p(pid)}/candidatos/exportar`, {
+      ...json({ ids, formato, perfil_id }),
+      credentials: "same-origin",
+    });
     if (!r.ok) throw new ErrorApi(r.status, r.statusText);
     return { blob: await r.blob(), nombre: `candidatos.${formato}` };
   },

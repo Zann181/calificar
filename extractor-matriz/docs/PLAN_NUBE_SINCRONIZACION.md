@@ -26,7 +26,7 @@ lectura** (la API solo expone `avance` y `modelos`), así que se agregan, en amb
 
 | Tema | Decisión | Razón |
 |---|---|---|
-| Fuente de verdad | El equipo local. La nube es réplica de solo lectura | Sin conflictos que resolver |
+| Fuente de verdad | El equipo local. La nube es réplica de solo lectura, salvo las búsquedas lanzadas en la web, que el equipo recoge (ADR 0012) | Sin conflictos que resolver |
 | Qué se replica | **Todo el proyecto**, salvo cola de extracción, outbox, usuarios, registro/logs, copias `.db` antiguas y Excel exportados (se regeneran) | Réplica completa = la nube sirve de segundo resguardo (con la restauración de la Fase 2) |
 | Extracciones en curso | Se replican solo al terminar (`COMPLETADA` o `FALLIDA`) | Evita reenviar cada pocos segundos el progreso de una corrida activa |
 | Contenedor | **Render, plan Free** (Docker, desde GitHub `Zann181/calificar`) | Único host Docker gratuito vigente que verifiqué y que no exige cuenta de facturación como Cloud Run (si Render pidiera tarjeta al registrarte, ver sección 12) |
@@ -120,17 +120,20 @@ flowchart LR
 | PDF | almacén `pdf/<proyecto>/<sha>.pdf` | archivo | 35 MB (máx. 3,4 MB) |
 | Crudo de MinerU | almacén `crudo/<articulo>.zip` | archivo | 24 MB (máx. 2 MB) |
 | Excel base | almacén `matrices/…` | archivo | 0,2 MB |
+| Búsquedas terminadas, de ida y vuelta (ADR 0012) | `descubrimiento_busquedas` | `busqueda` | sin medir |
+| Candidatos con sus hallazgos y análisis (ADR 0012) | `descubrimiento_candidatos` + `_hallazgos` + `_analisis` | `candidato` | sin medir |
+| Perfiles de columnas (ADR 0012) | `descubrimiento_perfiles` | `perfil` | pequeño |
 | **Total** | | | **≈ 80 MB** (8 % del cupo de Neon) |
 
 **No se replica:** `extraccion_cola`, `outbox`, `usuarios`, `matriz_secuencias`, registro y logs, copias `.db`, Excel
-exportados, extracciones sin terminar.
+exportados, extracciones sin terminar, búsquedas en curso ni la caché de «Buscar».
 
 ## 6. Sincronización
 
 ### 6.1 Sobre de réplica
 
 ```json
-{ "esquema": 1, "tipo": "extraccion", "id": "<uuid>", "proyecto_id": "<uuid>",
+{ "esquema": 2, "tipo": "extraccion", "id": "<uuid>", "proyecto_id": "<uuid>",
   "hash": "sha256:…", "eliminado": false, "datos": { …todas las columnas… } }
 ```
 
@@ -145,11 +148,12 @@ exportados, extracciones sin terminar.
 disparadores:  eventos de outbox (agrupados 5 s) | temporizador 10 min | arranque | botón «Sincronizar ahora»
 
 pasada(proyecto):
+  0. GET /sync/pendientes → búsquedas lanzadas en la web: el equipo las recibe y desduplica (ADR 0012)
   1. local  = { (tipo,id): hash }  de todos los agregados replicables (extracciones: solo terminadas)
   2. nube   = GET /sync/manifiesto          → { revision, items }
   3. faltan = local − nube (ausente o hash distinto);  sobran = nube − local → eliminado:true
   4. archivos: por cada referencia nueva → HEAD /sync/blobs/{sha}; si falta → PUT bytes; la nube verifica el SHA-256
-  5. sobres en lotes ≤ 1 MB, en orden: libro → artículo → documento → fila → extracción → base
+  5. sobres en lotes ≤ 1 MB, en orden: libro → artículo → documento → fila → extracción → base → búsqueda → candidato → perfil
   6. verificar: manifiesto de la nube == local; registrar la corrida
   error de red → espera creciente (5 s … 10 min); la app local nunca espera
 ```
@@ -170,6 +174,9 @@ pasada(proyecto):
 | `GET /api/v1/revision` | lector | entero que sube con cada lote; `ETag` |
 | `GET /api/v1/capacidades` | lector | `{modo:"nube", escritura:false, …}` para ocultar controles |
 | Todo endpoint de escritura de dominio | — | **405** |
+| `POST …/candidatos/vista-previa` y `…/exportar` | lector | lecturas enviadas por POST: no dan 405 (ADR 0012) |
+| `POST …/busquedas`, `…/busquedas/{id}/cancelar`, `…/busqueda/fuentes/{f}/reactivar` | lector | lo único que se escribe desde la web; 403 si viene de otro origen (ADR 0012) |
+| `GET /api/v1/sync/pendientes?proyecto=` | token de servicio | búsquedas web terminadas que el equipo aún no recibió |
 
 El `PUT /lote` usa casos de uso de importación de cada contexto; no escribe tablas ajenas. Un archivo se publica antes
 que el artículo que lo referencia: la nube nunca muestra un artículo sin su PDF.

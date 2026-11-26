@@ -299,6 +299,12 @@ def manifiesto(proyecto: uuid.UUID, _: None = Depends(servicio_autenticado),
     return {"revision": m.revision, "items": m.items, "archivos": m.archivos}
 
 
+@nube.get("/pendientes")
+def pendientes_de_recoger(proyecto: uuid.UUID, _: None = Depends(servicio_autenticado),
+                          i: Ingesta = Depends(_ingesta)) -> dict[str, Any]:
+    return {"paquetes": i.pendientes(proyecto)}
+
+
 @nube.put("/archivos")
 async def subir_archivo(request: Request, clave: str, _: None = Depends(servicio_autenticado),
                         i: Ingesta = Depends(_ingesta)) -> dict[str, Any]:

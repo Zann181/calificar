@@ -27,6 +27,7 @@ from app.contextos.descubrimiento.dominio.busqueda import (
     Busqueda,
     ConsultaDeBusqueda,
     EstadoBusqueda,
+    Origen,
     ProgresoDeFuente,
 )
 from app.contextos.descubrimiento.dominio.candidato import Autor, Candidato, EstadoCandidato
@@ -53,6 +54,7 @@ class RegistroBusqueda(Base):
     total_unicos: Mapped[int] = mapped_column(Integer, default=0)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     terminada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    origen: Mapped[str] = mapped_column(String(10), server_default="equipo")
 
 
 class RegistroCandidato(Base):
@@ -210,17 +212,17 @@ class RepositorioDePerfilesSql:
             s.commit()
 
 
-def _a_busqueda(r: RegistroBusqueda) -> Busqueda:
+def a_busqueda(r: RegistroBusqueda) -> Busqueda:
     b = Busqueda(proyecto_id=r.proyecto_id, id=r.id, nombre=r.nombre, consulta=ConsultaDeBusqueda.desde_dict(r.consulta),
                  fuentes=tuple(str(f) for f in r.fuentes), limite_por_fuente=r.limite_por_fuente,
                  estado=EstadoBusqueda(r.estado),
                  progreso={k: ProgresoDeFuente.desde_dict(v) for k, v in r.progreso.items()},
-                 total_unicos=r.total_unicos, terminada_en=r.terminada_en)
+                 total_unicos=r.total_unicos, terminada_en=r.terminada_en, origen=Origen(r.origen))
     b.creado_en = r.creado_en
     return b
 
 
-def _a_candidato(r: RegistroCandidato) -> Candidato:
+def a_candidato(r: RegistroCandidato) -> Candidato:
     c = Candidato(proyecto_id=r.proyecto_id, id=r.id, clave=r.clave, titulo=r.titulo, doi=r.doi, anio=r.anio,
                   autores=[Autor.desde_dict(a) for a in r.autores], revista=r.revista, resumen=r.resumen,
                   palabras_clave=[str(p) for p in r.palabras_clave], idioma=r.idioma, tipo=r.tipo, url_oa=r.url_oa,
@@ -240,7 +242,7 @@ class RepositorioDeBusquedasSql:
             r.proyecto_id, r.nombre, r.consulta = b.proyecto_id, b.nombre, b.consulta.a_dict()
             r.fuentes, r.limite_por_fuente, r.estado = list(b.fuentes), b.limite_por_fuente, b.estado.value
             r.progreso = {k: p.a_dict() for k, p in b.progreso.items()}
-            r.total_unicos, r.terminada_en = b.total_unicos, b.terminada_en
+            r.total_unicos, r.terminada_en, r.origen = b.total_unicos, b.terminada_en, b.origen.value
             s.add(r)
             s.commit()
 
@@ -249,22 +251,36 @@ class RepositorioDeBusquedasSql:
             r = s.get(RegistroBusqueda, busqueda_id)
             if r is None or r.proyecto_id != proyecto_id:
                 raise NoEncontrado("La búsqueda no existe en este proyecto")
-            return _a_busqueda(r)
+            return a_busqueda(r)
 
     def listar(self, proyecto_id: uuid.UUID, cuantas: int = 50) -> list[Busqueda]:
         with self._fabrica() as s:
             q = (select(RegistroBusqueda).where(RegistroBusqueda.proyecto_id == proyecto_id)
                  .order_by(RegistroBusqueda.creado_en.desc()).limit(cuantas))
-            return [_a_busqueda(r) for r in s.scalars(q)]
+            return [a_busqueda(r) for r in s.scalars(q)]
 
-    def registrar_hallazgo(self, busqueda_id: uuid.UUID, candidato_id: uuid.UUID, fuente: str, posicion: int) -> None:
+    def en_curso(self) -> list[Busqueda]:
+        """Las de cualquier proyecto que siguen marcadas «en curso»."""
+        with self._fabrica() as s:
+            q = select(RegistroBusqueda).where(RegistroBusqueda.estado == EstadoBusqueda.EN_CURSO.value)
+            return [a_busqueda(r) for r in s.scalars(q)]
+
+    def candidatos_del_equipo(self, proyecto_id: uuid.UUID) -> set[uuid.UUID]:
+        with self._fabrica() as s:
+            q = (select(RegistroHallazgo.candidato_id)
+                 .join(RegistroBusqueda, RegistroBusqueda.id == RegistroHallazgo.busqueda_id)
+                 .where(RegistroBusqueda.proyecto_id == proyecto_id, RegistroBusqueda.origen == Origen.EQUIPO.value))
+            return set(s.scalars(q))
+
+    def registrar_hallazgo(self, busqueda_id: uuid.UUID, candidato_id: uuid.UUID, fuente: str, posicion: int,
+                           visto_en: datetime | None = None) -> None:
         with self._fabrica() as s:
             existe = s.scalar(select(RegistroHallazgo.id).where(
                 RegistroHallazgo.busqueda_id == busqueda_id, RegistroHallazgo.candidato_id == candidato_id,
                 RegistroHallazgo.fuente == fuente))
             if existe is None:
                 s.add(RegistroHallazgo(busqueda_id=busqueda_id, candidato_id=candidato_id, fuente=fuente,
-                                       posicion=posicion, visto_en=ahora()))
+                                       posicion=posicion, visto_en=visto_en or ahora()))
                 s.commit()
 
     def candidatos_de(self, busqueda_id: uuid.UUID) -> set[uuid.UUID]:
@@ -293,13 +309,13 @@ class RepositorioDeCandidatosSql:
             r = s.get(RegistroCandidato, candidato_id)
             if r is None or r.proyecto_id != proyecto_id:
                 raise NoEncontrado("El candidato no existe en este proyecto")
-            return _a_candidato(r)
+            return a_candidato(r)
 
     def por_clave(self, proyecto_id: uuid.UUID, clave: str) -> Candidato | None:
         with self._fabrica() as s:
             r = s.scalar(select(RegistroCandidato).where(
                 RegistroCandidato.proyecto_id == proyecto_id, RegistroCandidato.clave == clave))
-            return None if r is None else _a_candidato(r)
+            return None if r is None else a_candidato(r)
 
     def por_ids(self, proyecto_id: uuid.UUID, ids: list[uuid.UUID]) -> list[Candidato]:
         if not ids:
@@ -307,7 +323,7 @@ class RepositorioDeCandidatosSql:
         with self._fabrica() as s:
             q = select(RegistroCandidato).where(RegistroCandidato.proyecto_id == proyecto_id,
                                                 RegistroCandidato.id.in_(ids))
-            return [_a_candidato(r) for r in s.scalars(q)]
+            return [a_candidato(r) for r in s.scalars(q)]
 
     def indice(self, proyecto_id: uuid.UUID) -> list[tuple[uuid.UUID, str, str, int | None]]:
         with self._fabrica() as s:
@@ -336,7 +352,7 @@ class RepositorioDeCandidatosSql:
             q = (select(RegistroCandidato).where(*filtros)
                  .order_by(RegistroCandidato.anio.desc().nulls_last(), RegistroCandidato.titulo)
                  .offset(desde).limit(cuantos))
-            return [_a_candidato(r) for r in s.scalars(q)], int(total)
+            return [a_candidato(r) for r in s.scalars(q)], int(total)
 
     def contadores(self, proyecto_id: uuid.UUID) -> dict[str, int]:
         with self._fabrica() as s:

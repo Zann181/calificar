@@ -452,7 +452,7 @@ export function App() {
     retry: false,
   });
   const proyecto = proyectos.data?.[0];
-  // Pestaña «Buscar» (ADR 0011): solo en el equipo local. En teléfono vive en la barra inferior de Espacio.
+  // Pestaña «Buscar» (ADR 0011; también en la web: ADR 0012). En teléfono vive en la barra de Espacio.
   const [seccion, setSeccion] = useState<"matriz" | "buscar">("matriz");
   const hayBusqueda = cap.data?.busqueda ?? false;
   const enBuscar = hayBusqueda && seccion === "buscar" && ancho >= 768;

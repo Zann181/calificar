@@ -1,5 +1,6 @@
 """Una pasada de sincronización del equipo local hacia la nube (ADR 0009, sección 6.2).
 
+    0. recoger lo hecho en la web (buzón, ADR 0012)
     1. local  = hashes de todos los agregados replicables
     2. nube   = manifiesto
     3. plan   = lo que falta, lo que sobra
@@ -28,6 +29,7 @@ from app.contextos.sincronizacion.dominio.plan import (
 )
 from app.contextos.sincronizacion.puertos import (
     AlmacenDeArchivos,
+    Buzon,
     Corrida,
     Credenciales,
     Destino,
@@ -49,7 +51,9 @@ class SinConfigurar(Exception):
 
 class Sincronizador:
     def __init__(self, fuentes: list[FuenteDeReplica], almacen: AlmacenDeArchivos, destinos: RepositorioDeDestinos,
-                 credenciales: Credenciales, fabrica_de_destino: FabricaDeDestino) -> None:
+                 credenciales: Credenciales, fabrica_de_destino: FabricaDeDestino,
+                 buzon: Buzon | None = None) -> None:
+        self._buzon = buzon
         self._fuentes, self._almacen, self._destinos = fuentes, almacen, destinos
         self._credenciales, self._fabrica = credenciales, fabrica_de_destino
 
@@ -114,6 +118,10 @@ class Sincronizador:
 
     def _ejecutar(self, corrida: Corrida, destino: Destino, nube: DestinoRemoto, tomar_control: bool, todo: bool,
                   progreso: Progreso) -> None:
+        if self._buzon is not None and self._buzon.tipo in destino.opciones.tipos():
+            paquetes = nube.pendientes(destino.proyecto_id)
+            if paquetes:  # primero se recibe: así el envío de abajo ya lo incluye
+                self._buzon.recibir(destino.proyecto_id, paquetes)
         plan, inicial, _, archivos = self.plan(destino, nube, todo=todo)
         # Valla contra el desastre: si el equipo perdió datos (base vacía, copia vieja), borrar lo que «sobra» en la
         # nube destruiría el único resguardo. Un borrado masivo no se envía solo: hay que pedirlo («Reenviar todo»).

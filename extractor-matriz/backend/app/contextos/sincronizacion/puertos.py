@@ -24,6 +24,20 @@ class FuenteDeReplica(Protocol):
         """Aplica el sobre dentro de la transacción `sesion`. False si ya estaba idéntico."""
 
 
+class Buzon(Protocol):
+    """Lo hecho en la nube que el equipo debe recoger antes de enviar lo suyo (ADR 0012: búsquedas lanzadas en la web)."""
+
+    @property
+    def tipo(self) -> str:
+        """Tipo de sobre que, apagado en «qué se sube», apaga también la recogida."""
+
+    def pendientes(self, proyecto_id: uuid.UUID) -> list[dict[str, Any]]:
+        """Del lado de la nube."""
+
+    def recibir(self, proyecto_id: uuid.UUID, paquetes: list[dict[str, Any]]) -> int:
+        """Del lado del equipo. Repetible: recibir dos veces lo mismo no duplica nada."""
+
+
 class AlmacenDeArchivos(Protocol):
     def leer(self, clave: str) -> bytes: ...
     def guardar(self, clave: str, datos: bytes, tipo: str) -> None: ...
@@ -44,6 +58,8 @@ class DestinoRemoto(Protocol):
     def manifiesto(self, proyecto_id: uuid.UUID) -> Manifiesto: ...
     def subir_archivo(self, clave: str, sha256: str, datos: bytes) -> None: ...
     def enviar_lote(self, sobres: list[Sobre], clave_idempotencia: str, *, tomar_control: bool) -> ResultadoLote: ...
+    def pendientes(self, proyecto_id: uuid.UUID) -> list[dict[str, Any]]:
+        """Lo del buzón de la nube. Vacío si la nube es anterior y no lo tiene."""
 
     # Restauración (Fase 2): del lado de la nube hacia el equipo local.
     def proyectos(self) -> list[dict[str, str]]: ...

@@ -47,6 +47,7 @@ class Opciones:
     extraccion: bool = True
     crudo: bool = True
     excel: bool = True
+    busqueda: bool = True  # búsquedas, candidatos y perfiles de la pestaña «Buscar»
 
     def a_dict(self) -> dict[str, bool]:
         return {k: getattr(self, k) for k in self.__dataclass_fields__}
@@ -65,6 +66,8 @@ class Opciones:
             activos |= {"fila", "base"}
         if self.extraccion:
             activos.add("extraccion")
+        if self.busqueda:
+            activos |= {"busqueda", "candidato", "perfil"}
         return activos
 
     def permite_archivo(self, clave: str) -> bool:

@@ -13,6 +13,7 @@ from app.compartido.sobre import ESQUEMA, ORDEN_DE_TIPOS, Sobre, clave_de
 from app.contextos.sincronizacion.dominio.plan import Manifiesto, tipo_de_contenido
 from app.contextos.sincronizacion.puertos import (
     AlmacenDeArchivos,
+    Buzon,
     EstadoDeNube,
     FuenteDeReplica,
     ResultadoLote,
@@ -31,7 +32,8 @@ class Ingesta:
     def __init__(self, fuentes: list[FuenteDeReplica], estado: EstadoDeNube, almacen: AlmacenDeArchivos,
                  archivos_guardados: Callable[[], dict[str, str]],
                  listar_proyectos: Callable[[], list[dict[str, str]]] = lambda: [],
-                 al_cambiar: Callable[[int], None] = lambda _revision: None) -> None:
+                 al_cambiar: Callable[[int], None] = lambda _revision: None, buzon: Buzon | None = None) -> None:
+        self._buzon = buzon
         self._por_tipo = {t: f for f in fuentes for t in f.tipos}
         self._fuentes, self._estado, self._almacen = fuentes, estado, almacen
         self._archivos_guardados = archivos_guardados
@@ -49,6 +51,10 @@ class Ingesta:
             for s in f.sobres(proyecto_id):
                 items[clave_de(s.tipo, s.id)] = s.hash
         return Manifiesto(revision=self._estado.revision(), items=items, archivos=self._archivos_guardados())
+
+    def pendientes(self, proyecto_id: uuid.UUID) -> list[dict[str, Any]]:
+        """Lo hecho en la web que el equipo aún no ha recogido (ADR 0012)."""
+        return [] if self._buzon is None else self._buzon.pendientes(proyecto_id)
 
     # -- Restauración: el equipo local baja lo que la nube guarda -------------------------------------------------
     def proyectos(self) -> list[dict[str, str]]:

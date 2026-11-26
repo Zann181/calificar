@@ -20,7 +20,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.compartido.replica_sql import a_datos
-from app.compartido.sobre import hash_de
+from app.compartido.sobre import ESQUEMA, hash_de
 from app.composicion import Contenedor, construir
 from app.config import Settings
 from app.contextos.biblioteca.adaptadores.almacen import AlmacenEnMemoria
@@ -320,7 +320,7 @@ def test_lote_idempotente_y_esquema_mayor(mundo: Mundo) -> None:
     r2 = mundo.http_nube.put("/api/v1/sync/lote", json={"esquema": 1, "sobres": sobres}, headers=cab)
     assert r1.status_code == r2.status_code == 200 and r1.json() == r2.json()
     assert r1.json()["aplicados"] == 0 and r1.json()["iguales"] == len(sobres)
-    r3 = mundo.http_nube.put("/api/v1/sync/lote", json={"esquema": 2, "sobres": sobres}, headers=cab)
+    r3 = mundo.http_nube.put("/api/v1/sync/lote", json={"esquema": ESQUEMA + 1, "sobres": sobres}, headers=cab)
     assert r3.status_code == 426
     r4 = mundo.http_nube.put("/api/v1/sync/lote", json={"esquema": 1, "sobres": [
         {"tipo": "otra-cosa", "id": "x", "proyecto_id": str(mundo.pid), "datos": {}}]}, headers={**cab, "Idempotency-Key": "k2"})

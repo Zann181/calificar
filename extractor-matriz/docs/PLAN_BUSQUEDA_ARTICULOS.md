@@ -5,6 +5,8 @@
   agregar más en el futuro (sección 7.0). Se pidió avanzar sin más preguntas: se construyó la Fase 1 (ver «Estado de la
   Fase 1» más abajo).
 - Decisión asociada: `docs/decisiones/0011-descubrimiento-de-literatura-y-limites-del-scraping.md`
+- **En la nube (2026-11-25):** a pedido del responsable, en la nube también **se busca**, y lo encontrado vuelve al
+  equipo (`docs/decisiones/0012-buscar-desde-la-nube.md`).
 - **Decisiones de la segunda ronda (2026-11-25):** las credenciales de la UNAL las escribe siempre el usuario; se aceptan los
   límites de la sección 7.2 y la exclusión de evasión; los errores quedan marcados en el registro (sección 4.5); el
   metadato **no** rellena la matriz por defecto; se aprueba la clasificación M/R/T con corrección mía (sección 5.2);
@@ -54,9 +56,8 @@ previa se pinta siempre como «sin verificar», no se guarda en la matriz, y los
 - Escribir tu contraseña por ti: el programa nunca la pide, la ve ni la guarda.
 - Google Scholar (sus términos prohíben el acceso automatizado) y cualquier sitio pirata de PDF.
 - Modelos de lenguaje dentro de la pestaña (sin tokens, por decisión tuya).
-- Usar la pestaña en la nube: en `MODO=nube` queda oculta (`/capacidades` dice `busqueda: false`), sus rutas no se
-  montan y cualquier escritura la rechaza el 405 de siempre (ADR 0009). Los candidatos no se replican a la nube en esta
-  etapa.
+- **Decidir, importar, analizar o cambiar perfiles desde la nube:** allí solo se busca, se mira y se exporta
+  (ADR 0012).
 
 ## 2. «Scraping avanzado»: qué significa aquí
 
@@ -249,7 +250,9 @@ Hoy no hay selector de vistas de primer nivel: `App.tsx` siempre pinta `Espacio`
 - Escritorio y tableta (≥ 768 px): control segmentado **Matriz | Buscar** en la cabecera (`header.herramientas`).
   La sección «Buscar» sustituye a `Espacio`; las migas siguen mostrando «Matriz» como raíz.
 - Teléfono: cuarta pestaña «Buscar» en la barra inferior (`Pestana` ampliado y su `TITULOS`).
-- Se oculta si `useCapacidades()` no declara la capacidad `busqueda` (la nube no la declara).
+- Se oculta si `useCapacidades()` no declara la capacidad `busqueda` (un servidor antiguo). En la nube
+  (`escritura: false`, `puede_buscar: true`) están el formulario y la búsqueda, sin decisiones, importación ni
+  análisis.
 
 Disposición en escritorio: **izquierda** consulta y columnas (cadena, filtros, fuentes, selector de columnas con
 prioridad) · **centro** tabla de candidatos con casillas · **derecha** ficha / vista previa del candidato o de la selección.
@@ -589,7 +592,9 @@ resultados de Scopus/WoS cuanto antes sin tocar cookies. La Fase 6 de la v1 (cri
 4. **Cliente cortés:** intervalo mínimo por host, `Retry-After`, circuito abierto tras fallos repetidos, caché con
    vigencia, **corte a 100 MB por ventana de 15 min**.
 5. **API e integración (SQLite):** ciclo búsqueda → candidatos → seleccionar → vista previa → importar; la vista previa no
-   cambia el número de filas de la matriz; en `MODO=nube` las rutas no existen y la capacidad `busqueda` es falsa.
+   cambia el número de filas de la matriz; en `MODO=nube` se lee igual que en el equipo, se puede buscar (con sesión),
+   toda otra escritura da 405 y lo buscado allí llega al equipo sin borrarse ni duplicarse
+   (`tests/integracion/test_descubrimiento_nube.py`).
 6. **Cero tokens:** una prueba falla si el contexto `descubrimiento` importa el adaptador del modelo o llama a `claude`.
 7. **Completitud:** la medición de la Fase 2 contra la matriz verificada.
 8. **Arquitectura:** contratos de `import-linter` (dominio sin `httpx` ni `playwright`; `descubrimiento` no importa otros

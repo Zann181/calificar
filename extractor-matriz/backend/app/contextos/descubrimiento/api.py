@@ -1,8 +1,13 @@
-"""Rutas de la pestaña «Buscar». Solo en el equipo local (en la nube no se incluyen: ADR 0009 y 0011)."""
+"""Rutas de la pestaña «Buscar».
+
+En la nube (ADR 0012) se montan las mismas. La guardia de `app/modo_nube.py` solo deja **buscar** (iniciar, cancelar y
+reactivar una fuente) y las dos lecturas que van por POST (vista previa y exportación); todo lo demás responde 405.
+"""
 
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -63,9 +68,15 @@ class Decision(BaseModel):
     motivo: str | None = None
 
 
+def _fecha(d: datetime) -> str:
+    """Las fechas se guardan en UTC; SQLite las devuelve sin zona y hay que ponérsela."""
+    return (d if d.tzinfo else d.replace(tzinfo=UTC)).isoformat()
+
+
 def busqueda_json(b: Busqueda) -> dict[str, Any]:
-    return {"id": str(b.id), "nombre": b.nombre, "estado": b.estado.value, "creada_en": b.creado_en.isoformat(),
-            "terminada_en": b.terminada_en.isoformat() if b.terminada_en else None, "fuentes": list(b.fuentes),
+    return {"id": str(b.id), "nombre": b.nombre, "estado": b.estado.value, "creada_en": _fecha(b.creado_en),
+            "origen": b.origen.value,
+            "terminada_en": _fecha(b.terminada_en) if b.terminada_en else None, "fuentes": list(b.fuentes),
             "consulta": b.consulta.a_dict(), "cadena": b.consulta.booleana(),
             "progreso": {k: p.a_dict() for k, p in b.progreso.items()}, "total_unicos": b.total_unicos,
             "errores": b.errores, "limite_por_fuente": b.limite_por_fuente}
@@ -205,6 +216,7 @@ def guardar_perfil(datos: PerfilEntrada, proyecto_id: uuid.UUID = Depends(proyec
     """Crea o reemplaza el perfil con ese nombre. Si es el predeterminado, la lista de candidatos lo usa."""
     p = c.perfiles.guardar(proyecto_id, datos.nombre, [(x.clave, x.prioridad) for x in datos.columnas],
                            datos.predeterminado)
+    c.al_cambiar(proyecto_id)
     return perfil_json(p)
 
 
@@ -212,6 +224,7 @@ def guardar_perfil(datos: PerfilEntrada, proyecto_id: uuid.UUID = Depends(proyec
 def borrar_perfil(perfil_id: uuid.UUID, proyecto_id: uuid.UUID = Depends(proyecto_valido),
                   c: CasosDeDescubrimiento = Depends(casos)) -> dict[str, bool]:
     c.perfiles.borrar(proyecto_id, perfil_id)
+    c.al_cambiar(proyecto_id)
     return {"borrado": True}
 
 
@@ -241,6 +254,7 @@ def importar(datos: ImportarEntrada, proyecto_id: uuid.UUID = Depends(proyecto_v
              c: CasosDeDescubrimiento = Depends(casos)) -> dict[str, Any]:
     """Consigue el PDF abierto de cada candidato (hasta 10) y lo deja en «Nuevo» en Artículos. No extrae ni toca la matriz."""
     r = c.importar.ejecutar(proyecto_id, datos.ids)
+    c.al_cambiar(proyecto_id)
     return {"resultados": [{"id": str(x.candidato_id), "titulo": x.titulo, "estado": x.estado.value,
                             "mensaje": x.mensaje, "articulo_id": str(x.articulo_id) if x.articulo_id else None}
                            for x in r]}
@@ -251,6 +265,7 @@ def analizar(datos: ImportarEntrada, proyecto_id: uuid.UUID = Depends(proyecto_v
              c: CasosDeDescubrimiento = Depends(casos)) -> dict[str, Any]:
     """Etapa B: lee el texto completo del PDF abierto (hasta 10) y guarda solo los indicios con su página."""
     r = c.analizar.ejecutar(proyecto_id, datos.ids)
+    c.al_cambiar(proyecto_id)
     return {"resultados": [{"id": str(x.candidato_id), "titulo": x.titulo, "estado": x.estado.value,
                             "mensaje": x.mensaje, "con_indicio": x.con_indicio} for x in r]}
 
@@ -259,5 +274,6 @@ def analizar(datos: ImportarEntrada, proyecto_id: uuid.UUID = Depends(proyecto_v
 def decidir(datos: Decision, proyecto_id: uuid.UUID = Depends(proyecto_valido),
             c: CasosDeDescubrimiento = Depends(casos)) -> dict[str, Any]:
     r = c.decidir.ejecutar(proyecto_id, datos.ids, datos.accion, datos.motivo)
+    c.al_cambiar(proyecto_id)
     return {"cambiados": [candidato_json(x) for x in r.cambiados],
             "rechazados": {str(k): v for k, v in r.rechazados.items()}}

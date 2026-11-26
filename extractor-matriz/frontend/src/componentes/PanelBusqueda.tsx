@@ -1,10 +1,13 @@
 // Pestaña «Buscar» (ADR 0011, docs/PLAN_BUSQUEDA_ARTICULOS.md): encontrar artículos que traigan los datos de la matriz.
 // Todo lo que se ve aquí son indicios de las fuentes, sin verificar: nada entra a la matriz; solo el PDF, con su cita.
 // Sin modelos de lenguaje: la búsqueda y el orden son deterministas.
+// En la nube (ADR 0012) se puede buscar; las decisiones, la importación, el análisis y los perfiles se hacen en el
+// equipo, que recibe lo buscado en la web con la sincronización.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { api } from "../api";
+import { useEscritura, usePuedeBuscar } from "../capacidades";
 import { ESTADOS_CELDA, ETIQUETAS, segmentos, textoPuntaje } from "../cobertura";
 import type {
   Busqueda,
@@ -19,7 +22,7 @@ import type {
 } from "../tipos";
 import { MAX_IMPORTAR } from "../tipos";
 import type { EstadoAnalisis, EstadoImportacion } from "../tipos";
-import { SelectorDeColumnas } from "./SelectorDeColumnas";
+import { ColumnasEnLectura, SelectorDeColumnas } from "./SelectorDeColumnas";
 import { VistaPreviaDeFila } from "./VistaPreviaDeFila";
 
 const IDIOMAS: [string, string][] = [
@@ -78,6 +81,8 @@ function EstadoFuente({ p }: { p: ProgresoFuente }) {
 
 function Progreso({ b, fuentes, pid }: { b: Busqueda; fuentes: FuenteBusqueda[]; pid: string }) {
   const cliente = useQueryClient();
+  const escritura = useEscritura();
+  const puedeBuscar = usePuedeBuscar();
   const cancelar = useMutation({
     mutationFn: () => api.cancelarBusqueda(pid, b.id),
     onSuccess: () => cliente.invalidateQueries({ queryKey: ["busquedas", pid] }),
@@ -113,11 +118,11 @@ function Progreso({ b, fuentes, pid }: { b: Busqueda; fuentes: FuenteBusqueda[];
       </ul>
       {b.errores > 0 && (
         <p className="tenue">
-          La búsqueda quedó incompleta en alguna fuente. El detalle está en el Registro (origen «descubrimiento», nivel
-          Errores).
+          La búsqueda quedó incompleta en alguna fuente. El detalle está en el Registro{escritura ? "" : " del equipo local"}{" "}
+          (origen «descubrimiento», nivel Errores).
         </p>
       )}
-      {b.estado === "EN_CURSO" && (
+      {b.estado === "EN_CURSO" && puedeBuscar && (
         <button onClick={() => cancelar.mutate()} disabled={cancelar.isPending}>
           Cancelar búsqueda
         </button>
@@ -257,6 +262,8 @@ function Ficha({ c }: { c: Candidato | undefined }) {
 
 export function PanelBusqueda({ pid }: { pid: string }) {
   const cliente = useQueryClient();
+  const escritura = useEscritura();
+  const puedeBuscar = usePuedeBuscar();
   const config = useQuery({ queryKey: ["busqueda-config", pid], queryFn: () => api.busquedaConfiguracion(pid), staleTime: 60_000 });
 
   // Formulario (copia editable de la cadena inicial)
@@ -281,6 +288,10 @@ export function PanelBusqueda({ pid }: { pid: string }) {
   const [orden, setOrden] = useState<OrdenCandidatos>("puntaje");
   const [exigir, setExigir] = useState<ExigirColumnas>("nada");
   const [previa, setPrevia] = useState<string[] | null>(null);
+  // Solo lectura: se puede mirar con otro perfil guardado. Si la sincronización lo borró, se vuelve al predeterminado.
+  const [perfilVisto, setPerfilVisto] = useState<string | undefined>();
+  const perfiles = useQuery({ queryKey: ["perfiles", pid], queryFn: () => api.perfiles(pid), enabled: !escritura });
+  const perfilId = !escritura && perfiles.data?.perfiles.some((p) => p.id === perfilVisto) ? perfilVisto : undefined;
 
   const formulario = conceptos ?? config.data?.consulta_inicial.conceptos.map(aEditable) ?? [];
   const fuentesElegidas = elegidas ?? config.data?.fuentes.filter((f) => f.utilizable).map((f) => f.id) ?? [];
@@ -295,7 +306,7 @@ export function PanelBusqueda({ pid }: { pid: string }) {
   const busquedaActiva = lista.find((b) => b.id === activa) ?? lista[0];
 
   const candidatos = useQuery({
-    queryKey: ["candidatos", pid, activa, estado, ocultarEnMatriz, texto, orden, exigir],
+    queryKey: ["candidatos", pid, activa, estado, ocultarEnMatriz, texto, orden, exigir, perfilId],
     queryFn: () =>
       api.candidatos(pid, {
         busqueda_id: activa,
@@ -304,6 +315,7 @@ export function PanelBusqueda({ pid }: { pid: string }) {
         q: texto.trim() || undefined,
         orden,
         exigir,
+        perfil_id: perfilId,
         cuantos: 500,
       }),
     refetchInterval: enCurso ? 3000 : false,
@@ -384,7 +396,7 @@ export function PanelBusqueda({ pid }: { pid: string }) {
   const fichaCandidato = filas.find((c) => c.id === abierto);
 
   const exportar = async (formato: "csv" | "ris") => {
-    const { blob, nombre } = await api.exportarCandidatos(pid, seleccion.map((c) => c.id), formato);
+    const { blob, nombre } = await api.exportarCandidatos(pid, seleccion.map((c) => c.id), formato, perfilId);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -397,7 +409,7 @@ export function PanelBusqueda({ pid }: { pid: string }) {
   const perfilActivo = candidatos.data?.perfil;
 
   return (
-    <div className="buscar">
+    <div className="buscador">
       <div className="buscar-consulta" data-izq={izquierda}>
         <div className="segmentado" role="tablist" aria-label="Panel izquierdo">
           <button role="tab" aria-selected={izquierda === "busqueda"} className={izquierda === "busqueda" ? "activo" : ""} onClick={() => setIzquierda("busqueda")}>
@@ -407,154 +419,187 @@ export function PanelBusqueda({ pid }: { pid: string }) {
             Columnas{perfilActivo ? ` (${perfilActivo.columnas.length})` : ""}
           </button>
         </div>
-        {izquierda === "columnas" && <SelectorDeColumnas pid={pid} />}
-        <section className="buscar-tarjeta">
-          <header>
-            <strong>Cadena de búsqueda</strong>
-            <button
-              className="sin-borde"
-              onClick={() => setConceptos(cfg.consulta_inicial.conceptos.map(aEditable))}
-              title="Volver a la cadena inicial"
-            >
-              Restablecer
-            </button>
-          </header>
-          {formulario.map((c, i) => (
-            <div key={c.nombre} className="buscar-concepto">
-              <label className="fila">
-                <input
-                  type="checkbox"
-                  checked={c.obligatorio}
-                  onChange={(e) =>
-                    setConceptos(formulario.map((x, j) => (j === i ? { ...x, obligatorio: e.target.checked } : x)))
-                  }
-                />
-                <strong>{c.nombre}</strong>
-                <span className="tenue">{c.obligatorio ? "Y (obligatorio)" : "apagado"}</span>
-              </label>
-              <textarea
-                rows={Math.min(7, Math.max(2, terminosDe(c.texto).length))}
-                value={c.texto}
-                aria-label={`Términos de ${c.nombre}, uno por línea`}
-                onChange={(e) =>
-                  setConceptos(formulario.map((x, j) => (j === i ? { ...x, texto: e.target.value } : x)))
-                }
-              />
-            </div>
+        {izquierda === "columnas" &&
+          (escritura ? (
+            <SelectorDeColumnas pid={pid} />
+          ) : (
+            <ColumnasEnLectura pid={pid} perfilId={perfilId} onPerfil={setPerfilVisto} />
           ))}
-          <p className="tenue">Un término por línea; los de un concepto se unen con O, y los conceptos con Y. «employee*» = prefijo.</p>
-        </section>
-
-        <section className="buscar-tarjeta">
-          <header>
-            <strong>Filtros</strong>
-          </header>
-          <div className="fila">
-            <label>
-              Desde
-              <input type="number" min={1900} max={2100} value={desde} onChange={(e) => setDesde(Number(e.target.value))} />
-            </label>
-            <label>
-              Hasta
-              <input
-                type="number"
-                min={1900}
-                max={2100}
-                placeholder="hoy"
-                value={hasta}
-                onChange={(e) => setHasta(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="fila">
-            {IDIOMAS.map(([id, nombreIdioma]) => (
-              <label key={id} className="fila">
-                <input
-                  type="checkbox"
-                  checked={idiomas.includes(id)}
-                  onChange={(e) => setIdiomas(e.target.checked ? [...idiomas, id] : idiomas.filter((x) => x !== id))}
-                />
-                {nombreIdioma}
-              </label>
-            ))}
-          </div>
-          <label className="fila">
-            <input type="checkbox" checked={preprints} onChange={(e) => setPreprints(e.target.checked)} />
-            Incluir preprints (se marcan)
-          </label>
-        </section>
-
-        <section className="buscar-tarjeta">
-          <header>
-            <strong>Fuentes</strong>
-          </header>
-          <ul className="buscar-fuentes">
-            {cfg.fuentes.map((f) => {
-              const p = busquedaActiva?.progreso[f.id];
-              return (
-                <li key={f.id}>
+        {!escritura && (
+          <section className="buscar-tarjeta">
+            <header>
+              <strong>{puedeBuscar ? "Buscar en la web" : "Copia de solo lectura"}</strong>
+            </header>
+            <p className="tenue">
+              {puedeBuscar
+                ? "Lo que busque aquí llega a su equipo con la próxima sincronización. Allí se prioriza, se descarta, se analiza y se importa."
+                : "Las búsquedas, las decisiones y las importaciones se hacen en el equipo local y llegan aquí solas con la sincronización."}
+            </p>
+          </section>
+        )}
+        {puedeBuscar && (
+          <>
+            <section className="buscar-tarjeta">
+              <header>
+                <strong>Cadena de búsqueda</strong>
+                <button
+                  className="sin-borde"
+                  onClick={() => setConceptos(cfg.consulta_inicial.conceptos.map(aEditable))}
+                  title="Volver a la cadena inicial"
+                >
+                  Restablecer
+                </button>
+              </header>
+              {formulario.map((c, i) => (
+                <div key={c.nombre} className="buscar-concepto">
                   <label className="fila">
                     <input
                       type="checkbox"
-                      disabled={!f.utilizable}
-                      checked={fuentesElegidas.includes(f.id)}
+                      checked={c.obligatorio}
                       onChange={(e) =>
-                        setElegidas(e.target.checked ? [...fuentesElegidas, f.id] : fuentesElegidas.filter((x) => x !== f.id))
+                        setConceptos(formulario.map((x, j) => (j === i ? { ...x, obligatorio: e.target.checked } : x)))
                       }
                     />
-                    <span className="nombre">{f.etiqueta}</span>
-                    <span className="tenue">{f.sitio_id ? "requiere sesión" : "abierta"}</span>
+                    <strong>{c.nombre}</strong>
+                    <span className="tenue">{c.obligatorio ? "Y (obligatorio)" : "apagado"}</span>
                   </label>
-                  {p && p.errores > 0 && <span className="buscar-errores">{p.errores} error{p.errores === 1 ? "" : "es"}</span>}
-                  {f.desactivada && (
-                    <div className="buscar-apagada" role="status">
-                      <small className="error">Desactivada: {f.desactivada}</small>
-                      <button className="sin-borde" onClick={() => reactivar.mutate(f.id)} disabled={reactivar.isPending}>
-                        Reactivar
-                      </button>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-            {cfg.no_disponibles.map((n) => (
-              <li key={n.id} className="no-disponible">
-                <label className="fila" title={n.motivo}>
-                  <input type="checkbox" disabled checked={false} readOnly />
-                  <span className="nombre">{n.etiqueta}</span>
-                  <span className="tenue">no disponible</span>
+                  <textarea
+                    rows={Math.min(7, Math.max(2, terminosDe(c.texto).length))}
+                    value={c.texto}
+                    aria-label={`Términos de ${c.nombre}, uno por línea`}
+                    onChange={(e) =>
+                      setConceptos(formulario.map((x, j) => (j === i ? { ...x, texto: e.target.value } : x)))
+                    }
+                  />
+                </div>
+              ))}
+              <p className="tenue">Un término por línea; los de un concepto se unen con O, y los conceptos con Y. «employee*» = prefijo.</p>
+            </section>
+
+            <section className="buscar-tarjeta">
+              <header>
+                <strong>Filtros</strong>
+              </header>
+              <div className="fila">
+                <label>
+                  Desde
+                  <input type="number" min={1900} max={2100} value={desde} onChange={(e) => setDesde(Number(e.target.value))} />
                 </label>
-                <small className="tenue">{n.motivo}</small>
-              </li>
-            ))}
-          </ul>
-          <div className="fila">
-            <label>
-              Máx. por fuente
-              <select value={limite} onChange={(e) => setLimite(Number(e.target.value))}>
-                {LIMITES.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
+                <label>
+                  Hasta
+                  <input
+                    type="number"
+                    min={1900}
+                    max={2100}
+                    placeholder="hoy"
+                    value={hasta}
+                    onChange={(e) => setHasta(e.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="fila">
+                {IDIOMAS.map(([id, nombreIdioma]) => (
+                  <label key={id} className="fila">
+                    <input
+                      type="checkbox"
+                      checked={idiomas.includes(id)}
+                      onChange={(e) => setIdiomas(e.target.checked ? [...idiomas, id] : idiomas.filter((x) => x !== id))}
+                    />
+                    {nombreIdioma}
+                  </label>
                 ))}
-              </select>
-            </label>
-            <label className="crece">
-              Nombre
-              <input value={nombre} placeholder="p. ej. Primera pasada" onChange={(e) => setNombre(e.target.value)} />
-            </label>
-          </div>
-          <button
-            className="primario"
-            disabled={iniciar.isPending || enCurso || !fuentesElegidas.length || !idiomas.length || sinTerminos}
-            onClick={() => iniciar.mutate()}
-          >
-            {enCurso ? "Buscando…" : "Buscar"}
-          </button>
-          {iniciar.error && <p className="error">{(iniciar.error as Error).message}</p>}
-        </section>
+              </div>
+              <label className="fila">
+                <input type="checkbox" checked={preprints} onChange={(e) => setPreprints(e.target.checked)} />
+                Incluir preprints (se marcan)
+              </label>
+            </section>
+
+            <section className="buscar-tarjeta">
+              <header>
+                <strong>Fuentes</strong>
+              </header>
+              <ul className="buscar-fuentes">
+                {cfg.fuentes.map((f) => {
+                  const p = busquedaActiva?.progreso[f.id];
+                  return (
+                    <li key={f.id}>
+                      <label className="fila">
+                        <input
+                          type="checkbox"
+                          disabled={!f.utilizable}
+                          checked={fuentesElegidas.includes(f.id)}
+                          onChange={(e) =>
+                            setElegidas(e.target.checked ? [...fuentesElegidas, f.id] : fuentesElegidas.filter((x) => x !== f.id))
+                          }
+                        />
+                        <span className="nombre">{f.etiqueta}</span>
+                        <span className="tenue">{f.sitio_id ? "requiere sesión" : "abierta"}</span>
+                      </label>
+                      {p && p.errores > 0 && <span className="buscar-errores">{p.errores} error{p.errores === 1 ? "" : "es"}</span>}
+                      {f.desactivada && (
+                        <div className="buscar-apagada" role="status">
+                          <small className="error">Desactivada: {f.desactivada}</small>
+                          <button className="sin-borde" onClick={() => reactivar.mutate(f.id)} disabled={reactivar.isPending}>
+                            Reactivar
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+                {cfg.no_disponibles.map((n) => (
+                  <li key={n.id} className="no-disponible">
+                    <label className="fila" title={n.motivo}>
+                      <input type="checkbox" disabled checked={false} readOnly />
+                      <span className="nombre">{n.etiqueta}</span>
+                      <span className="tenue">no disponible</span>
+                    </label>
+                    <small className="tenue">{n.motivo}</small>
+                  </li>
+                ))}
+              </ul>
+              <div className="fila">
+                <label>
+                  Máx. por fuente
+                  <select value={limite} onChange={(e) => setLimite(Number(e.target.value))}>
+                    {LIMITES.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="crece">
+                  Nombre
+                  <input value={nombre} placeholder="p. ej. Primera pasada" onChange={(e) => setNombre(e.target.value)} />
+                </label>
+              </div>
+              <button
+                className="primario"
+                disabled={iniciar.isPending || enCurso || !fuentesElegidas.length || !idiomas.length || sinTerminos}
+                onClick={() => iniciar.mutate()}
+              >
+                {enCurso ? "Buscando…" : "Buscar"}
+              </button>
+              {iniciar.error && <p className="error">{(iniciar.error as Error).message}</p>}
+            </section>
+          </>
+        )}
 
         {busquedaActiva && <Progreso b={busquedaActiva} fuentes={cfg.fuentes} pid={pid} />}
+
+        {!escritura && busquedaActiva && (
+          <section className="buscar-tarjeta">
+            <header>
+              <strong>Cadena usada</strong>
+              <span className="tenue">
+                {busquedaActiva.consulta.filtros.desde}–{busquedaActiva.consulta.filtros.hasta ?? "hoy"}
+              </span>
+            </header>
+            <p className="tenue">{busquedaActiva.cadena}</p>
+          </section>
+        )}
 
         {lista.length > 0 && (
           <section className="buscar-tarjeta">
@@ -572,6 +617,7 @@ export function PanelBusqueda({ pid }: { pid: string }) {
                     <span className="tenue">
                       {hora(b.creada_en)} · {b.total_unicos} únicos
                     </span>
+                    {b.origen === "nube" && <span className="tenue">en la web · aún no llega al equipo</span>}
                     {b.errores > 0 && <span className="buscar-errores">{b.errores}</span>}
                   </button>
                 </li>
@@ -580,7 +626,7 @@ export function PanelBusqueda({ pid }: { pid: string }) {
           </section>
         )}
 
-        <SitiosConCredenciales sitios={cfg.sitios} />
+        {escritura && <SitiosConCredenciales sitios={cfg.sitios} />}
       </div>
 
       <section className="buscar-lista" aria-label="Candidatos">
@@ -623,43 +669,47 @@ export function PanelBusqueda({ pid }: { pid: string }) {
             </button>
             <button onClick={() => exportar("csv")}>CSV</button>
             <button onClick={() => exportar("ris")}>RIS</button>
-            <button
-              onClick={() => analizar.mutate()}
-              disabled={analizar.isPending || seleccion.length > MAX_IMPORTAR}
-              title={
-                seleccion.length > MAX_IMPORTAR
-                  ? `Se analizan hasta ${MAX_IMPORTAR} a la vez`
-                  : "Lee el texto completo del PDF abierto y busca en él los datos de las columnas. No importa el artículo: guarda solo los indicios con su página."
-              }
-            >
-              {analizar.isPending ? "Leyendo…" : "Analizar texto completo"}
-            </button>
-            <button
-              onClick={() => importar.mutate()}
-              disabled={importar.isPending || seleccion.length > MAX_IMPORTAR}
-              title={
-                seleccion.length > MAX_IMPORTAR
-                  ? `Se importan hasta ${MAX_IMPORTAR} a la vez: una descarga por decisión`
-                  : "Baja el PDF de acceso abierto y lo deja en «Nuevo» en Artículos. No extrae nada."
-              }
-            >
-              {importar.isPending ? "Importando…" : "Importar PDF"}
-            </button>
-            <button onClick={() => decidir.mutate({ accion: "priorizar" })} disabled={decidir.isPending}>
-              Priorizar
-            </button>
-            <input
-              placeholder="Motivo del descarte"
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              aria-label="Motivo del descarte"
-            />
-            <button onClick={() => decidir.mutate({ accion: "descartar" })} disabled={decidir.isPending || !motivo.trim()}>
-              Descartar
-            </button>
-            <button onClick={() => decidir.mutate({ accion: "reactivar" })} disabled={decidir.isPending}>
-              Reactivar
-            </button>
+            {escritura && (
+              <>
+                <button
+                  onClick={() => analizar.mutate()}
+                  disabled={analizar.isPending || seleccion.length > MAX_IMPORTAR}
+                  title={
+                    seleccion.length > MAX_IMPORTAR
+                      ? `Se analizan hasta ${MAX_IMPORTAR} a la vez`
+                      : "Lee el texto completo del PDF abierto y busca en él los datos de las columnas. No importa el artículo: guarda solo los indicios con su página."
+                  }
+                >
+                  {analizar.isPending ? "Leyendo…" : "Analizar texto completo"}
+                </button>
+                <button
+                  onClick={() => importar.mutate()}
+                  disabled={importar.isPending || seleccion.length > MAX_IMPORTAR}
+                  title={
+                    seleccion.length > MAX_IMPORTAR
+                      ? `Se importan hasta ${MAX_IMPORTAR} a la vez: una descarga por decisión`
+                      : "Baja el PDF de acceso abierto y lo deja en «Nuevo» en Artículos. No extrae nada."
+                  }
+                >
+                  {importar.isPending ? "Importando…" : "Importar PDF"}
+                </button>
+                <button onClick={() => decidir.mutate({ accion: "priorizar" })} disabled={decidir.isPending}>
+                  Priorizar
+                </button>
+                <input
+                  placeholder="Motivo del descarte"
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  aria-label="Motivo del descarte"
+                />
+                <button onClick={() => decidir.mutate({ accion: "descartar" })} disabled={decidir.isPending || !motivo.trim()}>
+                  Descartar
+                </button>
+                <button onClick={() => decidir.mutate({ accion: "reactivar" })} disabled={decidir.isPending}>
+                  Reactivar
+                </button>
+              </>
+            )}
             <button className="sin-borde" onClick={() => setMarcados(new Set())}>
               Quitar selección
             </button>
@@ -722,7 +772,9 @@ export function PanelBusqueda({ pid }: { pid: string }) {
               ? "Cargando…"
               : lista.length
                 ? "Ningún candidato con estos filtros."
-                : "Todavía no hay candidatos. Arme la cadena a la izquierda y pulse Buscar."}
+                : puedeBuscar
+                  ? "Todavía no hay candidatos. Arme la cadena a la izquierda y pulse Buscar."
+                  : "Todavía no hay búsquedas en la nube. Hágalas en el equipo local: llegan aquí solas."}
           </p>
         ) : (
           <div className="buscar-tabla-caja">
@@ -781,7 +833,11 @@ export function PanelBusqueda({ pid }: { pid: string }) {
         )}
       </section>
 
-      {previa ? <VistaPreviaDeFila pid={pid} ids={previa} onCerrar={() => setPrevia(null)} /> : <Ficha c={fichaCandidato} />}
+      {previa ? (
+        <VistaPreviaDeFila pid={pid} ids={previa} perfilId={perfilId} onCerrar={() => setPrevia(null)} />
+      ) : (
+        <Ficha c={fichaCandidato} />
+      )}
     </div>
   );
 }

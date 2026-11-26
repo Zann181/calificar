@@ -81,6 +81,16 @@ class ClienteHttp:
         return ResultadoLote(revision=d["revision"], aplicados=d["aplicados"], iguales=d["iguales"])
 
 
+    def pendientes(self, proyecto_id: uuid.UUID) -> list[dict[str, Any]]:
+        try:
+            r = self._pedir("GET", "/pendientes", params={"proyecto": str(proyecto_id)})
+        except ErrorDeSincronizacion as e:
+            if e.codigo == 404:
+                return []  # nube anterior al buzón; el envío dirá que hay que actualizarla
+            raise
+        paquetes: list[dict[str, Any]] = r.json()["paquetes"]
+        return paquetes
+
     def proyectos(self) -> list[dict[str, str]]:
         resultado: list[dict[str, str]] = self._pedir("GET", "/proyectos").json()
         return resultado

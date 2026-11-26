@@ -148,6 +148,13 @@ class EstadoBusqueda(StrEnum):
     CANCELADA = "CANCELADA"
 
 
+class Origen(StrEnum):
+    """Dónde manda cada búsqueda (ADR 0012). `NUBE`: se lanzó en la web y el equipo todavía no la ha recogido."""
+
+    EQUIPO = "equipo"
+    NUBE = "nube"
+
+
 class EstadoDeFuente(StrEnum):
     PENDIENTE = "PENDIENTE"
     BUSCANDO = "BUSCANDO"
@@ -184,17 +191,19 @@ class Busqueda(Entidad):
     progreso: dict[str, ProgresoDeFuente] = field(default_factory=dict)
     total_unicos: int = 0
     terminada_en: datetime | None = None
+    origen: Origen = Origen.EQUIPO
 
     @classmethod
     def crear(cls, *, proyecto_id: uuid.UUID, nombre: str, consulta: ConsultaDeBusqueda, fuentes: tuple[str, ...],
-              limite_por_fuente: int = 200) -> Busqueda:
+              limite_por_fuente: int = 200, origen: Origen = Origen.EQUIPO) -> Busqueda:
         if not fuentes:
             raise ErrorDeDominio("Elija al menos una fuente")
         if not 1 <= limite_por_fuente <= 2000:
             raise ErrorDeDominio("El límite por fuente va de 1 a 2000")
         nombre = nombre.strip() or "Búsqueda sin nombre"
         return cls(proyecto_id=proyecto_id, nombre=nombre[:200], consulta=consulta, fuentes=fuentes,
-                   limite_por_fuente=limite_por_fuente, progreso={f: ProgresoDeFuente() for f in fuentes})
+                   limite_por_fuente=limite_por_fuente, origen=origen,
+                   progreso={f: ProgresoDeFuente() for f in fuentes})
 
     @property
     def errores(self) -> int:

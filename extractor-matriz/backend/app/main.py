@@ -38,8 +38,13 @@ def crear_app(ajustes: Settings | None = None, contenedor: Any = None,
         servidor = logging.getLogger("servidor")
         servidor.info("Servidor listo (modo %s)", ajustes.modo)
         c = app.state.contenedor
+        try:  # una búsqueda que quedó «en curso» se cortó al cerrar la aplicación o reiniciar el servidor
+            c.descubrimiento.buscar.cerrar_interrumpidas()
+        except Exception:
+            servidor.exception("No se pudieron cerrar las búsquedas interrumpidas")
         if ajustes.modo == "nube":
-            # ADR 0009: réplica de solo lectura. Sin hilos de fondo, sin conversión ni extracción: la API no tiene estado.
+            # ADR 0009: réplica sin hilos de fondo, sin conversión ni extracción. Lo único que corre aparte es una
+            # búsqueda lanzada desde la web (ADR 0012).
             yield
             return
         if ajustes.despachador_en_servidor:
@@ -86,8 +91,8 @@ def crear_app(ajustes: Settings | None = None, contenedor: Any = None,
         app.include_router(eventos_nube.enrutador())
     else:
         app.include_router(api_sincronizacion.local)
-        app.include_router(api_descubrimiento.enrutador)  # ADR 0011: la pestaña «Buscar» no existe en la nube
     app.include_router(modo_nube.enrutador_de_capacidades(ajustes))
+    app.include_router(api_descubrimiento.enrutador)  # ADR 0012: en la nube solo se puede buscar (lo decide la guardia)
     for r in (seguridad.enrutador, api_biblioteca.enrutador, api_normas.enrutador, api_matriz.enrutador,
               api_exportacion.enrutador, registro.enrutador, estado.enrutador,
               api_extracciones.enrutador):

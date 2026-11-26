@@ -45,6 +45,7 @@ from app.contextos.descubrimiento.adaptadores.cliente_http import ClienteCortes
 from app.contextos.descubrimiento.adaptadores.detectores_json import cargar_config
 from app.contextos.descubrimiento.adaptadores.fuentes.registro import construir_fuentes
 from app.contextos.descubrimiento.adaptadores.obtencion_pdf import ObtenerPdfAbierto
+from app.contextos.descubrimiento.adaptadores.replica import BuzonDeDescubrimiento, ReplicaDeDescubrimiento
 from app.contextos.descubrimiento.adaptadores.salud_fuentes import SaludDeFuentes as SaludDeFuentesArchivo
 from app.contextos.descubrimiento.adaptadores.sitios import CatalogoDeSitiosJson, SesionesNoConectadas
 from app.contextos.descubrimiento.adaptadores.tablas import (
@@ -66,6 +67,8 @@ from app.contextos.descubrimiento.aplicacion.casos_de_uso import (
 )
 from app.contextos.descubrimiento.aplicacion.columnas import EvaluarCandidatos, GestionarPerfiles
 from app.contextos.descubrimiento.aplicacion.importar import ImportarCandidatos
+from app.contextos.descubrimiento.aplicacion.recibir import RecibirBusquedas
+from app.contextos.descubrimiento.dominio.busqueda import Origen
 from app.contextos.descubrimiento.dominio.completitud import ColumnaDelLibro
 from app.contextos.descubrimiento.dominio.detectores import MotorDeDetectores
 from app.contextos.descubrimiento.puertos import (
@@ -516,15 +519,19 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
     # Sincronización: cada contexto aporta sus agregados replicables; aquí se conectan (ADR 0009, sección 6.1).
     replica_biblioteca = ReplicaDeBiblioteca(fabrica, almacen)
     fuentes: list[FuenteDeReplica] = [ReplicaDeProyecto(fabrica), ReplicaDeNormas(fabrica), replica_biblioteca, ReplicaDeMatriz(fabrica),
-               ReplicaDeExtraccion(fabrica)]
+               ReplicaDeExtraccion(fabrica), ReplicaDeDescubrimiento(fabrica)]
     destinos = RepositorioDeDestinosSql(fabrica)
     credenciales = credenciales or CredencialesKeyring()
-    sincronizador = Sincronizador(fuentes, almacen, destinos, credenciales, fabrica_de_destino or fabrica_http)
+    repo_busquedas, repo_candidatos = RepositorioDeBusquedasSql(fabrica), RepositorioDeCandidatosSql(fabrica)
+    buzon = BuzonDeDescubrimiento(fabrica, RecibirBusquedas(repo_busquedas, repo_candidatos,
+                                                            TitulosDesdeMatriz(consultas_matriz)))
+    sincronizador = Sincronizador(fuentes, almacen, destinos, credenciales, fabrica_de_destino or fabrica_http,
+                                  buzon=buzon)
     restaurador = Restaurador(fuentes, almacen, TransaccionLocalSql(fabrica))
     agente = AgenteDeSincronizacion(sincronizador, destinos, restaurador=restaurador)
     difusor = Difusor()
     ingesta = Ingesta(fuentes, EstadoDeNubeSql(fabrica), almacen, replica_biblioteca.archivos_guardados,
-                      lambda: listar_proyectos(fabrica), difusor.publicar)
+                      lambda: listar_proyectos(fabrica), difusor.publicar, buzon=buzon)
     if ajustes.modo == "local":
         for evento in ("ArticuloCargado", "ArticuloConvertido", "ConversionFallida", "ArticuloExcluido",
                        "EstadoDeArticuloCambiado", "ExtraccionCompletada", "ExtraccionFallida", "FilaEscrita",
@@ -541,7 +548,11 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
                                      cache_dir=ajustes.busqueda_cache_dir, pausa_min_s=ajustes.busqueda_pausa_s)
     fuentes_busqueda = dict(fuentes_de_busqueda) if fuentes_de_busqueda is not None else construir_fuentes(
         cliente_busqueda, ajustes)
-    repo_busquedas, repo_candidatos = RepositorioDeBusquedasSql(fabrica), RepositorioDeCandidatosSql(fabrica)
+
+    def avisar_cambio(proyecto_id: uuid.UUID) -> None:
+        if ajustes.modo == "local":
+            agente.notificar(proyecto_id)  # las búsquedas y decisiones llegan solas a la nube (ADR 0012)
+
     sesiones_busqueda = SesionesNoConectadas()
     salud_fuentes = salud_de_fuentes or SaludDeFuentesArchivo(ajustes.busqueda_estado_fuentes)
     no_disponibles = (
@@ -557,7 +568,10 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
                                           ColumnasDesdeNormasParaBuscar(consultas_normas), motor_detectores)
     descubrimiento = CasosDeDescubrimiento(
         buscar=EjecutarBusqueda(repo_busquedas, repo_candidatos, fuentes_busqueda, TitulosDesdeMatriz(consultas_matriz),
-                                sesiones_busqueda, lanzar_busqueda or lanzar_en_hilo, salud=salud_fuentes),
+                                sesiones_busqueda, lanzar_busqueda or lanzar_en_hilo, salud=salud_fuentes,
+                                al_cambiar=avisar_cambio,
+                                origen=Origen.NUBE if ajustes.modo == "nube" else Origen.EQUIPO),
+        al_cambiar=avisar_cambio,
         consultas=ConsultasDeDescubrimiento(repo_busquedas, repo_candidatos, fuentes_busqueda, catalogo_sitios,
                                             sesiones_busqueda, salud_fuentes, no_disponibles),
         decidir=DecidirSobreCandidatos(repo_candidatos), perfiles=perfiles_busqueda,

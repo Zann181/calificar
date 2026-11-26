@@ -15,6 +15,7 @@ const QUE_SE_SUBE: [keyof OpcionesNube, string][] = [
   ["extraccion", "Extracción completa"],
   ["crudo", "Crudo de MinerU"],
   ["excel", "Excel base"],
+  ["busqueda", "Búsquedas de «Buscar» (también recibe las hechas en la web)"],
 ];
 
 const MOTIVO: Record<string, string> = {

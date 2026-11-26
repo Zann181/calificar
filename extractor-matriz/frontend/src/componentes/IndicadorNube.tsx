@@ -97,7 +97,7 @@ export function IndicadorVisor() {
       <span>
         {fallo
           ? "Sin conexión con la nube"
-          : `Copia de solo lectura · actualizado hace ${hace(ahora - cambioEn)}${revision !== null ? ` · revisión ${revision}` : ""}`}
+          : `Matriz de solo lectura · actualizado hace ${hace(ahora - cambioEn)}${revision !== null ? ` · revisión ${revision}` : ""}`}
       </span>
       {quieto && !fallo && <span className="tenue"> · sin novedades: el equipo local puede estar apagado</span>}
       {cap.data?.lector && (

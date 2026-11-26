@@ -56,8 +56,14 @@ function Detalle({ c }: { c: Candidato }) {
   );
 }
 
-export function VistaPreviaDeFila({ pid, ids, onCerrar }: { pid: string; ids: string[]; onCerrar: () => void }) {
-  const q = useQuery({ queryKey: ["vista-previa", pid, ids], queryFn: () => api.vistaPrevia(pid, ids), enabled: ids.length > 0 });
+type Props = { pid: string; ids: string[]; perfilId?: string; onCerrar: () => void };
+
+export function VistaPreviaDeFila({ pid, ids, perfilId, onCerrar }: Props) {
+  const q = useQuery({
+    queryKey: ["vista-previa", pid, ids, perfilId],
+    queryFn: () => api.vistaPrevia(pid, ids, perfilId),
+    enabled: ids.length > 0,
+  });
   const candidatos = q.data?.candidatos ?? [];
   const columnas = q.data?.perfil.columnas ?? [];
   return (
