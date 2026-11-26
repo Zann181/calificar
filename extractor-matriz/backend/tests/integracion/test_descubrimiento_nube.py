@@ -36,7 +36,7 @@ from app.contextos.sincronizacion.puertos import Destino
 from app.main import crear_app
 from tests.conftest import FIXTURES
 from tests.integracion.conftest import nuevo_proyecto
-from tests.integracion.test_descubrimiento import FuenteFalsa, buscar, reg
+from tests.integracion.test_descubrimiento import FuenteFalsa, PdfsQueResponden, buscar, reg
 from tests.integracion.test_descubrimiento_analizar import TextoFalso, analizar, id_de, perfil_de_prueba
 from tests.integracion.test_descubrimiento_importar import (
     CON_PDF,
@@ -76,7 +76,8 @@ class Mundo:
 def mundo(fabrica: Callable[[], Session], fabrica_nube: Callable[[], Session], libro_json: dict[str, Any]) -> Mundo:
     ajustes_nube = _ajustes_nube()
     nube = construir(ajustes_nube, fabrica=fabrica_nube, conversor=ConversorFijo(FIXTURES / "mineru"),
-                     fuentes_de_busqueda={"a": FuenteFalsa("a", [CON_PDF, IGUAL, FALLA])}, lanzar_busqueda=lanzar_aqui)
+                     fuentes_de_busqueda={"a": FuenteFalsa("a", [CON_PDF, IGUAL, FALLA])}, lanzar_busqueda=lanzar_aqui,
+                     comprobador_pdf=PdfsQueResponden())
     app_nube = crear_app(ajustes_nube, contenedor=nube)
     anonimo = TestClient(app_nube, base_url=URL)
     lector = TestClient(app_nube, base_url=URL)
@@ -91,7 +92,8 @@ def mundo(fabrica: Callable[[], Session], fabrica_nube: Callable[[], Session], l
     local = construir(ajustes, fabrica=fabrica, almacen=AlmacenEnMemoria(), conversor=ConversorFijo(FIXTURES / "mineru"),
                       credenciales=creds, fabrica_de_destino=destino,  # type: ignore[arg-type]
                       fuentes_de_busqueda={"a": FuenteFalsa("a", [CON_PDF, OTRO_PDF, SIN_COPIA])},
-                      lanzar_busqueda=lanzar_aqui, obtener_pdf=PdfFalso(), extraer_texto=TextoFalso(PAGINAS))
+                      lanzar_busqueda=lanzar_aqui, comprobador_pdf=PdfsQueResponden(), obtener_pdf=PdfFalso(),
+                      extraer_texto=TextoFalso(PAGINAS))
     pid = nuevo_proyecto(local, "Felicidad y desempeño")
     local.normas.publicar.ejecutar(pid, libro_json)
     local.destinos.guardar(Destino(proyecto_id=pid, url=URL, instalacion_id="equipo-1"))
@@ -125,7 +127,7 @@ def cuantos(items: dict[str, str]) -> dict[str, int]:
 # ------------------------------------------------------------------------------------------------ la réplica
 def test_los_tipos_nuevos_van_despues_de_lo_que_referencian_y_suben_la_version_del_formato() -> None:
     assert ORDEN_DE_TIPOS.index("proyecto") < ORDEN_DE_TIPOS.index("busqueda") < ORDEN_DE_TIPOS.index("candidato")
-    assert ESQUEMA == 2  # una nube sin actualizar responde 426 en vez de rechazar tipos que no conoce
+    assert ESQUEMA == 3  # una nube sin actualizar responde 426 en vez de rechazar tipos que no conoce
 
 
 def test_la_busqueda_llega_a_la_nube_y_la_segunda_pasada_no_envia_nada(mundo: Mundo) -> None:
@@ -447,3 +449,23 @@ def test_buscar_en_la_web_exige_sesion_y_venir_de_la_propia_pagina(mundo: Mundo)
     assert mundo.lector.post(ruta, json=cuerpo, headers={"Origin": URL}).status_code == 202
     capacidades = mundo.lector.get("/api/v1/capacidades").json()
     assert capacidades["puede_buscar"] is True and capacidades["escritura"] is False
+
+
+def test_la_web_anota_el_pdf_de_uno_que_el_equipo_tenia_sin_comprobar(mundo: Mundo) -> None:
+    """Candidatos de antes de la regla del PDF: ocultos; una búsqueda web los comprueba sin pisar nada más."""
+    with mundo.local.fabrica() as s:
+        r = s.get(RegistroCandidato, mundo.uno)
+        assert r is not None
+        r.url_pdf = None
+        s.commit()
+    sobre = next(x for x in ReplicaDeDescubrimiento(mundo.local.fabrica).sobres(mundo.pid) if x.id == str(mundo.uno))
+    assert "url_pdf" not in (sobre.datos or {})  # sin PDF viaja igual que antes de existir la columna
+    sincronizar(mundo)
+    assert len(listado(mundo.lector, mundo)) == 2  # oculto en los dos lados
+    buscar_en_la_web(mundo)
+    nube = listado(mundo.lector, mundo)
+    assert nube[CON_PDF.titulo]["url_pdf"] == "https://oa.test/kumar.pdf" and len(nube) == 5
+    sincronizar(mundo)
+    assert listado(mundo.web, mundo) == listado(mundo.lector, mundo)
+    assert listado(mundo.web, mundo)[CON_PDF.titulo]["evaluacion"]["etapa"] == "B"  # lo del equipo sigue
+    assert sincronizar(mundo) == ("ok", 0, 0)

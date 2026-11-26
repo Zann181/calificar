@@ -94,7 +94,7 @@ def candidato_json(c: Candidato, ev: Evaluacion | None = None) -> dict[str, Any]
 def candidato_base_json(c: Candidato) -> dict[str, Any]:
     return {"id": str(c.id), "titulo": c.titulo, "doi": c.doi, "anio": c.anio, "revista": c.revista,
             "autores": [a.nombre for a in c.autores], "paises": c.paises, "resumen": c.resumen,
-            "palabras_clave": c.palabras_clave, "idioma": c.idioma, "tipo": c.tipo, "url_oa": c.url_oa,
+            "palabras_clave": c.palabras_clave, "idioma": c.idioma, "tipo": c.tipo, "url_oa": c.url_oa, "url_pdf": c.url_pdf,
             "es_preprint": c.es_preprint, "fuentes": c.fuentes, "estado": c.estado.value, "motivo": c.motivo,
             "en_matriz": c.en_matriz, "articulo_id": str(c.articulo_id) if c.articulo_id else None}
 

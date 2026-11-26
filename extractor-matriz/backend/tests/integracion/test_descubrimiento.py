@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from datetime import date
 from pathlib import Path
 
@@ -40,7 +40,21 @@ class FuenteFalsa:
             yield r
 
 
+class PdfsQueResponden:
+    """Comprobador falso: entrega PDF todo enlace que no diga «caido». Anota lo que se le preguntó."""
+
+    def __init__(self) -> None:
+        self.pedidos: list[str] = []
+
+    def entregan(self, urls: Sequence[str]) -> dict[str, bool]:
+        self.pedidos.extend(urls)
+        return {u: "caido" not in u for u in urls}
+
+
 def reg(fuente: str, titulo: str, doi: str | None, anio: int = 2022, **kw: object) -> RegistroBibliografico:
+    # Sin decir otra cosa, el registro trae un PDF abierto: el de su copia abierta o uno propio.
+    enlace = re.sub(r"\W+", "-", (doi or titulo).lower())
+    kw.setdefault("pdfs", (kw.get("url_oa") or f"https://oa.test/{enlace}.pdf",))
     return RegistroBibliografico(fuente=fuente, id_externo=doi or titulo, posicion=1, titulo=titulo, doi=doi, anio=anio,
                                  autores=(Autor("Ana Pérez", "Pérez", ("CO",)),), **kw)  # type: ignore[arg-type]
 
@@ -57,7 +71,7 @@ VIEJO = reg("a", "Old study of happiness", "10.1000/viejo", anio=2005)
 def ctx(fabrica, ajustes: Settings) -> Iterator[Contenedor]:  # type: ignore[no-untyped-def]
     fuentes = {"a": FuenteFalsa("a", [A, VIEJO]), "b": FuenteFalsa("b", [A_EN_B, OTRO, B_SIN_DOI])}
     yield construir(ajustes, fabrica=fabrica, almacen=AlmacenEnMemoria(), conversor=ConversorFijo(FIXTURES / "mineru"),
-                    fuentes_de_busqueda=fuentes, lanzar_busqueda=lanzar_aqui)
+                    fuentes_de_busqueda=fuentes, lanzar_busqueda=lanzar_aqui, comprobador_pdf=PdfsQueResponden())
 
 
 @pytest.fixture

@@ -17,7 +17,7 @@ from app.contextos.descubrimiento.dominio.candidato import Autor, RegistroBiblio
 
 URL = "https://api.openalex.org/works"
 CAMPOS = ("id,doi,title,publication_year,language,type,authorships,abstract_inverted_index,primary_location,"
-          "open_access,keywords")
+          "open_access,keywords,best_oa_location,locations")
 
 
 def resumen_de(indice: dict[str, list[int]] | None) -> str:
@@ -29,6 +29,12 @@ def resumen_de(indice: dict[str, list[int]] | None) -> str:
         for p in posiciones:
             palabras[p] = palabra
     return " ".join(palabras[i] for i in sorted(palabras))
+
+
+def pdfs_abiertos(r: dict[str, Any]) -> tuple[str, ...]:
+    """Los PDF de ubicaciones de acceso abierto: primero la que OpenAlex considera mejor."""
+    lugares = [r.get("best_oa_location") or {}, *(r.get("locations") or [])]
+    return tuple(dict.fromkeys(str(x["pdf_url"]) for x in lugares if x.get("is_oa") and x.get("pdf_url")))
 
 
 class OpenAlex:
@@ -44,7 +50,7 @@ class OpenAlex:
         tipos = ["article", "review"] + (["preprint"] if f.incluir_preprints else [])
         filtro = ",".join([
             f"from_publication_date:{f.desde}-01-01", f"to_publication_date:{f.hasta_efectivo(hoy)}-12-31",
-            "type:" + "|".join(tipos), "language:" + "|".join(f.idiomas),
+            "type:" + "|".join(tipos), "language:" + "|".join(f.idiomas), "open_access.is_oa:true",
             "title_and_abstract.search:" + consulta.booleana(comodines=False)])
         cursor: str | None = "*"
         entregados = 0
@@ -73,4 +79,4 @@ class OpenAlex:
             resumen=resumen_de(r.get("abstract_inverted_index")),
             palabras_clave=tuple(str(k.get("display_name")) for k in (r.get("keywords") or []) if k.get("display_name")),
             idioma=str(r.get("language") or ""), tipo=tipo, url_oa=(r.get("open_access") or {}).get("oa_url"),
-            es_preprint=tipo == "preprint")
+            es_preprint=tipo == "preprint", pdfs=pdfs_abiertos(r))

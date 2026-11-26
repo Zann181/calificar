@@ -18,7 +18,7 @@ from app.contextos.descubrimiento.aplicacion.casos_de_uso import lanzar_aqui
 from app.main import crear_app
 from tests.conftest import FIXTURES, MATRIZ
 from tests.integracion.conftest import nuevo_proyecto
-from tests.integracion.test_descubrimiento import FuenteFalsa, buscar, reg
+from tests.integracion.test_descubrimiento import FuenteFalsa, PdfsQueResponden, buscar, reg
 from tests.integracion.test_descubrimiento_importar import CON_PDF, FALLA, OTRO_PDF, SIN_COPIA, PdfFalso
 from tests.unitarias.test_descubrimiento_texto_completo import PAGINAS
 
@@ -53,7 +53,8 @@ def ctx(fabrica, descargador: PdfFalso, texto: TextoFalso) -> Contenedor:  # typ
     fuentes = {"a": FuenteFalsa("a", [CON_PDF, OTRO_PDF, SIN_COPIA, FALLA])}
     return construir(Settings(_env_file=None, despachador_en_servidor=False), fabrica=fabrica,
                      almacen=AlmacenEnMemoria(), conversor=ConversorFijo(FIXTURES / "mineru"),
-                     fuentes_de_busqueda=fuentes, lanzar_busqueda=lanzar_aqui, obtener_pdf=descargador,
+                     fuentes_de_busqueda=fuentes, lanzar_busqueda=lanzar_aqui, comprobador_pdf=PdfsQueResponden(),
+                     obtener_pdf=descargador,
                      extraer_texto=texto)
 
 
@@ -181,7 +182,8 @@ def test_importar_y_analizar_un_pdf_real_de_punta_a_punta(fabrica, ctx: Contened
                      conversor=ConversorFijo(FIXTURES / "mineru"),
                      fuentes_de_busqueda={"a": FuenteFalsa("a", [reg("a", "Is happiness a determinant of job performance",
                                                                    "10.1000/kumar", anio=2022, url_oa="https://oa.test/kumar.pdf")])},
-                     lanzar_busqueda=lanzar_aqui, obtener_pdf=descargador, extraer_texto=LectorDeTextoPymupdf())
+                     lanzar_busqueda=lanzar_aqui, comprobador_pdf=PdfsQueResponden(), obtener_pdf=descargador,
+                     extraer_texto=LectorDeTextoPymupdf())
     p = nuevo_proyecto(real, "Real")
     real.normas.publicar.ejecutar(p, __import__("json").loads((FIXTURES.parent / "Libro_de_codigos_extraccion_v2.json")
                                                               .read_text(encoding="utf-8")))

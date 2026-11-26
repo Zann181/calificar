@@ -425,6 +425,8 @@ export type ProgresoFuente = {
   estado: "PENDIENTE" | "BUSCANDO" | "LISTA" | "ERROR" | "OMITIDA";
   encontrados: number;
   nuevos: number;
+  /** Descartados porque no entregan un PDF gratuito. */
+  sin_pdf: number;
   errores: number;
   ultimo_error: string | null;
 };
@@ -458,6 +460,8 @@ export type Candidato = {
   idioma: string;
   tipo: string;
   url_oa: string | null;
+  /** PDF gratuito comprobado (ADR 0013). */
+  url_pdf: string | null;
   es_preprint: boolean;
   fuentes: string[];
   estado: EstadoCandidato;

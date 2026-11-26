@@ -18,7 +18,7 @@ from app.contextos.descubrimiento.dominio.busqueda import ConsultaDeBusqueda
 from app.contextos.descubrimiento.dominio.candidato import Autor, RegistroBibliografico
 
 URL = "https://api.crossref.org/works"
-CAMPOS = "DOI,title,author,issued,abstract,container-title,URL,subject,type"
+CAMPOS = "DOI,title,author,issued,abstract,container-title,URL,subject,type,link,license"
 MAX_PARES = 6
 TERMINOS_POR_CONCEPTO = 3
 
@@ -29,6 +29,23 @@ def pares_de_consulta(consulta: ConsultaDeBusqueda) -> list[str]:
         return [" ".join(t.rstrip("*") for t in conceptos[0].terminos[:MAX_PARES])]
     a, b = (c.terminos[:TERMINOS_POR_CONCEPTO] for c in conceptos)
     return [f"{x.rstrip('*')} {y.rstrip('*')}" for x, y in product(a, b)][:MAX_PARES]
+
+
+def _vigente(licencia: dict[str, Any], hoy: date) -> bool:
+    partes = ((licencia.get("start") or {}).get("date-parts") or [[]])[0]
+    if not partes or partes[0] is None:
+        return True
+    anio, mes, dia = (*partes, 1, 1)[:3]
+    return date(int(anio), int(mes), int(dia)) <= hoy
+
+
+def pdfs_abiertos(it: dict[str, Any], hoy: date) -> tuple[str, ...]:
+    """Crossref enlaza PDF que a menudo son de pago: solo valen si el trabajo tiene ya una licencia Creative Commons."""
+    libre = any("creativecommons.org" in str(x.get("URL") or "") and _vigente(x, hoy) for x in it.get("license") or [])
+    if not libre:
+        return ()
+    return tuple(dict.fromkeys(str(x["URL"]) for x in it.get("link") or []
+                               if x.get("content-type") == "application/pdf" and x.get("URL")))
 
 
 class Crossref:
@@ -42,7 +59,8 @@ class Crossref:
     def buscar(self, consulta: ConsultaDeBusqueda, limite: int, hoy: date) -> Iterator[RegistroBibliografico]:
         f = consulta.filtros
         tipos = ["type:journal-article"] + (["type:posted-content"] if f.incluir_preprints else [])
-        filtro = ",".join([f"from-pub-date:{f.desde}-01-01", f"until-pub-date:{f.hasta_efectivo(hoy)}-12-31", *tipos])
+        filtro = ",".join([f"from-pub-date:{f.desde}-01-01", f"until-pub-date:{f.hasta_efectivo(hoy)}-12-31",
+                           "has-license:true", "has-full-text:true", *tipos])
         locales = ConsultaDeBusqueda(conceptos=consulta.obligatorios[:2], filtros=f)
         por_consulta = max(10, min(100, limite // max(1, len(pares_de_consulta(consulta))) + 10))
         vistos: set[str] = set()
@@ -59,11 +77,12 @@ class Crossref:
                     continue
                 vistos.add(doi)
                 entregados += 1
-                yield self._registro(it, titulo, resumen, entregados)
+                yield self._registro(it, titulo, resumen, entregados, pdfs_abiertos(it, hoy))
                 if entregados >= limite:
                     return
 
-    def _registro(self, it: dict[str, Any], titulo: str, resumen: str, posicion: int) -> RegistroBibliografico:
+    def _registro(self, it: dict[str, Any], titulo: str, resumen: str, posicion: int,
+                  pdfs: tuple[str, ...]) -> RegistroBibliografico:
         autores = tuple(Autor(nombre=f"{a.get('given', '')} {a.get('family', '')}".strip(), apellido=str(a.get("family") or ""))
                         for a in it.get("author", []) if a.get("family") or a.get("given"))
         partes = ((it.get("issued") or {}).get("date-parts") or [[None]])[0]
@@ -72,4 +91,4 @@ class Crossref:
             fuente=self.nombre, id_externo=str(it.get("DOI")), posicion=posicion, titulo=titulo, doi=it.get("DOI"),
             autores=autores, anio=partes[0] if partes else None, revista=((it.get("container-title") or [""])[0] or ""),
             resumen=resumen, palabras_clave=tuple(str(s) for s in it.get("subject", [])),
-            tipo="preprint" if tipo == "posted-content" else "article", es_preprint=tipo == "posted-content")
+            tipo="preprint" if tipo == "posted-content" else "article", es_preprint=tipo == "posted-content", pdfs=pdfs)

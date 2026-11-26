@@ -4,8 +4,9 @@
 // En la nube (ADR 0012) se puede buscar; las decisiones, la importación, el análisis y los perfiles se hacen en el
 // equipo, que recibe lo buscado en la web con la sincronización.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
+import { useAncho } from "../ancho";
 import { api } from "../api";
 import { useEscritura, usePuedeBuscar } from "../capacidades";
 import { ESTADOS_CELDA, ETIQUETAS, segmentos, textoPuntaje } from "../cobertura";
@@ -22,6 +23,8 @@ import type {
 } from "../tipos";
 import { MAX_IMPORTAR } from "../tipos";
 import type { EstadoAnalisis, EstadoImportacion } from "../tipos";
+import { Divisor, useAnchoPanel } from "./Divisor";
+import { Icono } from "./Icono";
 import { ColumnasEnLectura, SelectorDeColumnas } from "./SelectorDeColumnas";
 import { VistaPreviaDeFila } from "./VistaPreviaDeFila";
 
@@ -104,7 +107,8 @@ function Progreso({ b, fuentes, pid }: { b: Busqueda; fuentes: FuenteBusqueda[];
               <span className="nombre">{etiqueta}</span>
               <EstadoFuente p={p} />
               <span className="tenue">
-                {p.encontrados} hallados · {p.nuevos} nuevos
+                {p.encontrados} con PDF · {p.nuevos} nuevos
+                {p.sin_pdf > 0 && ` · ${p.sin_pdf} sin PDF gratis`}
               </span>
               {p.errores > 0 && (
                 <span className="buscar-errores" title={p.ultimo_error ?? ""}>
@@ -215,9 +219,14 @@ function Ficha({ c }: { c: Candidato | undefined }) {
             DOI {c.doi}
           </a>
         )}
-        {c.url_oa && (
+        {c.url_pdf && (
+          <a href={c.url_pdf} target="_blank" rel="noreferrer noopener">
+            PDF gratis
+          </a>
+        )}
+        {c.url_oa && c.url_oa !== c.url_pdf && (
           <a href={c.url_oa} target="_blank" rel="noreferrer noopener">
-            Texto abierto
+            Página abierta
           </a>
         )}
       </p>
@@ -264,6 +273,17 @@ export function PanelBusqueda({ pid }: { pid: string }) {
   const cliente = useQueryClient();
   const escritura = useEscritura();
   const puedeBuscar = usePuedeBuscar();
+  // Escritorio y tableta: los paneles laterales se ensanchan arrastrando sus bordes (doble clic: plegar o restablecer).
+  const ventana = useAncho();
+  const conDivisores = ventana >= 768;
+  const fichaAlLado = ventana >= 1280; // en tableta la ficha va debajo de la lista
+  const topeIzq = useCallback(() => Math.max(260, window.innerWidth * 0.45), []);
+  const panelIzq = useAnchoPanel("buscar-izq", 340, 260, topeIzq);
+  const topeDer = useCallback(
+    () => Math.max(280, Math.min(window.innerWidth * 0.6, window.innerWidth - panelIzq.ancho - 360)),
+    [panelIzq.ancho],
+  );
+  const panelDer = useAnchoPanel("buscar-der", 380, 280, topeDer);
   const config = useQuery({ queryKey: ["busqueda-config", pid], queryFn: () => api.busquedaConfiguracion(pid), staleTime: 60_000 });
 
   // Formulario (copia editable de la cadena inicial)
@@ -409,7 +429,23 @@ export function PanelBusqueda({ pid }: { pid: string }) {
   const perfilActivo = candidatos.data?.perfil;
 
   return (
-    <div className="buscador">
+    <div
+      className="buscador"
+      style={
+        conDivisores
+          ? ({
+              "--w-buscar-izq": panelIzq.ancho > 0 ? `${panelIzq.ancho}px` : "44px",
+              "--w-buscar-der": panelDer.ancho > 0 ? `${panelDer.ancho}px` : "44px",
+            } as React.CSSProperties)
+          : undefined
+      }
+    >
+      {conDivisores && panelIzq.ancho === 0 ? (
+        <button className="desplegar-visor desplegar-lateral buscar-desplegar-izq" onClick={panelIzq.restablecer} title="Mostrar la búsqueda">
+          <Icono nombre="barra" tam={18} />
+          <span>Búsqueda</span>
+        </button>
+      ) : (
       <div className="buscar-consulta" data-izq={izquierda}>
         <div className="segmentado" role="tablist" aria-label="Panel izquierdo">
           <button role="tab" aria-selected={izquierda === "busqueda"} className={izquierda === "busqueda" ? "activo" : ""} onClick={() => setIzquierda("busqueda")}>
@@ -513,6 +549,10 @@ export function PanelBusqueda({ pid }: { pid: string }) {
                 <input type="checkbox" checked={preprints} onChange={(e) => setPreprints(e.target.checked)} />
                 Incluir preprints (se marcan)
               </label>
+              <p className="tenue">
+                Solo entran artículos que entregan su PDF gratis y legalmente (acceso abierto, comprobado enlace por enlace).
+                Comprobarlos alarga la búsqueda unos minutos.
+              </p>
             </section>
 
             <section className="buscar-tarjeta">
@@ -628,6 +668,16 @@ export function PanelBusqueda({ pid }: { pid: string }) {
 
         {escritura && <SitiosConCredenciales sitios={cfg.sitios} />}
       </div>
+      )}
+      {conDivisores && (
+        <Divisor
+          etiqueta="Ancho del panel de búsqueda"
+          ancho={panelIzq.ancho}
+          lado="izq"
+          onCambio={panelIzq.fijar}
+          onAlternar={panelIzq.alternar}
+        />
+      )}
 
       <section className="buscar-lista" aria-label="Candidatos">
         <div className="buscar-barra">
@@ -659,12 +709,23 @@ export function PanelBusqueda({ pid }: { pid: string }) {
             Ocultar los ya incluidos ({contadores.EN_MATRIZ ?? 0})
           </label>
           <span className="tenue">{candidatos.data?.total ?? 0} candidatos</span>
+          {(contadores.SIN_PDF ?? 0) > 0 && (
+            <span className="tenue" title="Solo se ven los que tienen PDF gratis comprobado. Repita la búsqueda para comprobar los de antes.">
+              · {contadores.SIN_PDF} ocultos sin PDF comprobado
+            </span>
+          )}
         </div>
 
         {seleccion.length > 0 && (
           <div className="buscar-seleccion" role="toolbar" aria-label="Acciones sobre la selección">
             <strong>{seleccion.length} seleccionados</strong>
-            <button className="primario" onClick={() => setPrevia(seleccion.map((c) => c.id))}>
+            <button
+              className="primario"
+              onClick={() => {
+                setPrevia(seleccion.map((c) => c.id));
+                if (panelDer.ancho === 0) panelDer.restablecer();
+              }}
+            >
               Vista previa
             </button>
             <button onClick={() => exportar("csv")}>CSV</button>
@@ -793,7 +854,7 @@ export function PanelBusqueda({ pid }: { pid: string }) {
                   <th>Año</th>
                   <th>Encaje</th>
                   <th>Fuentes</th>
-                  <th>Acceso</th>
+                  <th>PDF</th>
                   <th>Estado</th>
                 </tr>
               </thead>
@@ -821,7 +882,7 @@ export function PanelBusqueda({ pid }: { pid: string }) {
                       <BarraCobertura c={c} />
                     </td>
                     <td className="tenue">{c.fuentes.join(", ")}</td>
-                    <td>{c.url_oa ? <a href={c.url_oa} target="_blank" rel="noreferrer noopener">abierto</a> : <span className="tenue">—</span>}</td>
+                    <td>{c.url_pdf ? <a href={c.url_pdf} target="_blank" rel="noreferrer noopener">PDF</a> : <span className="tenue">—</span>}</td>
                     <td>
                       <span className={`buscar-estado ${c.estado.toLowerCase()}`}>{c.estado.toLowerCase()}</span>
                     </td>
@@ -833,7 +894,21 @@ export function PanelBusqueda({ pid }: { pid: string }) {
         )}
       </section>
 
-      {previa ? (
+      {fichaAlLado && (
+        <Divisor
+          etiqueta="Ancho de la ficha y la vista previa"
+          ancho={panelDer.ancho}
+          lado="der"
+          onCambio={panelDer.fijar}
+          onAlternar={panelDer.alternar}
+        />
+      )}
+      {fichaAlLado && panelDer.ancho === 0 ? (
+        <button className="desplegar-visor" onClick={panelDer.restablecer} title="Mostrar la ficha">
+          <Icono nombre="documentos" tam={18} />
+          <span>Ficha</span>
+        </button>
+      ) : previa ? (
         <VistaPreviaDeFila pid={pid} ids={previa} perfilId={perfilId} onCerrar={() => setPrevia(null)} />
       ) : (
         <Ficha c={fichaCandidato} />

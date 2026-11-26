@@ -42,6 +42,7 @@ y 15 minutos a quien falle 5 inicios de sesión en 5 minutos.
    secretos), con insignia por fuente y contador global.
 8. **Filtros por defecto:** 2020 hasta la fecha de la búsqueda; idiomas EN/ES/PT; artículos y preprints (marcados);
    revisiones marcadas «No aplica». Cadena inicial y regla de `Cita` en el plan, sección 11.
+   *Ampliado por el ADR 0013: además, solo entra lo que entrega su PDF gratis y legalmente.*
 9. **Correo de contacto:** solo en `CONTACTO_API` del `.env` local y solo hacia fuentes abiertas que lo piden; nunca a la
    Biblioteca ni a editoriales; nunca en el repositorio.
 10. **Solo local.** En `MODO=nube` la pestaña se oculta y sus rutas devuelven 405; los candidatos no se replican.

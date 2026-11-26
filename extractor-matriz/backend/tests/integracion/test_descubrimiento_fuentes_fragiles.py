@@ -19,7 +19,7 @@ from app.contextos.descubrimiento.dominio.errores import ErrorDeEstructura, Erro
 from app.main import crear_app
 from tests.conftest import FIXTURES
 from tests.integracion.conftest import nuevo_proyecto
-from tests.integracion.test_descubrimiento import FuenteFalsa, buscar, reg
+from tests.integracion.test_descubrimiento import FuenteFalsa, PdfsQueResponden, buscar, reg
 
 
 class Fragil(FuenteFalsa):
@@ -50,7 +50,7 @@ def ctx(fabrica, fragil: Fragil) -> Contenedor:  # type: ignore[no-untyped-def]
     return construir(Settings(_env_file=None, despachador_en_servidor=False), fabrica=fabrica,
                      almacen=AlmacenEnMemoria(), conversor=ConversorFijo(FIXTURES / "mineru"),
                      fuentes_de_busqueda={"abierta": FuenteFalsa("abierta", []), "fragil": fragil},
-                     lanzar_busqueda=lanzar_aqui, salud_de_fuentes=SaludDeFuentes())
+                     lanzar_busqueda=lanzar_aqui, comprobador_pdf=PdfsQueResponden(), salud_de_fuentes=SaludDeFuentes())
 
 
 @pytest.fixture

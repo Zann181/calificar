@@ -168,17 +168,18 @@ class ProgresoDeFuente:
     estado: EstadoDeFuente = EstadoDeFuente.PENDIENTE
     encontrados: int = 0
     nuevos: int = 0
+    sin_pdf: int = 0  # descartados porque no entregan un PDF gratuito (ADR 0013)
     errores: int = 0
     ultimo_error: str | None = None
 
     def a_dict(self) -> dict[str, Any]:
-        return {"estado": self.estado.value, "encontrados": self.encontrados, "nuevos": self.nuevos,
+        return {"estado": self.estado.value, "encontrados": self.encontrados, "nuevos": self.nuevos, "sin_pdf": self.sin_pdf,
                 "errores": self.errores, "ultimo_error": self.ultimo_error}
 
     @classmethod
     def desde_dict(cls, d: dict[str, Any]) -> ProgresoDeFuente:
         return cls(estado=EstadoDeFuente(d.get("estado", "PENDIENTE")), encontrados=int(d.get("encontrados", 0)),
-                   nuevos=int(d.get("nuevos", 0)), errores=int(d.get("errores", 0)), ultimo_error=d.get("ultimo_error"))
+                   nuevos=int(d.get("nuevos", 0)), sin_pdf=int(d.get("sin_pdf", 0)), errores=int(d.get("errores", 0)), ultimo_error=d.get("ultimo_error"))
 
 
 @dataclass(kw_only=True, eq=False)

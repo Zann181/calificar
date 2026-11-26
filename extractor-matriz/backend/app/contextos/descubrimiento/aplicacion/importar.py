@@ -76,7 +76,7 @@ class ImportarCandidatos:
             return r(EstadoImportacion.YA_ESTABA, "Ya se había importado", c.articulo_id)
         if c.estado == EstadoCandidato.DESCARTADO:
             return r(EstadoImportacion.RECHAZADO, "Está descartado: reactívelo antes de importarlo")
-        urls = self._obtener.urls(c.doi, c.url_oa)
+        urls = self._obtener.urls(c.doi, c.url_pdf or c.url_oa)
         if not urls:
             return r(EstadoImportacion.SIN_COPIA_ABIERTA, SIN_COPIA)
         ultimo = "no se pudo descargar"

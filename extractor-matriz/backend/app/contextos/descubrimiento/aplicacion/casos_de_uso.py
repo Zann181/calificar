@@ -9,8 +9,8 @@ from __future__ import annotations
 import logging
 import threading
 import uuid
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Iterator, Mapping
+from dataclasses import dataclass, replace
 from datetime import date
 
 from app.compartido.dominio import ErrorDeDominio, ahora
@@ -22,6 +22,7 @@ from app.contextos.descubrimiento.dominio.busqueda import (
     ConsultaDeBusqueda,
     EstadoDeFuente,
     Origen,
+    ProgresoDeFuente,
     consulta_inicial,
 )
 from app.contextos.descubrimiento.dominio.candidato import (
@@ -36,6 +37,7 @@ from app.contextos.descubrimiento.dominio.errores import ErrorDeEstructura, Erro
 from app.contextos.descubrimiento.dominio.sitios import EstadoDeSesion, SitioConCredenciales
 from app.contextos.descubrimiento.puertos import (
     CatalogoDeSitios,
+    ComprobadorDePdf,
     EstadoDeSesiones,
     FuenteDeLiteratura,
     RepositorioDeBusquedas,
@@ -45,6 +47,8 @@ from app.contextos.descubrimiento.puertos import (
 )
 
 log = logging.getLogger("descubrimiento")
+MAX_PDFS_POR_REGISTRO = 3
+TAMANO_DE_TANDA = 16  # resultados cuyos PDF se comprueban a la vez
 
 Lanzador = Callable[[Callable[[], None]], None]
 
@@ -87,15 +91,33 @@ class FuenteNoDisponible:
     motivo: str
 
 
+def _por_tandas(registros: Iterable[RegistroBibliografico], n: int) -> Iterator[list[RegistroBibliografico]]:
+    """Grupos de hasta `n`. Si la fuente falla a mitad de camino, lo que alcanzó a traer se entrega antes del error."""
+    tanda: list[RegistroBibliografico] = []
+    try:
+        for r in registros:
+            tanda.append(r)
+            if len(tanda) == n:
+                yield tanda
+                tanda = []
+    except Exception:
+        if tanda:
+            yield tanda
+        raise
+    if tanda:
+        yield tanda
+
+
 class EjecutarBusqueda:
     def __init__(self, busquedas: RepositorioDeBusquedas, candidatos: RepositorioDeCandidatos,
                  fuentes: Mapping[str, FuenteDeLiteratura], titulos: TitulosEnMatriz, sesiones: EstadoDeSesiones,
-                 lanzar: Lanzador = lanzar_en_hilo, hoy: Callable[[], date] = date.today,
+                 pdf: ComprobadorDePdf, lanzar: Lanzador = lanzar_en_hilo, hoy: Callable[[], date] = date.today,
                  salud: SaludDeFuentes | None = None,
                  al_cambiar: Callable[[uuid.UUID], None] = lambda _pid: None,
                  origen: Origen = Origen.EQUIPO) -> None:
         self._busquedas, self._candidatos, self._fuentes = busquedas, candidatos, fuentes
         self._titulos, self._sesiones, self._lanzar, self._hoy = titulos, sesiones, lanzar, hoy
+        self._pdf = pdf
         self._salud = salud
         self._al_cambiar = al_cambiar
         self._canceladas: set[uuid.UUID] = set()
@@ -148,6 +170,8 @@ class EjecutarBusqueda:
         por_clave = {clave: cid for cid, clave, _t, _a in indice}
         # Lo que el equipo ya tiene no se toca desde la web: así el próximo envío no encuentra diferencias que pisar.
         intocables = self._busquedas.candidatos_del_equipo(proyecto_id) if b.origen == Origen.NUBE else set()
+        con_pdf = self._candidatos.con_pdf(proyecto_id)
+        comprobados: dict[str, bool] = {}  # cada enlace se prueba una sola vez por búsqueda
         vistos: set[uuid.UUID] = set()
         cancelada = False
         for nombre in b.fuentes:
@@ -176,17 +200,28 @@ class EjecutarBusqueda:
             progreso.estado = EstadoDeFuente.BUSCANDO
             self._busquedas.guardar(b)
             try:
-                for r in fuente.buscar(b.consulta, b.limite_por_fuente, hoy):
+                admitidos = (r for r in fuente.buscar(b.consulta, b.limite_por_fuente, hoy)
+                             if self._admite(b.consulta, r, hoy))
+                for r, existente in self._con_pdf_probados(admitidos, por_clave, indice, con_pdf, comprobados):
                     if busqueda_id in self._canceladas:
                         cancelada = True
                         break
-                    if not self._admite(b.consulta, r, hoy):
-                        continue
+                    if existente not in con_pdf:  # solo entra lo que entrega un PDF gratuito (ADR 0013)
+                        url = self._pdf_que_entrega(r, comprobados)
+                        if url is None:
+                            progreso.sin_pdf += 1
+                            self._avisar_avance(b, progreso)
+                            continue
+                        r = replace(r, url_pdf=url)
                     progreso.encontrados += 1
-                    c, nuevo = self._incorporar(proyecto_id, r, por_clave, indice, planos, titulos_matriz, intocables)
+                    c, nuevo = self._incorporar(proyecto_id, r, existente, por_clave, indice, planos, titulos_matriz,
+                                                intocables)
                     progreso.nuevos += 1 if nuevo else 0
                     vistos.add(c.id)
+                    if c.url_pdf:
+                        con_pdf.add(c.id)
                     self._busquedas.registrar_hallazgo(b.id, c.id, nombre, r.posicion)
+                    self._avisar_avance(b, progreso)
                 progreso.estado = EstadoDeFuente.LISTA
                 if self._salud and frágil:
                     self._salud.exito(nombre)
@@ -227,21 +262,58 @@ class EjecutarBusqueda:
             return False
         return bool(r.titulo.strip())
 
-    def _incorporar(self, proyecto_id: uuid.UUID, r: RegistroBibliografico, por_clave: dict[str, uuid.UUID],
-                    indice: list[tuple[uuid.UUID, str, str, int | None]], planos: set[str],
-                    titulos_matriz: list[str], intocables: set[uuid.UUID]) -> tuple[Candidato, bool]:
-        clave = clave_del_registro(r)
-        existente_id = por_clave.get(clave)
-        if existente_id is None:
-            existente_id = next((cid for cid, _k, t, a in indice if mismo_trabajo(r.titulo, r.anio, t, a)), None)
+    def _avisar_avance(self, b: Busqueda, p: ProgresoDeFuente) -> None:
+        """Comprobar los PDF toma tiempo: el avance se guarda cada pocos resultados para que se vea."""
+        if (p.encontrados + p.sin_pdf) % 5 == 0:
+            self._busquedas.guardar(b)
+
+    def _con_pdf_probados(self, registros: Iterable[RegistroBibliografico], por_clave: dict[str, uuid.UUID],
+                          indice: list[tuple[uuid.UUID, str, str, int | None]], con_pdf: set[uuid.UUID],
+                          comprobados: dict[str, bool]) -> Iterator[tuple[RegistroBibliografico, uuid.UUID | None]]:
+        """Los resultados en su orden, cada uno con su candidato si ya existe; antes de entregarlos por tandas se
+        prueban a la vez los enlaces de los que todavía no tienen un PDF comprobado."""
+        for tanda in _por_tandas(registros, TAMANO_DE_TANDA):
+            self._probar([r for r in tanda if self._existente(r, por_clave, indice) not in con_pdf], comprobados)
+            for r in tanda:  # el candidato se mira ahora: uno anterior de la misma tanda pudo haberlo creado
+                yield r, self._existente(r, por_clave, indice)
+
+    def _probar(self, registros: list[RegistroBibliografico], comprobados: dict[str, bool]) -> None:
+        """Primero el mejor enlace de cada resultado; a quien le falle, el siguiente. Cada enlace, una sola vez."""
+        for turno in range(MAX_PDFS_POR_REGISTRO):
+            urls = [r.pdfs[turno] for r in registros
+                    if len(r.pdfs) > turno and r.pdfs[turno] not in comprobados
+                    and not any(comprobados.get(u) for u in r.pdfs[:turno])]
+            if urls:
+                comprobados.update(self._pdf.entregan(urls))
+
+    @staticmethod
+    def _pdf_que_entrega(r: RegistroBibliografico, comprobados: dict[str, bool]) -> str | None:
+        return next((u for u in r.pdfs[:MAX_PDFS_POR_REGISTRO] if comprobados.get(u)), None)
+
+    @staticmethod
+    def _existente(r: RegistroBibliografico, por_clave: dict[str, uuid.UUID],
+                   indice: list[tuple[uuid.UUID, str, str, int | None]]) -> uuid.UUID | None:
+        """El candidato que ya es este mismo trabajo: por su identificador o, sin él, por un título casi igual."""
+        por_identificador = por_clave.get(clave_del_registro(r))
+        if por_identificador is not None:
+            return por_identificador
+        return next((cid for cid, _k, t, a in indice if mismo_trabajo(r.titulo, r.anio, t, a)), None)
+
+    def _incorporar(self, proyecto_id: uuid.UUID, r: RegistroBibliografico, existente_id: uuid.UUID | None,
+                    por_clave: dict[str, uuid.UUID], indice: list[tuple[uuid.UUID, str, str, int | None]],
+                    planos: set[str], titulos_matriz: list[str], intocables: set[uuid.UUID]) -> tuple[Candidato, bool]:
         if existente_id is not None:
             c = self._candidatos.obtener(proyecto_id, existente_id)
+            sin_pdf = c.url_pdf is None
             cambio = c.absorber(r)
             ahora_en_matriz = esta_en_matriz(c.titulo, planos, titulos_matriz)
             if ahora_en_matriz != c.en_matriz:
                 c.en_matriz, cambio = ahora_en_matriz, True
-            if cambio and c.id not in intocables:
-                self._candidatos.guardar(c)
+            if c.id not in intocables:
+                if cambio:
+                    self._candidatos.guardar(c)
+            elif sin_pdf and c.url_pdf:  # lo único que la web le añade a uno del equipo: sin ello no se vería
+                self._candidatos.anotar_pdf(c.id, c.url_pdf)
             por_clave.setdefault(c.clave, c.id)
             return c, False
         c = Candidato.desde(proyecto_id, r)

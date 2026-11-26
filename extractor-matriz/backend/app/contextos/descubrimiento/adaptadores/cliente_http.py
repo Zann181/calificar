@@ -6,6 +6,7 @@ Qué garantiza, para cualquier fuente:
 - un interruptor de circuito por servidor: tras varios fallos seguidos deja de insistir un rato y lo dice;
 - caché en disco con vigencia, para no repetir lo que ya se pidió;
 - un presupuesto de bytes por ventana para los sitios con credenciales, siempre por debajo del límite que publican;
+- para comprobar un PDF pide solo sus primeros bytes, respeta `robots.txt` y deja de insistir en quien lo rechaza;
 - registro de errores sin secretos: solo servidor y ruta, nunca parámetros (llaves, correo) ni cookies.
 
 No hace nada para esquivar defensas de los sitios: sin rotación de IP, sin suplantar el navegador, sin resolver CAPTCHA.
@@ -49,7 +50,7 @@ class ClienteCortes:
                  transporte: httpx.BaseTransport | None = None, cache_dir: Path | None = None,
                  cache_vigencia_s: float = 24 * 3600, pausa_min_s: float = 1.0, max_reintentos: int = 3,
                  fallos_para_abrir: int = 3, abierto_s: float = 300.0, espera_max_s: float = 60.0,
-                 tiempo_max_s: float = 30.0, reloj: Callable[[], float] = time.monotonic,
+                 tiempo_max_s: float = 30.0, tiempo_comprobacion_s: float = 10.0, reloj: Callable[[], float] = time.monotonic,
                  dormir: Callable[[float], None] = time.sleep, ahora_epoch: Callable[[], float] = time.time) -> None:
         self._contacto = contacto.strip()
         self._sitios = list(sitios or [])
@@ -65,6 +66,10 @@ class ClienteCortes:
         self._consumo: dict[str, deque[tuple[float, int]]] = {}
         self._global = threading.Lock()
         self._robots: dict[str, tuple[float, ReglasDeRobots]] = {}
+        self._tiempo_comprobacion_s = tiempo_comprobacion_s
+        # Aparte del circuito de las API: que un sitio niegue sus PDF no debe apagar su buscador.
+        self._rechazos: dict[str, int] = {}
+        self._rechaza_hasta: dict[str, float] = {}
 
     # ---- utilidades ------------------------------------------------------------------------------------------
     def _sitio_de(self, host: str) -> SitioConCredenciales | None:
@@ -132,34 +137,89 @@ class ClienteCortes:
             self._abierto_hasta[host] = self._reloj() + self._abierto_s
 
     # ---- la petición -----------------------------------------------------------------------------------------
-    def _exigir_robots(self, fuente: str, url: str) -> None:
-        """Respeta `robots.txt` (RFC 9309): lo que el sitio prohíbe, no se lee. Sin poder leerlo, se detiene por precaución."""
+    def _reglas_de(self, url: str) -> ReglasDeRobots | str:
+        """Las reglas de `robots.txt` del sitio (RFC 9309), o por qué no se pudieron leer."""
         partes = urlsplit(url)
         host = partes.netloc.lower()
-        guardado = self._robots.get(host)
-        if guardado is None or self._reloj() - guardado[0] > 24 * 3600:
-            with self._cerrojo(host):
-                por_esperar = self._ultimo.get(host, -1e18) + self._pausa_min_s - self._reloj()
-                if por_esperar > 0:
-                    self._dormir(por_esperar)
-                try:
-                    r = self._http.get(f"{partes.scheme}://{host}/robots.txt", headers=self._cabeceras(None, "text/plain"))
-                except httpx.TransportError as e:
-                    log.error("%s: no se pudo leer robots.txt de %s (%s): no se lee", fuente, host, type(e).__name__)
-                    raise ErrorDeFuente(fuente, f"no se pudo leer robots.txt de {host}: se detiene por precaución") from e
-                self._ultimo[host] = self._reloj()
+        with self._cerrojo(host):
+            guardado = self._robots.get(host)
+            if guardado is not None and self._reloj() - guardado[0] <= 24 * 3600:
+                return guardado[1]
+            self._esperar_turno(host, self._pausa_min_s)
+            try:
+                r = self._http.get(f"{partes.scheme}://{host}/robots.txt", headers=self._cabeceras(None, "text/plain"),
+                                   timeout=self._tiempo_comprobacion_s)
+            except httpx.HTTPError as e:
+                return f"no se pudo leer robots.txt de {host} ({type(e).__name__}): se detiene por precaución"
+            self._ultimo[host] = self._reloj()
             if r.status_code == 200:
                 reglas = ReglasDeRobots(r.text)
             elif 400 <= r.status_code < 500:  # sin robots.txt (404…): sin restricciones, según el estándar
                 reglas = ReglasDeRobots("")
             else:
-                log.error("%s: robots.txt de %s responde HTTP %d: no se lee", fuente, host, r.status_code)
-                raise ErrorDeFuente(fuente, f"robots.txt de {host} no está disponible (HTTP {r.status_code}): se detiene")
-            guardado = (self._reloj(), reglas)
-            self._robots[host] = guardado
-        if not guardado[1].permite(url):
+                return f"robots.txt de {host} no está disponible (HTTP {r.status_code}): se detiene"
+            self._robots[host] = (self._reloj(), reglas)
+            return reglas
+
+    def _exigir_robots(self, fuente: str, url: str) -> None:
+        """Lo que el sitio prohíbe, no se lee. Sin poder leer sus reglas, se detiene por precaución."""
+        partes = urlsplit(url)
+        host = partes.netloc.lower()
+        reglas = self._reglas_de(url)
+        if isinstance(reglas, str):
+            log.error("%s: %s", fuente, reglas)
+            raise ErrorDeFuente(fuente, reglas)
+        if not reglas.permite(url):
             log.error("%s: el robots.txt de %s no permite leer %s: no se lee", fuente, host, partes.path)
             raise ErrorDeFuente(fuente, f"el robots.txt de {host} no permite leer esa ruta: no se lee")
+
+    def _esperar_turno(self, host: str, pausa: float) -> None:
+        por_esperar = self._ultimo.get(host, -1e18) + pausa - self._reloj()
+        if por_esperar > 0:
+            self._dormir(por_esperar)
+
+    def _permitido(self, url: str) -> bool:
+        reglas = self._reglas_de(url)
+        return not isinstance(reglas, str) and reglas.permite(url)
+
+    def primeros_bytes(self, url: str, n: int = 8) -> bytes | None:
+        """El comienzo de lo que entrega una dirección, sin bajar el resto. None si no se debe o no se puede.
+
+        Nunca con sitios de credenciales. Un fallo aquí no es un error de la búsqueda: ese resultado, sencillamente, no
+        entrega un PDF. Tras varios rechazos seguidos de un servidor (401, 403, 429) se le deja de preguntar un rato.
+        """
+        partes = urlsplit(url)
+        host = partes.netloc.lower()
+        if partes.scheme not in ("http", "https") or not host or self._sitio_de(host) is not None:
+            return None
+        if not self._permitido(url):
+            return None
+        cabeceras = {**self._cabeceras(None, "application/pdf"), "Range": f"bytes=0-{n - 1}"}
+        with self._cerrojo(host):
+            if self._rechaza_hasta.get(host, 0) > self._reloj():  # se mira con el turno en la mano
+                return None
+            self._esperar_turno(host, self._pausa_min_s)
+            try:
+                with self._http.stream("GET", url, headers=cabeceras, timeout=self._tiempo_comprobacion_s) as r:
+                    if r.status_code in (401, 403, 429):
+                        self._rechazos[host] = self._rechazos.get(host, 0) + 1
+                        if self._rechazos[host] >= self._fallos_para_abrir:
+                            self._rechaza_hasta[host] = self._reloj() + self._abierto_s
+                            log.info("%s no entrega sus PDF a programas (HTTP %d): se deja de preguntar un rato", host,
+                                     r.status_code)
+                        return None
+                    if r.status_code not in (200, 206):
+                        return None
+                    self._rechazos[host] = 0
+                    final = str(r.url)
+                    inicio = next(r.iter_bytes(n), b"")[:n]
+            except (httpx.HTTPError, httpx.InvalidURL):
+                return None
+            finally:
+                self._ultimo[host] = self._reloj()
+        if urlsplit(final).netloc.lower() != host and not self._permitido(final):
+            return None  # redirigió a un sitio que no deja leer esa ruta
+        return inicio
 
     def get_json(self, fuente: str, url: str, params: Mapping[str, Any] | None = None, *, robots: bool = False,
                  accept: str = "application/json") -> Any:

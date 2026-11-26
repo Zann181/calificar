@@ -12,7 +12,8 @@ from dataclasses import dataclass
 from typing import Any
 
 # Versión del formato del sobre; la nube rechaza (426) uno mayor que el suyo. 2: pestaña «Buscar» (ADR 0012).
-ESQUEMA = 2
+# 3: PDF comprobado de cada candidato (ADR 0013).
+ESQUEMA = 3
 
 # Orden en que se aplican los sobres nuevos o cambiados (cada tipo solo apunta a los anteriores).
 # Los eliminados se aplican antes y en el orden inverso.

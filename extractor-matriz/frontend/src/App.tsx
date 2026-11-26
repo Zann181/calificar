@@ -4,6 +4,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useAncho } from "./ancho";
 import { api, ErrorApi } from "./api";
 import { useCapacidades, useEscritura } from "./capacidades";
 import { AccesoNube } from "./componentes/AccesoNube";
@@ -22,16 +23,6 @@ import { Tarjetas } from "./componentes/Tarjetas";
 import { VisorPdf } from "./componentes/VisorPdf";
 import { useNavegacion } from "./navegacion";
 import { DialogoRevision } from "./revision";
-
-function useAncho() {
-  const [ancho, setAncho] = useState(window.innerWidth);
-  useEffect(() => {
-    const f = () => setAncho(window.innerWidth);
-    window.addEventListener("resize", f);
-    return () => window.removeEventListener("resize", f);
-  }, []);
-  return ancho;
-}
 
 function Migas() {
   const { actual, ir } = useNavegacion();

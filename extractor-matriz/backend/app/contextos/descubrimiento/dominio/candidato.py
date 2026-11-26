@@ -68,6 +68,8 @@ class RegistroBibliografico:
     tipo: str = "article"
     url_oa: str | None = None
     es_preprint: bool = False
+    pdfs: tuple[str, ...] = ()  # enlaces que la fuente declara como PDF gratuito y legal, del mejor al peor
+    url_pdf: str | None = None  # el que ya se comprobó que entrega el PDF (ADR 0013)
 
 
 def normalizar_doi(doi: str | None) -> str | None:
@@ -120,6 +122,7 @@ class Candidato(Entidad):
     tipo: str = "article"
     url_oa: str | None = None
     es_preprint: bool = False
+    url_pdf: str | None = None  # PDF gratuito comprobado (ADR 0013)
     fuentes: list[str] = field(default_factory=list)
     estado: EstadoCandidato = EstadoCandidato.NUEVO
     motivo: str | None = None
@@ -133,7 +136,7 @@ class Candidato(Entidad):
         c = cls(proyecto_id=proyecto_id, clave=clave_del_registro(r), titulo=r.titulo.strip(),
                 doi=normalizar_doi(r.doi), anio=r.anio, autores=list(r.autores), revista=r.revista,
                 resumen=r.resumen[:MAX_RESUMEN], palabras_clave=list(r.palabras_clave), idioma=r.idioma, tipo=r.tipo,
-                url_oa=r.url_oa, es_preprint=r.es_preprint, fuentes=[r.fuente])
+                url_oa=r.url_oa, es_preprint=r.es_preprint, url_pdf=r.url_pdf, fuentes=[r.fuente])
         return c
 
     @property
@@ -151,11 +154,11 @@ class Candidato(Entidad):
             fuente=fuente, id_externo=self.clave, posicion=0, titulo=self.titulo, doi=self.doi,
             autores=tuple(self.autores), anio=self.anio, revista=self.revista, resumen=self.resumen,
             palabras_clave=tuple(self.palabras_clave), idioma=self.idioma, tipo=self.tipo, url_oa=self.url_oa,
-            es_preprint=self.es_preprint)
+            es_preprint=self.es_preprint, url_pdf=self.url_pdf)
 
     def absorber(self, r: RegistroBibliografico) -> bool:
         """Suma lo que otra fuente sabe del mismo trabajo, sin pisar lo que ya había. True si cambió algo."""
-        antes = (self.doi, self.resumen, self.url_oa, len(self.autores), self.anio, self.revista,
+        antes = (self.doi, self.resumen, self.url_oa, self.url_pdf, len(self.autores), self.anio, self.revista,
                  tuple(self.fuentes), tuple(self.palabras_clave), self.idioma)
         if r.fuente not in self.fuentes:
             self.fuentes.append(r.fuente)
@@ -167,6 +170,8 @@ class Candidato(Entidad):
             self.resumen = r.resumen[:MAX_RESUMEN]
         if r.url_oa and not self.url_oa:
             self.url_oa = r.url_oa
+        if r.url_pdf and not self.url_pdf:
+            self.url_pdf = r.url_pdf
         if len(r.autores) > len(self.autores) or (
                 r.autores and sum(len(a.paises) for a in r.autores) > sum(len(a.paises) for a in self.autores)):
             self.autores = list(r.autores)
@@ -181,7 +186,7 @@ class Candidato(Entidad):
             self.idioma = r.idioma
         if self.es_preprint and not r.es_preprint:
             self.es_preprint = False  # si alguna fuente lo conoce ya publicado, deja de ser solo preprint
-        despues = (self.doi, self.resumen, self.url_oa, len(self.autores), self.anio, self.revista,
+        despues = (self.doi, self.resumen, self.url_oa, self.url_pdf, len(self.autores), self.anio, self.revista,
                    tuple(self.fuentes), tuple(self.palabras_clave), self.idioma)
         cambio = antes != despues
         if cambio:

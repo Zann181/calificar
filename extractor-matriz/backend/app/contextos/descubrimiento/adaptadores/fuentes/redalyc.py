@@ -127,9 +127,10 @@ class Redalyc:
             anio = int(str(r.get("anioArticulo") or "")[:4])
         except ValueError:
             anio = None
+        pdf = PDF.format(revista=r.get("cveRevista"), articulo=r["cveArticulo"])  # todo Redalyc es de acceso abierto
         return RegistroBibliografico(
             fuente=self.nombre, id_externo=str(r["cveArticulo"]), posicion=posicion,
             titulo=quitar_etiquetas(str(r["titulo"])), doi=doi, autores=_autores(r), anio=anio,
             revista=str(r.get("nomRevista") or ""), resumen=_resumen(r), palabras_clave=_palabras(r),
             idioma=IDIOMAS.get(str(r.get("idiomaArticulo") or "").lower(), ""), tipo="article",
-            url_oa=PDF.format(revista=r.get("cveRevista"), articulo=r["cveArticulo"]), es_preprint=False)
+            url_oa=pdf, es_preprint=False, pdfs=(pdf,))

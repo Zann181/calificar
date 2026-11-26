@@ -2625,7 +2625,9 @@ a.enlace-boton:hover {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr) 380px;
+  grid-template-columns: var(--w-buscar-izq, 340px) 0 minmax(0, 1fr) 0 var(--w-buscar-der, 380px);
+  /* una sola fila que ocupa todo el alto: los divisores no deben crear otra */
+  grid-template-rows: minmax(0, 1fr);
   background: var(--fondo);
 }
 .buscar-consulta,
@@ -2762,6 +2764,13 @@ a.enlace-boton:hover {
   align-items: center;
   flex-wrap: wrap;
 }
+/* el recuento va en su propia línea: con el nombre al lado no cabe en un panel angosto */
+.buscar-progreso li > .tenue {
+  flex-basis: 100%;
+}
+.buscar-progreso li > .buscar-estado {
+  flex: none;
+}
 .buscador .nombre {
   flex: 1;
   min-width: 0;
@@ -2882,13 +2891,25 @@ a.enlace-boton:hover {
 }
 @media (max-width: 1279px) {
   .buscador {
-    grid-template-columns: 320px minmax(0, 1fr);
+    grid-template-columns: var(--w-buscar-izq, 320px) 0 minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;
   }
-  .buscar-consulta {
+  .buscar-consulta,
+  .buscar-desplegar-izq {
+    grid-column: 1;
     grid-row: 1 / span 2;
   }
+  .buscador > .divisor {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  .buscar-lista {
+    grid-column: 3;
+    grid-row: 1;
+  }
   .buscar-ficha {
+    grid-column: 3;
+    grid-row: 2;
     max-height: 40vh;
     border-left: 0;
     border-top: 1px solid var(--separador);

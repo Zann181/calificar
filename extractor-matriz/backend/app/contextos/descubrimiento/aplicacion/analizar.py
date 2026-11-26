@@ -67,7 +67,7 @@ class AnalizarTextoCompleto:
             datos = self._pdfs.leer(proyecto_id, c.articulo_id)
             if datos:
                 return datos, "PDF ya importado a Artículos"
-        urls = self._obtener.urls(c.doi, c.url_oa)
+        urls = self._obtener.urls(c.doi, c.url_pdf or c.url_oa)
         if not urls:
             return SIN_COPIA
         ultimo = "no se pudo descargar"

@@ -74,6 +74,7 @@ class RegistroCandidato(Base):
     idioma: Mapped[str] = mapped_column(String(10), server_default="")
     tipo: Mapped[str] = mapped_column(String(30), server_default="article")
     url_oa: Mapped[str | None] = mapped_column(String(1000))
+    url_pdf: Mapped[str | None] = mapped_column(String(1000))
     es_preprint: Mapped[bool] = mapped_column(Boolean, default=False)
     fuentes: Mapped[list[Any]]
     estado: Mapped[str] = mapped_column(String(20), index=True)
@@ -226,7 +227,7 @@ def a_candidato(r: RegistroCandidato) -> Candidato:
     c = Candidato(proyecto_id=r.proyecto_id, id=r.id, clave=r.clave, titulo=r.titulo, doi=r.doi, anio=r.anio,
                   autores=[Autor.desde_dict(a) for a in r.autores], revista=r.revista, resumen=r.resumen,
                   palabras_clave=[str(p) for p in r.palabras_clave], idioma=r.idioma, tipo=r.tipo, url_oa=r.url_oa,
-                  es_preprint=r.es_preprint, fuentes=[str(f) for f in r.fuentes], estado=EstadoCandidato(r.estado),
+                  es_preprint=r.es_preprint, url_pdf=r.url_pdf, fuentes=[str(f) for f in r.fuentes], estado=EstadoCandidato(r.estado),
                   motivo=r.motivo, en_matriz=r.en_matriz, articulo_id=r.articulo_id)
     c.creado_en, c.actualizado_en = r.creado_en, r.actualizado_en
     return c
@@ -288,6 +289,11 @@ class RepositorioDeBusquedasSql:
             return set(s.scalars(select(RegistroHallazgo.candidato_id).where(RegistroHallazgo.busqueda_id == busqueda_id)))
 
 
+def _a_la_vista() -> Any:
+    """La lista solo muestra candidatos con PDF gratuito comprobado (ADR 0013), y los que la persona ya decidió."""
+    return or_(RegistroCandidato.url_pdf.is_not(None), RegistroCandidato.estado != EstadoCandidato.NUEVO.value)
+
+
 class RepositorioDeCandidatosSql:
     def __init__(self, fabrica: Callable[[], Session]) -> None:
         self._fabrica = fabrica
@@ -300,9 +306,21 @@ class RepositorioDeCandidatosSql:
             r.revista, r.resumen, r.palabras_clave = c.revista[:300], c.resumen, list(c.palabras_clave)
             r.idioma, r.tipo, r.url_oa, r.es_preprint = c.idioma[:10], c.tipo[:30], (c.url_oa or None), c.es_preprint
             r.fuentes, r.estado, r.motivo, r.en_matriz = list(c.fuentes), c.estado.value, c.motivo, c.en_matriz
-            r.articulo_id, r.actualizado_en = c.articulo_id, c.actualizado_en
+            r.articulo_id, r.actualizado_en, r.url_pdf = c.articulo_id, c.actualizado_en, (c.url_pdf or None)
             s.add(r)
             s.commit()
+
+    def con_pdf(self, proyecto_id: uuid.UUID) -> set[uuid.UUID]:
+        with self._fabrica() as s:
+            return set(s.scalars(select(RegistroCandidato.id).where(
+                RegistroCandidato.proyecto_id == proyecto_id, RegistroCandidato.url_pdf.is_not(None))))
+
+    def anotar_pdf(self, candidato_id: uuid.UUID, url: str) -> None:
+        with self._fabrica() as s:
+            r = s.get(RegistroCandidato, candidato_id)
+            if r is not None and r.url_pdf is None:
+                r.url_pdf = url
+                s.commit()
 
     def obtener(self, proyecto_id: uuid.UUID, candidato_id: uuid.UUID) -> Candidato:
         with self._fabrica() as s:
@@ -335,7 +353,7 @@ class RepositorioDeCandidatosSql:
                busqueda_id: uuid.UUID | None = None, texto: str | None = None, en_matriz: bool | None = None,
                desde: int = 0, cuantos: int = 100) -> tuple[list[Candidato], int]:
         with self._fabrica() as s:
-            filtros: list[Any] = [RegistroCandidato.proyecto_id == proyecto_id]
+            filtros: list[Any] = [RegistroCandidato.proyecto_id == proyecto_id, _a_la_vista()]
             if estado is not None:
                 filtros.append(RegistroCandidato.estado == estado.value)
             if en_matriz is not None:
@@ -356,11 +374,15 @@ class RepositorioDeCandidatosSql:
 
     def contadores(self, proyecto_id: uuid.UUID) -> dict[str, int]:
         with self._fabrica() as s:
-            q = (select(RegistroCandidato.estado, func.count()).where(RegistroCandidato.proyecto_id == proyecto_id)
+            q = (select(RegistroCandidato.estado, func.count())
+                 .where(RegistroCandidato.proyecto_id == proyecto_id, _a_la_vista())
                  .group_by(RegistroCandidato.estado))
             cuenta = {e.value: 0 for e in EstadoCandidato}
             for estado, n in s.execute(q):
                 cuenta[estado] = int(n)
             cuenta["EN_MATRIZ"] = int(s.scalar(select(func.count()).select_from(RegistroCandidato).where(
-                RegistroCandidato.proyecto_id == proyecto_id, RegistroCandidato.en_matriz.is_(True))) or 0)
+                RegistroCandidato.proyecto_id == proyecto_id, _a_la_vista(),
+                RegistroCandidato.en_matriz.is_(True))) or 0)
+            cuenta["SIN_PDF"] = int(s.scalar(select(func.count()).select_from(RegistroCandidato).where(
+                RegistroCandidato.proyecto_id == proyecto_id, ~_a_la_vista())) or 0)
             return cuenta

@@ -133,7 +133,7 @@ exportados, extracciones sin terminar, búsquedas en curso ni la caché de «Bus
 ### 6.1 Sobre de réplica
 
 ```json
-{ "esquema": 2, "tipo": "extraccion", "id": "<uuid>", "proyecto_id": "<uuid>",
+{ "esquema": 3, "tipo": "extraccion", "id": "<uuid>", "proyecto_id": "<uuid>",
   "hash": "sha256:…", "eliminado": false, "datos": { …todas las columnas… } }
 ```
 

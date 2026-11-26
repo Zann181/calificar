@@ -54,6 +54,8 @@ def _hallazgo(h: RegistroHallazgo) -> dict[str, Any]:
 def _datos_de_candidato(c: RegistroCandidato, hallazgos: list[RegistroHallazgo],
                         analisis: RegistroAnalisis | None) -> dict[str, Any]:
     datos = a_datos(c)
+    if datos["url_pdf"] is None:
+        del datos["url_pdf"]  # sin PDF, el contenido (y su hash) es el mismo de antes de la columna
     datos["hallazgos"] = sorted((_hallazgo(h) for h in hallazgos), key=lambda h: (h["busqueda_id"], h["fuente"]))
     datos["analisis"] = None if analisis is None else a_datos(analisis)
     return datos
@@ -164,6 +166,7 @@ class ReplicaDeDescubrimiento:
         datos = dict(sobre.datos)
         hallazgos: list[dict[str, Any]] = datos.pop("hallazgos")
         analisis: dict[str, Any] | None = datos.pop("analisis")
+        datos.setdefault("url_pdf", None)
         # Los del equipo: lo que la web encontró y aún no se recogió no cuenta para comparar ni se borra.
         del_equipo = select(RegistroHallazgo).where(RegistroHallazgo.candidato_id == identificador,
                                                     RegistroHallazgo.busqueda_id.not_in(_sin_recoger()))

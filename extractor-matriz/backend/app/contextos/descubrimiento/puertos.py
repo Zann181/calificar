@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Protocol
@@ -38,6 +38,11 @@ class FuenteDeLiteratura(Protocol):
     def buscar(self, consulta: ConsultaDeBusqueda, limite: int, hoy: date) -> Iterator[RegistroBibliografico]: ...
 
 
+class ComprobadorDePdf(Protocol):
+    def entregan(self, urls: Sequence[str]) -> dict[str, bool]:
+        """Por cada enlace, True si entrega un PDF sin pagar ni iniciar sesión."""
+
+
 class RepositorioDeBusquedas(Protocol):
     def guardar(self, b: Busqueda) -> None: ...
     def obtener(self, proyecto_id: uuid.UUID, busqueda_id: uuid.UUID) -> Busqueda: ...
@@ -52,6 +57,9 @@ class RepositorioDeBusquedas(Protocol):
 
 class RepositorioDeCandidatos(Protocol):
     def guardar(self, c: Candidato) -> None: ...
+    def con_pdf(self, proyecto_id: uuid.UUID) -> set[uuid.UUID]: ...
+    def anotar_pdf(self, candidato_id: uuid.UUID, url: str) -> None:
+        """Solo el enlace del PDF comprobado, sin tocar nada más del candidato."""
     def obtener(self, proyecto_id: uuid.UUID, candidato_id: uuid.UUID) -> Candidato: ...
     def por_clave(self, proyecto_id: uuid.UUID, clave: str) -> Candidato | None: ...
     def por_ids(self, proyecto_id: uuid.UUID, ids: list[uuid.UUID]) -> list[Candidato]: ...

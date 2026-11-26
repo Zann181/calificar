@@ -5,6 +5,8 @@
   agregar más en el futuro (sección 7.0). Se pidió avanzar sin más preguntas: se construyó la Fase 1 (ver «Estado de la
   Fase 1» más abajo).
 - Decisión asociada: `docs/decisiones/0011-descubrimiento-de-literatura-y-limites-del-scraping.md`
+- **Solo PDF gratuito (2026-11-25):** a pedido del responsable, solo entran artículos cuyo PDF gratuito y legal se
+  comprueba (`docs/decisiones/0013-solo-articulos-con-pdf-gratuito.md`). Los paneles laterales se ensanchan en escritorio.
 - **En la nube (2026-11-25):** a pedido del responsable, en la nube también **se busca**, y lo encontrado vuelve al
   equipo (`docs/decisiones/0012-buscar-desde-la-nube.md`).
 - **Decisiones de la segunda ronda (2026-11-25):** las credenciales de la UNAL las escribe siempre el usuario; se aceptan los

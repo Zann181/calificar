@@ -62,7 +62,10 @@ class EuropePMC:
         preprint = r.get("source") == "PPR"
         enlaces = (r.get("fullTextUrlList") or {}).get("fullTextUrl", [])
         gratis = [e for e in enlaces if e.get("availabilityCode") in ("OA", "F") and e.get("url")]
-        pdf = next((e["url"] for e in gratis if e.get("documentStyle") == "pdf"), None)
+        # europepmc.org niega sus PDF a los programas: los de otros sitios se prueban antes.
+        pdfs = tuple(sorted(dict.fromkeys(str(e["url"]) for e in gratis if e.get("documentStyle") == "pdf"),
+                            key=lambda u: "europepmc.org" in u))
+        pdf = pdfs[0] if pdfs else None
         titulo = quitar_etiquetas(r.get("title")).rstrip(".")  # llegan con «&lt;i&gt;…» de la fuente
         return RegistroBibliografico(
             fuente=self.nombre, id_externo=f"{r.get('source')}:{r.get('id')}", posicion=posicion, titulo=titulo,
@@ -72,4 +75,4 @@ class EuropePMC:
             palabras_clave=tuple(str(k) for k in (r.get("keywordList") or {}).get("keyword", [])),
             idioma=IDIOMA_ISO.get(str(r.get("language") or ""), str(r.get("language") or "")),
             tipo="preprint" if preprint else ("review" if any("Review" in str(t) for t in tipos) else "article"),
-            url_oa=pdf or (gratis[0]["url"] if gratis else None), es_preprint=preprint)
+            url_oa=pdf or (gratis[0]["url"] if gratis else None), es_preprint=preprint, pdfs=pdfs)

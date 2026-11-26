@@ -18,7 +18,7 @@ from app.contextos.descubrimiento.dominio.errores import ErrorDeFuente
 from app.main import crear_app
 from tests.conftest import FIXTURES, MATRIZ
 from tests.integracion.conftest import nuevo_proyecto
-from tests.integracion.test_descubrimiento import FuenteFalsa, buscar, reg
+from tests.integracion.test_descubrimiento import FuenteFalsa, PdfsQueResponden, buscar, reg
 
 KUMAR = (FIXTURES / "kumar_2022.pdf").read_bytes()
 SINGH = (FIXTURES / "singh_2023.pdf").read_bytes()
@@ -31,7 +31,8 @@ class PdfFalso:
         self.pedidas: list[str] = []
 
     def urls(self, doi: str | None, url_oa: str | None) -> list[str]:
-        return [url_oa] if url_oa else []
+        # «sin-copia»: el enlace que había al buscar ya no ofrece nada que bajar.
+        return [url_oa] if url_oa and "sin-copia" not in url_oa else []
 
     def descargar(self, url: str) -> bytes:
         self.pedidas.append(url)
@@ -43,7 +44,8 @@ class PdfFalso:
 CON_PDF = reg("a", "Happiness and job performance in nurses", "10.1000/uno", anio=2023, url_oa="https://oa.test/kumar.pdf")
 OTRO_PDF = reg("a", "Subjective well-being and task performance", "10.1000/dos", anio=2022, url_oa="https://oa.test/singh.pdf")
 IGUAL = reg("a", "Employee happiness and productivity", "10.1000/tres", anio=2021, url_oa="https://oa.test/kumar-otra-url.pdf")
-SIN_COPIA = reg("a", "Work well-being and performance in teachers", "10.1000/cuatro", anio=2020)
+SIN_COPIA = reg("a", "Work well-being and performance in teachers", "10.1000/cuatro", anio=2020,
+                pdfs=("https://oa.test/sin-copia.pdf",))
 FALLA = reg("a", "Positive affect and sales performance", "10.1000/cinco", anio=2024, url_oa="https://oa.test/falla.pdf")
 
 
@@ -58,7 +60,8 @@ def ctx(fabrica, descargador: PdfFalso) -> Contenedor:  # type: ignore[no-untype
     fuentes = {"a": FuenteFalsa("a", [CON_PDF, OTRO_PDF, IGUAL, SIN_COPIA, FALLA])}
     return construir(Settings(_env_file=None, despachador_en_servidor=False), fabrica=fabrica,
                      almacen=AlmacenEnMemoria(), conversor=ConversorFijo(FIXTURES / "mineru"),
-                     fuentes_de_busqueda=fuentes, lanzar_busqueda=lanzar_aqui, obtener_pdf=descargador)
+                     fuentes_de_busqueda=fuentes, lanzar_busqueda=lanzar_aqui, comprobador_pdf=PdfsQueResponden(),
+                     obtener_pdf=descargador)
 
 
 @pytest.fixture

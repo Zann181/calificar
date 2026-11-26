@@ -42,6 +42,7 @@ from app.contextos.biblioteca.aplicacion.casos_de_uso import (
 from app.contextos.biblioteca.dominio.articulo import EstadoArticulo
 from app.contextos.biblioteca.puertos import AlmacenDeArchivos, ConversorPDF
 from app.contextos.descubrimiento.adaptadores.cliente_http import ClienteCortes
+from app.contextos.descubrimiento.adaptadores.comprobar_pdf import ComprobadorDePdfEnLinea
 from app.contextos.descubrimiento.adaptadores.detectores_json import cargar_config
 from app.contextos.descubrimiento.adaptadores.fuentes.registro import construir_fuentes
 from app.contextos.descubrimiento.adaptadores.obtencion_pdf import ObtenerPdfAbierto
@@ -72,6 +73,7 @@ from app.contextos.descubrimiento.dominio.busqueda import Origen
 from app.contextos.descubrimiento.dominio.completitud import ColumnaDelLibro
 from app.contextos.descubrimiento.dominio.detectores import MotorDeDetectores
 from app.contextos.descubrimiento.puertos import (
+    ComprobadorDePdf,
     ExtraerTexto,
     FuenteDeLiteratura,
     ObtenerPdf,
@@ -350,6 +352,7 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
               modelo: ModeloDeLenguaje | None = None, credenciales: Credenciales | None = None,
               fabrica_de_destino: FabricaDeDestino | None = None,
               fuentes_de_busqueda: Mapping[str, FuenteDeLiteratura] | None = None,
+              comprobador_pdf: ComprobadorDePdf | None = None,
               lanzar_busqueda: Lanzador | None = None, obtener_pdf: ObtenerPdf | None = None,
               extraer_texto: ExtraerTexto | None = None,
               salud_de_fuentes: SaludDeFuentes | None = None) -> Contenedor:
@@ -568,7 +571,8 @@ def construir(ajustes: Settings, *, fabrica: Callable[[], Session] | None = None
                                           ColumnasDesdeNormasParaBuscar(consultas_normas), motor_detectores)
     descubrimiento = CasosDeDescubrimiento(
         buscar=EjecutarBusqueda(repo_busquedas, repo_candidatos, fuentes_busqueda, TitulosDesdeMatriz(consultas_matriz),
-                                sesiones_busqueda, lanzar_busqueda or lanzar_en_hilo, salud=salud_fuentes,
+                                sesiones_busqueda, comprobador_pdf or ComprobadorDePdfEnLinea(cliente_busqueda),
+                                lanzar_busqueda or lanzar_en_hilo, salud=salud_fuentes,
                                 al_cambiar=avisar_cambio,
                                 origen=Origen.NUBE if ajustes.modo == "nube" else Origen.EQUIPO),
         al_cambiar=avisar_cambio,

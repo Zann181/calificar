@@ -13,14 +13,14 @@ def a_csv(filas: list[tuple[Candidato, Evaluacion | None]], columnas: list[str])
     """Una fila por candidato; por cada columna elegida, su valor sugerido y su estado. Con BOM para que Excel lea la ñ."""
     salida = io.StringIO()
     w = csv.writer(salida, lineterminator="\r\n")
-    cabecera = ["Título", "Autores", "Año", "Revista", "DOI", "Fuentes", "Texto abierto", "Estado", "Ya en la matriz",
+    cabecera = ["Título", "Autores", "Año", "Revista", "DOI", "Fuentes", "Texto abierto", "PDF gratis", "Estado", "Ya en la matriz",
                 "Puntaje", "Etiqueta"]
     for col in columnas:
         cabecera += [col, f"{col} [estado]"]
     w.writerow(cabecera)
     for c, ev in filas:
         fila = [c.titulo, "; ".join(a.nombre for a in c.autores), c.anio or "", c.revista, c.doi or "",
-                ", ".join(c.fuentes), c.url_oa or "", c.estado.value, "sí" if c.en_matriz else "no",
+                ", ".join(c.fuentes), c.url_oa or "", c.url_pdf or "", c.estado.value, "sí" if c.en_matriz else "no",
                 f"{round(ev.puntaje * 100)}%" if ev else "", ev.etiqueta.value if ev else ""]
         por_columna = {cel.columna: cel for cel in ev.celdas} if ev else {}
         for col in columnas:
@@ -49,6 +49,8 @@ def a_ris(candidatos: list[Candidato]) -> str:
             lineas.append(f"LA  - {c.idioma}")
         if c.url_oa:
             lineas.append(f"UR  - {c.url_oa}")
+        if c.url_pdf:
+            lineas.append(f"L1  - {c.url_pdf}")
         lineas.append("ER  - ")
         lineas.append("")
     return "\r\n".join(lineas)
